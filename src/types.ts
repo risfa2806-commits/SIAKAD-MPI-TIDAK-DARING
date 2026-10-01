@@ -146,6 +146,8 @@ export interface DosenProfile {
   courseCode: string;
   sks: number;
   semester: string;
+  semesterNumber?: number;
+  roomName?: string; // Kamar / Ruang Kelas (e.g. 'Kamar MPI 1', 'Kamar MPI 3', 'Ruang A')
   studyProgram: string;
   classCode?: string;
   academicYear?: string;
@@ -161,11 +163,15 @@ export interface CourseSummary {
   code: string;
   sks: number;
   semester: string;
+  semesterNumber?: number; // 1, 2, 3, etc.
+  roomName?: string; // e.g. "Kamar MPI 1", "Kamar MPI 3", "Kamar A"
   campusName: string;
   dosenName: string;
   dosenTitle: string;
   studyProgram: string;
+  classCode?: string;
   totalStudents?: number;
+  description?: string;
 }
 
 export interface ArchivedSemester {

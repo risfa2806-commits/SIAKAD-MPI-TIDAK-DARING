@@ -765,10 +765,28 @@ export function exportRpsToWord(profile: DosenProfile, meetings: MeetingSchedule
 
       <div class="section-title">II. Capaian Pembelajaran Lulusan (CPL) & CPMK</div>
       <ul>
-        <li><strong>Sikap:</strong> Menjunjung tinggi nilai kemanusiaan, etika keilmuan, dan integritas akademik dalam riset.</li>
-        <li><strong>Pengetahuan:</strong> Menguasai konsep dasar ontologi, epistemologi, dan aksiologi keilmuan pendidikan Islam.</li>
-        <li><strong>Keterampilan Umum:</strong> Mampu menyusun makalah ilmiah, presentasi PPT, dan memanfaatkan kecerdasan buatan (Generative AI) secara amanah.</li>
-        <li><strong>Keterampilan Khusus:</strong> Mampu memproduksi video edukasi ilmiah kolaboratif berbasis AI.</li>
+        <li><strong>Sikap & Nilai Etika:</strong> ${
+          (profile.courseTitle || '').toLowerCase().includes('kebijakan')
+            ? 'Menjunjung tinggi integritas kebijakan publik, keadilan sosial, kejujuran intelektual, dan nilai amanah dalam tata kelola regulasi pendidikan Islam.'
+            : (profile.courseTitle || '').toLowerCase().includes('konsep') || (profile.courseTitle || '').toLowerCase().includes('dasar')
+            ? 'Meneladani kepemimpinan profetik (Siddiq, Amanah, Tabligh, Fathonah) dalam menggerakkan SDM serta iklim kerja madrasah dan pesantren.'
+            : 'Menjunjung tinggi nilai kejujuran ilmiah, etika keilmuan, adab akademis, dan komitmen moral dalam menuntut ilmu pengetahuan.'
+        }</li>
+        <li><strong>Penguasaan Pengetahuan:</strong> ${
+          (profile.courseTitle || '').toLowerCase().includes('kebijakan')
+            ? 'Menguasai siklus kebijakan pendidikan publik (agenda setting, formulasi regulasi, model implementasi, evaluasi CIPP, dana BOS, dan digitalisasi madrasah).'
+            : (profile.courseTitle || '').toLowerCase().includes('konsep') || (profile.courseTitle || '').toLowerCase().includes('dasar')
+            ? 'Menguasai fungsi manajerial POAC, tata kelola madrasah/pesantren, kurikulum terpadu, manajemen pendidik, sarpras, dan pembiayaan BOSP.'
+            : 'Menguasai landasan ontologi, epistemologi, aksiologi, metodologi penalaran deduktif-induktif, dan integrasi sains dengan wahyu ilahi.'
+        }</li>
+        <li><strong>Keterampilan Umum:</strong> ${
+          (profile.courseTitle || '').toLowerCase().includes('kebijakan')
+            ? 'Mampu menyusun naskah ringkasan kebijakan (policy brief), bedah regulasi KMA/Permendikbud, serta slide presentasi rekomendasi strategis.'
+            : (profile.courseTitle || '').toLowerCase().includes('konsep') || (profile.courseTitle || '').toLowerCase().includes('dasar')
+            ? 'Mampu menyusun rencana strategis (Renstra), job description organisasi, serta instrumen audit supervisi madrasah/pesantren.'
+            : 'Mampu menyusun makalah ilmiah kefilsafatan berbobot, slide presentasi PPT sistematis, serta aktif berdiskusi kritis dalam forum kelas.'
+        }</li>
+        <li><strong>Keterampilan Khusus:</strong> Mampu berkolaborasi dalam kelompok menghasilkan video edukasi ilmiah berbasis Generative AI yang etis, mendidik, dan aplikatif.</li>
       </ul>
 
       <div class="section-title">III. Bobot & Sistem Evaluasi Pembelajaran</div>
@@ -1666,8 +1684,50 @@ export function exportAttendanceToExcel(options: ExportAttendanceOptions) {
  */
 export function printViaHiddenIframe(html: string, title?: string): void {
   const docTitle = title || 'Dokumen_Cetak_SIAKAD';
+  const originalTitle = typeof document !== 'undefined' ? document.title : '';
 
-  // Hidden iframe printing (bypasses popup blockers and triggers browser print dialog immediately)
+  if (typeof window === 'undefined' || typeof document === 'undefined') {
+    return;
+  }
+
+  // 1. Prepare printable container in main window for direct, reliable printing
+  let printContainer = document.getElementById('siakad-print-direct-sheet');
+  if (!printContainer) {
+    printContainer = document.createElement('div');
+    printContainer.id = 'siakad-print-direct-sheet';
+    document.body.appendChild(printContainer);
+  }
+  printContainer.innerHTML = html;
+
+  // Add printing class to body so only #siakad-print-direct-sheet is visible in @media print
+  document.body.classList.add('siakad-printing-active');
+  try {
+    document.title = docTitle;
+  } catch {}
+
+  const cleanup = () => {
+    document.body.classList.remove('siakad-printing-active');
+    try {
+      document.title = originalTitle;
+    } catch {}
+    if (printContainer && printContainer.parentNode) {
+      printContainer.innerHTML = '';
+    }
+  };
+
+  window.addEventListener('afterprint', cleanup, { once: true });
+  setTimeout(cleanup, 8000);
+
+  // Directly trigger browser native print dialog on window
+  try {
+    window.focus();
+    window.print();
+    return;
+  } catch (err) {
+    console.warn('Direct window.print encountered notice, trying iframe fallback:', err);
+  }
+
+  // 2. Hidden iframe fallback (for browsers with strict top-level print policies)
   try {
     const iframe = document.createElement('iframe');
     iframe.style.position = 'fixed';
@@ -1690,20 +1750,16 @@ export function printViaHiddenIframe(html: string, title?: string): void {
           iframe.contentWindow?.focus();
           iframe.contentWindow?.print();
         } catch (e) {
-          console.warn('Iframe print failed, falling back to direct window.print or download:', e);
-          try {
-            window.print();
-          } catch {
-            const blob = new Blob([html], { type: 'text/html;charset=utf-8' });
-            const url = URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.href = url;
-            a.download = `${docTitle}.html`;
-            document.body.appendChild(a);
-            a.click();
-            document.body.removeChild(a);
-            URL.revokeObjectURL(url);
-          }
+          console.warn('Iframe print notice, falling back to download:', e);
+          const blob = new Blob([html], { type: 'text/html;charset=utf-8' });
+          const url = URL.createObjectURL(blob);
+          const a = document.createElement('a');
+          a.href = url;
+          a.download = `${docTitle}.html`;
+          document.body.appendChild(a);
+          a.click();
+          document.body.removeChild(a);
+          URL.revokeObjectURL(url);
         } finally {
           setTimeout(() => {
             if (document.body.contains(iframe)) {
@@ -1715,10 +1771,10 @@ export function printViaHiddenIframe(html: string, title?: string): void {
       return;
     }
   } catch (err) {
-    console.warn('Iframe setup failed, falling back to window print or download:', err);
+    console.warn('Iframe setup failed, falling back to download:', err);
   }
 
-  // Strategy 3: Direct download fallback if printing is impossible
+  // 3. Direct download fallback
   try {
     const blob = new Blob([html], { type: 'text/html;charset=utf-8' });
     const url = URL.createObjectURL(blob);
@@ -1730,7 +1786,7 @@ export function printViaHiddenIframe(html: string, title?: string): void {
     document.body.removeChild(a);
     URL.revokeObjectURL(url);
   } catch {
-    window.print();
+    cleanup();
   }
 }
 

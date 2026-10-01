@@ -21,7 +21,24 @@
   }
 }
 
+#siakad-print-direct-sheet {
+  display: none;
+}
+
 @media print {
+  body.siakad-printing-active > *:not(#siakad-print-direct-sheet) {
+    display: none !important;
+  }
+  body.siakad-printing-active #siakad-print-direct-sheet {
+    display: block !important;
+    position: static !important;
+    width: 100% !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    background: #ffffff !important;
+    color: #000000 !important;
+  }
+
   header,
   nav,
   #top-deadline-reminder-banner,

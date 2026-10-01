@@ -1475,6 +1475,8 @@ export async function addCourseApi(courseData: {
   code?: string;
   sks?: number;
   semester?: string;
+  semesterNumber?: number;
+  roomName?: string;
   studyProgram?: string;
   campusName?: string;
   dosenName?: string;
@@ -1484,6 +1486,9 @@ export async function addCourseApi(courseData: {
   rpsBase64?: string;
   rpsFilename?: string;
   defaultPresentationFormat?: 'auto' | 'kelompok' | 'individu';
+  studentOption?: 'use_existing_roster' | 'copy_from_course' | 'empty' | 'generate_cohort' | 'rps_extracted';
+  sourceCourseId?: string;
+  customStudents?: any[];
 }): Promise<{ success: boolean; data?: SiakadDatabase; error?: string }> {
   try {
     const res = await fetch('/api/courses', {
@@ -1499,6 +1504,86 @@ export async function addCourseApi(courseData: {
     return { success: false, error: json.error || 'Gagal menambahkan mata kuliah baru' };
   } catch (err) {
     console.warn('Add course error:', err);
+    return { success: false, error: 'Koneksi ke server bermasalah' };
+  }
+}
+
+// Multi-Course API: Sync roster & groups with master RPS students
+export async function syncCourseRosterApi(courseId?: string): Promise<{
+  success: boolean;
+  message?: string;
+  data?: SiakadDatabase;
+  error?: string;
+}> {
+  try {
+    const res = await fetch('/api/courses/sync-roster', {
+      method: 'POST',
+      headers: getDosenAuthHeaders(),
+      body: JSON.stringify({ courseId }),
+    });
+    const json = await safeJson(res, null);
+    if (res.ok && json.success) {
+      if (json.data) saveLocalCache(json.data);
+      return { success: true, message: json.message, data: json.data };
+    }
+    return { success: false, error: json.error || 'Gagal mensinkronkan kelompok' };
+  } catch (err) {
+    console.warn('Sync course roster error:', err);
+    return { success: false, error: 'Koneksi ke server bermasalah' };
+  }
+}
+
+// Multi-Course API: Edit course details (Dosen only)
+export async function editCourseApi(courseId: string, courseData: {
+  title: string;
+  code?: string;
+  sks?: number;
+  semester?: string;
+  semesterNumber?: number;
+  roomName?: string;
+  campusName?: string;
+  dosenName?: string;
+  dosenTitle?: string;
+  studyProgram?: string;
+  description?: string;
+}): Promise<{
+  success: boolean;
+  message?: string;
+  course?: any;
+  courses?: any[];
+  data?: SiakadDatabase;
+  error?: string;
+}> {
+  try {
+    // Try PUT first, fallback to POST /api/courses/edit
+    let res = await fetch(`/api/courses/${courseId}`, {
+      method: 'PUT',
+      headers: getDosenAuthHeaders(),
+      body: JSON.stringify(courseData),
+    });
+
+    if (!res.ok) {
+      res = await fetch('/api/courses/edit', {
+        method: 'POST',
+        headers: getDosenAuthHeaders(),
+        body: JSON.stringify({ courseId, ...courseData }),
+      });
+    }
+
+    const json = await safeJson(res, null);
+    if (res.ok && json.success) {
+      if (json.data) saveLocalCache(json.data);
+      return {
+        success: true,
+        message: json.message,
+        course: json.course,
+        courses: json.courses,
+        data: json.data,
+      };
+    }
+    return { success: false, error: json.error || 'Gagal memperbarui data mata kuliah' };
+  } catch (err) {
+    console.warn('Edit course error:', err);
     return { success: false, error: 'Koneksi ke server bermasalah' };
   }
 }
@@ -1539,6 +1624,49 @@ export async function deleteCourseApi(courseId: string): Promise<{
     return { success: false, error: json.error || 'Gagal menghapus mata kuliah' };
   } catch (err) {
     console.warn('Delete course error:', err);
+    return { success: false, error: 'Koneksi ke server bermasalah' };
+  }
+}
+
+// Multi-Course & Multi-Semester API: Add new semester (Dosen only)
+export async function addSemesterApi(payload: {
+  semesterNumber: number;
+  semesterName?: string;
+  academicYear?: string;
+  courseTitle?: string;
+  courseCode?: string;
+  sks?: number;
+  roomName?: string;
+}): Promise<{
+  success: boolean;
+  message?: string;
+  course?: any;
+  courses?: any[];
+  activeCourseId?: string;
+  data?: SiakadDatabase;
+  error?: string;
+}> {
+  try {
+    const res = await fetch('/api/semesters', {
+      method: 'POST',
+      headers: getDosenAuthHeaders(),
+      body: JSON.stringify(payload),
+    });
+    const json = await safeJson(res, null);
+    if (res.ok && json.success) {
+      if (json.data) saveLocalCache(json.data);
+      return {
+        success: true,
+        message: json.message,
+        course: json.course,
+        courses: json.courses,
+        activeCourseId: json.activeCourseId,
+        data: json.data,
+      };
+    }
+    return { success: false, error: json.error || 'Gagal menambahkan semester baru' };
+  } catch (err) {
+    console.warn('Add semester error:', err);
     return { success: false, error: 'Koneksi ke server bermasalah' };
   }
 }

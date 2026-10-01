@@ -7,7 +7,25 @@ import { createServer as createViteServer } from 'vite';
 import mammoth from 'mammoth';
 // @ts-ignore
 import * as pdfParseModule from 'pdf-parse';
-import { INITIAL_DATABASE, INITIAL_UAS_QUESTIONS, INITIAL_QUIZ_QUESTIONS, INITIAL_STUDENTS, INITIAL_GROUPS, INITIAL_MEETINGS } from './src/data/initialData';
+import {
+  INITIAL_DATABASE,
+  INITIAL_UAS_QUESTIONS,
+  INITIAL_QUIZ_QUESTIONS,
+  INITIAL_STUDENTS,
+  INITIAL_GROUPS,
+  INITIAL_MEETINGS,
+  INITIAL_ALL_COURSES_DATA,
+  INITIAL_STUDENTS_SEM3,
+  INITIAL_GROUPS_SEM3,
+  INITIAL_MEETINGS_SEM3,
+  INITIAL_STUDENTS_KEBIJAKAN_SEM3,
+  INITIAL_GROUPS_KEBIJAKAN_SEM3,
+  INITIAL_MEETINGS_KEBIJAKAN_SEM3,
+  INITIAL_UTS_QUESTIONS_SEM3,
+  INITIAL_COURSE_PROFILE,
+  INITIAL_COURSE_PROFILE_SEM3,
+  INITIAL_COURSE_PROFILE_KEBIJAKAN_SEM3,
+} from './src/data/initialData';
 import {
   SiakadDatabase,
   Student,
@@ -1224,108 +1242,244 @@ function loadDatabase(): SiakadDatabase {
         }
       }
 
-      // Ensure official STAI Jarinabi 13 students are cleanly loaded
-      const hasOldDummyNames = Array.isArray(parsed.students) && parsed.students.some((s: any) =>
-        s.name?.includes('DWI SUPRIONO') || s.name?.includes('EKA JATIMULISA') || s.name?.includes('ROFFATUL')
-      );
+      // Build and merge allCoursesData ensuring Semester 1 & Semester 3 rooms have their own data
+      const allCoursesData: Record<string, any> = {
+        ...INITIAL_ALL_COURSES_DATA,
+        ...(parsed.allCoursesData || {}),
+      };
 
-      let rawStudents: Student[];
-      if (hasOldDummyNames || !Array.isArray(parsed.students) || parsed.students.length === 0) {
-        rawStudents = JSON.parse(JSON.stringify(INITIAL_STUDENTS));
-      } else {
-        rawStudents = parsed.students.filter((s: any) => s && s.name && !s.name.includes('TEST MHS'));
-        const studentMap = new Map<string, Student>();
-        for (const s of rawStudents) {
-          studentMap.set(s.id, s);
+      // Ensure each pre-configured room is present in allCoursesData with its distinct students
+      if (!allCoursesData['mk-filsafat-ilmu']) {
+        allCoursesData['mk-filsafat-ilmu'] = INITIAL_ALL_COURSES_DATA['mk-filsafat-ilmu'];
+      }
+      // Clean up legacy test duplicate courses or unwanted courses
+      const legacyTestCourseIds = new Set(['mk-manajemen-mpi', 'mk-metodologi-riset', 'mk-tqm-mpi3', 'mk-kebijakan-mpi3']);
+      for (const legId of legacyTestCourseIds) {
+        delete allCoursesData[legId];
+      }
+
+      // Filter courses list strictly to official 3 courses unless explicitly created by lecturer
+      const officialCourseIds = new Set(['mk-filsafat-ilmu', 'mk-konsep-dasar-mpi3', 'mk-analisis-kebijakan-mpi3']);
+      const isAllowedCourse = (c: any) => {
+        if (!c || !c.id) return false;
+        if (officialCourseIds.has(c.id)) return true;
+        if (legacyTestCourseIds.has(c.id)) return false;
+        // Keep only if explicitly created by lecturer (e.g. mk-custom-*)
+        return String(c.id).startsWith('mk-custom-');
+      };
+
+      for (const key of Object.keys(allCoursesData)) {
+        if (!isAllowedCourse({ id: key })) {
+          delete allCoursesData[key];
         }
-        for (const s of INITIAL_STUDENTS) {
-          if (!studentMap.has(s.id)) {
-            studentMap.set(s.id, s);
+      }
+
+      // Ensure mk-konsep-dasar-mpi3 has the 20 students (Heru, Sofyan, ... Zaima) and 12 kelompok
+      if (
+        !allCoursesData['mk-konsep-dasar-mpi3'] ||
+        allCoursesData['mk-konsep-dasar-mpi3'].students?.length !== 20 ||
+        allCoursesData['mk-konsep-dasar-mpi3'].students?.[0]?.name !== 'Heru'
+      ) {
+        allCoursesData['mk-konsep-dasar-mpi3'] = {
+          ...(allCoursesData['mk-konsep-dasar-mpi3'] || {}),
+          ...INITIAL_ALL_COURSES_DATA['mk-konsep-dasar-mpi3'],
+          students: JSON.parse(JSON.stringify(INITIAL_STUDENTS_SEM3)),
+          groups: JSON.parse(JSON.stringify(INITIAL_GROUPS_SEM3)),
+          meetings: JSON.parse(JSON.stringify(INITIAL_MEETINGS_SEM3)),
+          profile: JSON.parse(JSON.stringify(INITIAL_COURSE_PROFILE_SEM3)),
+        };
+      }
+      if (allCoursesData['mk-konsep-dasar-mpi3']?.profile) {
+        allCoursesData['mk-konsep-dasar-mpi3'].profile.courseTitle = 'Konsep Dasar Manajemen Pendidikan Islam (MPI)';
+        allCoursesData['mk-konsep-dasar-mpi3'].profile.semesterNumber = 3;
+        allCoursesData['mk-konsep-dasar-mpi3'].profile.semester = 'Semester III (Ganjil 2026/2027)';
+        allCoursesData['mk-konsep-dasar-mpi3'].profile.roomName = 'Kamar MPI 3A (Ruang Ibnu Khaldun)';
+        allCoursesData['mk-konsep-dasar-mpi3'].profile.classCode = 'MPI 3A';
+      }
+
+      // Ensure mk-analisis-kebijakan-mpi3 has the 20 students (Heru, Sofyan, ... Zaima) and 10 kelompok
+      if (
+        !allCoursesData['mk-analisis-kebijakan-mpi3'] ||
+        allCoursesData['mk-analisis-kebijakan-mpi3'].students?.length !== 20 ||
+        allCoursesData['mk-analisis-kebijakan-mpi3'].students?.[0]?.name !== 'Heru'
+      ) {
+        allCoursesData['mk-analisis-kebijakan-mpi3'] = {
+          ...(allCoursesData['mk-analisis-kebijakan-mpi3'] || {}),
+          ...INITIAL_ALL_COURSES_DATA['mk-analisis-kebijakan-mpi3'],
+          students: JSON.parse(JSON.stringify(INITIAL_STUDENTS_KEBIJAKAN_SEM3)),
+          groups: JSON.parse(JSON.stringify(INITIAL_GROUPS_KEBIJAKAN_SEM3)),
+          meetings: JSON.parse(JSON.stringify(INITIAL_MEETINGS_KEBIJAKAN_SEM3)),
+          profile: JSON.parse(JSON.stringify(INITIAL_COURSE_PROFILE_KEBIJAKAN_SEM3)),
+        };
+      }
+      if (allCoursesData['mk-analisis-kebijakan-mpi3']?.profile) {
+        allCoursesData['mk-analisis-kebijakan-mpi3'].profile.courseTitle = 'Analisis Kebijakan Pendidikan';
+        allCoursesData['mk-analisis-kebijakan-mpi3'].profile.semesterNumber = 3;
+        allCoursesData['mk-analisis-kebijakan-mpi3'].profile.semester = 'Semester III (Ganjil 2026/2027)';
+        allCoursesData['mk-analisis-kebijakan-mpi3'].profile.roomName = 'Kamar MPI 3B (Ruang Al-Ghazali)';
+        allCoursesData['mk-analisis-kebijakan-mpi3'].profile.classCode = 'MPI 3B';
+      }
+
+      // Ensure mk-filsafat-ilmu has the 13 students (Husna..Nia) and 10 kelompok
+      if (
+        !allCoursesData['mk-filsafat-ilmu'] ||
+        allCoursesData['mk-filsafat-ilmu'].students?.length !== 13 ||
+        allCoursesData['mk-filsafat-ilmu'].students?.[0]?.name !== 'Husna'
+      ) {
+        allCoursesData['mk-filsafat-ilmu'] = {
+          ...(allCoursesData['mk-filsafat-ilmu'] || {}),
+          ...INITIAL_ALL_COURSES_DATA['mk-filsafat-ilmu'],
+          students: JSON.parse(JSON.stringify(INITIAL_STUDENTS)),
+          groups: JSON.parse(JSON.stringify(INITIAL_GROUPS)),
+          meetings: JSON.parse(JSON.stringify(INITIAL_MEETINGS)),
+          profile: JSON.parse(JSON.stringify(INITIAL_COURSE_PROFILE)),
+        };
+      }
+      if (allCoursesData['mk-filsafat-ilmu']?.profile) {
+        allCoursesData['mk-filsafat-ilmu'].profile.courseTitle = 'Filsafat Ilmu';
+        allCoursesData['mk-filsafat-ilmu'].profile.semesterNumber = 1;
+        allCoursesData['mk-filsafat-ilmu'].profile.semester = 'Semester I (Ganjil 2026/2027)';
+        allCoursesData['mk-filsafat-ilmu'].profile.roomName = 'Kamar MPI 1 (Ruang Al-Farabi)';
+        allCoursesData['mk-filsafat-ilmu'].profile.classCode = 'MPI 1';
+      }
+
+      // Sanitize placeholder names if any
+      const isPlaceholder = (s: any) => {
+        if (!s) return true;
+        const name = (s.name || '').toLowerCase();
+        return (
+          name.includes("ahmad syafi'i") ||
+          name.includes("siti mutmainnah") ||
+          name.includes("budi prasetyo") ||
+          name.includes("rina wardani") ||
+          (s.id && String(s.id).startsWith('mhs3-'))
+        );
+      };
+
+      for (const [cId, cData] of Object.entries(allCoursesData)) {
+        if (cData && Array.isArray(cData.students)) {
+          const hasDummy = cData.students.some(isPlaceholder);
+          if (hasDummy || cData.students.length === 0) {
+            const semNum = cData.profile?.semesterNumber || (cId.includes('3') ? 3 : 1);
+            const master = getMasterStudentsAndGroups(semNum, cData.profile?.courseTitle || '');
+            cData.students = master.students;
+            cData.groups = master.groups;
+            if (!cData.grades || Object.keys(cData.grades).length === 0) {
+              cData.grades = master.grades;
+            }
           }
         }
-        rawStudents = Array.from(studentMap.values());
-      }
-      rawStudents.sort((a, b) => (a.nim || '').localeCompare(b.nim || ''));
-
-      // Ensure groups have all 10 groups according to RPS STAI Jarinabi
-      let rawGroups: GroupProject[];
-      const hasOldGroupMembers = Array.isArray(parsed.groups) && parsed.groups.some((g: any) =>
-        g.members?.some((m: string) => m.includes('DWI SUPRIONO') || m.includes('EKA JATIMULISA'))
-      );
-      if (hasOldGroupMembers || !Array.isArray(parsed.groups) || parsed.groups.length < 10) {
-        rawGroups = JSON.parse(JSON.stringify(INITIAL_GROUPS));
-      } else {
-        rawGroups = parsed.groups;
       }
 
-      // Ensure meetings match the official 16 meetings of RPS STAI Jarinabi
-      let rawMeetings: MeetingSchedule[] = Array.isArray(parsed.meetings) && parsed.meetings.length === 16 && !hasOldDummyNames
-        ? parsed.meetings.map((m: MeetingSchedule) => {
-            const initM = INITIAL_MEETINGS.find(im => im.meetingNumber === m.meetingNumber);
-            return initM ? { ...m, ...initM, assignmentDescription: m.assignmentDescription || initM.assignmentDescription } : m;
-          })
-        : JSON.parse(JSON.stringify(INITIAL_MEETINGS));
+      // Merge courses list (strictly official 3 courses plus any custom ones added by dosen)
+      const parsedCoursesList = (parsed.courses || []).filter(isAllowedCourse);
+      const existingCourseIds = new Set(parsedCoursesList.map((c: any) => c.id));
+      const coursesList: CourseSummary[] = [...parsedCoursesList];
+
+      for (const initC of (INITIAL_DATABASE.courses || [])) {
+        if (!existingCourseIds.has(initC.id)) {
+          coursesList.push(JSON.parse(JSON.stringify(initC)));
+          existingCourseIds.add(initC.id);
+        }
+      }
+
+      // Strictly ensure correct titles, semester numbers, and room names on course summaries
+      coursesList.forEach(c => {
+        if (c.id === 'mk-filsafat-ilmu') {
+          c.title = 'Filsafat Ilmu';
+          c.code = 'STI 105';
+          c.sks = 2;
+          c.semesterNumber = 1;
+          c.semester = 'Semester I (Ganjil 2026/2027)';
+          c.roomName = 'Kamar MPI 1 (Ruang Al-Farabi)';
+          c.classCode = 'MPI 1';
+          c.totalStudents = 13;
+        } else if (c.id === 'mk-konsep-dasar-mpi3') {
+          c.title = 'Konsep Dasar Manajemen Pendidikan Islam (MPI)';
+          c.code = 'MPI 301';
+          c.sks = 3;
+          c.semesterNumber = 3;
+          c.semester = 'Semester III (Ganjil 2026/2027)';
+          c.roomName = 'Kamar MPI 3A (Ruang Ibnu Khaldun)';
+          c.classCode = 'MPI 3A';
+          c.totalStudents = 20;
+        } else if (c.id === 'mk-analisis-kebijakan-mpi3') {
+          c.title = 'Analisis Kebijakan Pendidikan';
+          c.code = 'MPI 302';
+          c.sks = 3;
+          c.semesterNumber = 3;
+          c.semester = 'Semester III (Ganjil 2026/2027)';
+          c.roomName = 'Kamar MPI 3B (Ruang Al-Ghazali)';
+          c.classCode = 'MPI 3B';
+          c.totalStudents = 20;
+        } else {
+          if (!c.semesterNumber) {
+            c.semesterNumber = c.semester?.includes('3') || c.semester?.includes('III') ? 3 : 1;
+          }
+          if (allCoursesData[c.id]?.students) {
+            c.totalStudents = allCoursesData[c.id].students.length;
+          }
+        }
+      });
+
+      // Active course selection
+      const activeCourseId = parsed.activeCourseId && existingCourseIds.has(parsed.activeCourseId)
+        ? parsed.activeCourseId
+        : 'mk-filsafat-ilmu';
+
+      const activeRoomData = allCoursesData[activeCourseId] || allCoursesData['mk-filsafat-ilmu'] || INITIAL_ALL_COURSES_DATA['mk-filsafat-ilmu'];
+
+      // Active room students: MUST be strictly the students of the active room
+      let rawStudents: Student[] = Array.isArray(activeRoomData.students) && activeRoomData.students.length > 0
+        ? activeRoomData.students
+        : (activeCourseId.includes('mpi3') ? INITIAL_STUDENTS_SEM3 : INITIAL_STUDENTS);
+
+      let rawGroups: GroupProject[] = Array.isArray(activeRoomData.groups) && activeRoomData.groups.length > 0
+        ? activeRoomData.groups
+        : (activeCourseId.includes('mpi3') ? INITIAL_GROUPS_SEM3 : INITIAL_GROUPS);
+
+      if (rawStudents.some(isPlaceholder) || rawStudents.length < 13) {
+        const semNum = activeRoomData?.profile?.semesterNumber || (activeCourseId.includes('3') ? 3 : 1);
+        const master = getMasterStudentsAndGroups(semNum, activeRoomData?.profile?.courseTitle || '');
+        rawStudents = master.students;
+        rawGroups = master.groups;
+        if (activeRoomData) {
+          activeRoomData.students = master.students;
+          activeRoomData.groups = master.groups;
+        }
+      }
+
+      let rawMeetings: MeetingSchedule[] = Array.isArray(activeRoomData.meetings) && activeRoomData.meetings.length === 16
+        ? activeRoomData.meetings
+        : (activeCourseId.includes('mpi3') ? INITIAL_MEETINGS_SEM3 : INITIAL_MEETINGS);
 
       const loaded: SiakadDatabase = {
         ...INITIAL_DATABASE,
         ...parsed,
-        courses: parsed.courses && parsed.courses.length > 0 && !hasOldDummyNames ? parsed.courses : INITIAL_DATABASE.courses,
-        activeCourseId: parsed.activeCourseId || INITIAL_DATABASE.activeCourseId || 'mk-filsafat-ilmu',
-        allCoursesData: parsed.allCoursesData || {},
+        courses: coursesList,
+        activeCourseId,
+        allCoursesData,
         archivedSemesters: parsed.archivedSemesters || [],
         students: rawStudents,
         groups: rawGroups,
         meetings: rawMeetings,
-        submissions: hasOldDummyNames ? [] : (parsed.submissions || []),
-        allTimeSubmissions: hasOldDummyNames ? [] : (parsed.allTimeSubmissions || parsed.submissions || []),
-        utsQuestions: parsed.utsQuestions && parsed.utsQuestions.length > 0 ? parsed.utsQuestions : INITIAL_DATABASE.utsQuestions,
-        utsSubmissions: hasOldDummyNames ? [] : (parsed.utsSubmissions || []),
-        uasQuestions: parsed.uasQuestions && parsed.uasQuestions.length > 0 ? parsed.uasQuestions : (INITIAL_DATABASE.uasQuestions || INITIAL_UAS_QUESTIONS),
-        uasSubmissions: hasOldDummyNames ? [] : (parsed.uasSubmissions || []),
-        quizQuestions: parsed.quizQuestions && parsed.quizQuestions.length > 0 ? parsed.quizQuestions : INITIAL_QUIZ_QUESTIONS,
-        quizSubmissions: hasOldDummyNames ? [] : (parsed.quizSubmissions || []),
-        utsFormat: parsed.utsFormat || INITIAL_DATABASE.utsFormat || 'esai',
-        uasFormat: parsed.uasFormat || INITIAL_DATABASE.uasFormat || 'proyek_video',
-        utsExamSettings: parsed.utsExamSettings || INITIAL_DATABASE.utsExamSettings || {
-          isOpen: true,
-          instructions: 'Ujian Tengah Semester (UTS) dibuka oleh Dosen Pengampu.',
-        },
-        uasExamSettings: parsed.uasExamSettings || INITIAL_DATABASE.uasExamSettings || {
-          isOpen: true,
-          instructions: 'Ujian Akhir Semester (UAS) dibuka oleh Dosen Pengampu.',
-        },
-        attendance: hasOldDummyNames ? INITIAL_DATABASE.attendance : (parsed.attendance || INITIAL_DATABASE.attendance),
-        grades: hasOldDummyNames ? INITIAL_DATABASE.grades : (parsed.grades || INITIAL_DATABASE.grades),
+        submissions: activeRoomData.submissions || [],
+        allTimeSubmissions: parsed.allTimeSubmissions || parsed.submissions || [],
+        utsQuestions: activeRoomData.utsQuestions || (activeCourseId.includes('mpi3') ? INITIAL_UTS_QUESTIONS_SEM3 : INITIAL_DATABASE.utsQuestions),
+        utsSubmissions: activeRoomData.utsSubmissions || [],
+        uasQuestions: activeRoomData.uasQuestions || (INITIAL_DATABASE.uasQuestions || INITIAL_UAS_QUESTIONS),
+        uasSubmissions: activeRoomData.uasSubmissions || [],
+        quizQuestions: activeRoomData.quizQuestions || INITIAL_QUIZ_QUESTIONS,
+        quizSubmissions: activeRoomData.quizSubmissions || [],
+        utsFormat: activeRoomData.utsFormat || parsed.utsFormat || 'esai',
+        uasFormat: activeRoomData.uasFormat || parsed.uasFormat || 'proyek_video',
+        utsExamSettings: activeRoomData.utsExamSettings || parsed.utsExamSettings || INITIAL_DATABASE.utsExamSettings,
+        uasExamSettings: activeRoomData.uasExamSettings || parsed.uasExamSettings || INITIAL_DATABASE.uasExamSettings,
+        attendance: activeRoomData.attendance || { 1: {} },
+        grades: activeRoomData.grades || {},
         activeHeartbeats: parsed.activeHeartbeats || {},
-        courseProfile: Object.assign(
-          {
-            name: 'Risfa Tri Ulfa, S.Pd., M.Pd.',
-            dosenName: 'Risfa Tri Ulfa',
-            dosenTitle: 'S.Pd., M.Pd.',
-            campusName: 'STAI Jarinabi',
-            nip: '198806282015032001',
-            courseTitle: 'Filsafat Ilmu',
-            courseCode: 'STI 105',
-            sks: 2,
-            semester: 'Semester I (Ganjil 2026/2027)',
-            studyProgram: 'Manajemen Pendidikan Islam (MPI)',
-            classCode: 'MPI 1',
-            academicYear: '2026/2027',
-            totalMeetings: 16,
-            description: 'Mata kuliah Filsafat Ilmu memberikan landasan filosofis, metodologis, dan etis bagi mahasiswa tingkat awal (Semester 1) Program Studi Manajemen Pendidikan Islam (MPI). Pembelajaran difokuskan pada penguasaan konsep dasar pemikiran logis, kritis, dan filosofis tanpa kalkulasi matematis rumit. Mahasiswa diajak memahami pilar utama filsafat ilmu (Ontologi, Epistemologi, dan Aksiologi), sejarah perkembangan pemikiran keilmuan, metodologi pencarian kebenaran ilmiah, serta integrasi nilai-nilai etika Keislaman (amanah, maslahah) dan kearifan lokal (local wisdom) dalam tata kelola pendidikan Islam.',
-          },
-          parsed.courseProfile && !hasOldDummyNames ? parsed.courseProfile : {},
-          {
-            courseCode: 'STI 105',
-            sks: 2,
-            studyProgram: 'Manajemen Pendidikan Islam (MPI)',
-            campusName: 'STAI Jarinabi',
-            dosenName: 'Risfa Tri Ulfa',
-            dosenTitle: 'S.Pd., M.Pd.',
-            name: 'Risfa Tri Ulfa, S.Pd., M.Pd.',
-          }
-        ),
-        rpsRawText: parsed.rpsRawText || '',
+        courseProfile: activeRoomData.profile || (activeCourseId.includes('mpi3') ? INITIAL_COURSE_PROFILE_SEM3 : INITIAL_COURSE_PROFILE),
+        rpsRawText: activeRoomData.rpsRawText || parsed.rpsRawText || '',
         dosenPassword: parsed.dosenPassword || 'filsafat2026',
       };
 
@@ -1389,7 +1543,7 @@ function loadDatabase(): SiakadDatabase {
       }
 
       // Merge persistent submissions from secondary vault to ensure zero data loss
-      if (!hasOldDummyNames && fs.existsSync(SUBMISSIONS_VAULT_FILE)) {
+      if (fs.existsSync(SUBMISSIONS_VAULT_FILE)) {
         try {
           const vaultContent = fs.readFileSync(SUBMISSIONS_VAULT_FILE, 'utf-8');
           const vault = JSON.parse(vaultContent);
@@ -3930,7 +4084,70 @@ app.get('/api/courses', (req, res) => {
   });
 });
 
-// Multi-Course API: Switch active course
+// Helper: Get master students and groups matching RPS per course
+function getMasterStudentsAndGroups(
+  semesterNum: number = 1,
+  courseTitle: string = ''
+): { students: Student[]; groups: GroupProject[]; grades: Record<string, StudentGrade> } {
+  const titleLower = (courseTitle || '').toLowerCase();
+
+  // Semester 3: Analisis Kebijakan Pendidikan (20 Mahasiswa & 10 Kelompok RPS)
+  if (semesterNum === 3 && (titleLower.includes('kebijakan') || titleLower.includes('analisis'))) {
+    const students: Student[] = JSON.parse(JSON.stringify(INITIAL_STUDENTS_KEBIJAKAN_SEM3));
+    const groups: GroupProject[] = JSON.parse(JSON.stringify(INITIAL_GROUPS_KEBIJAKAN_SEM3));
+    const grades: Record<string, StudentGrade> = {};
+    students.forEach((s, idx) => {
+      grades[s.id] = {
+        attendanceScore: 100,
+        attitudeScore: 88 + (idx % 4),
+        individualScore: 88 + (idx % 4),
+        utsScore: 89 + (idx % 3),
+        uasScore: 90,
+        groupScore: 90,
+        finalScore: 90,
+        letterGrade: 'A',
+      };
+    });
+    return { students, groups, grades };
+  }
+
+  // Semester 3: Konsep Dasar Manajemen Pendidikan Islam (20 Mahasiswa & 12 Kelompok RPS)
+  if (semesterNum === 3 || titleLower.includes('konsep') || titleLower.includes('dasar')) {
+    const students: Student[] = JSON.parse(JSON.stringify(INITIAL_STUDENTS_SEM3));
+    const groups: GroupProject[] = JSON.parse(JSON.stringify(INITIAL_GROUPS_SEM3));
+    const grades: Record<string, StudentGrade> = {};
+    students.forEach((s, idx) => {
+      grades[s.id] = {
+        attendanceScore: 100,
+        attitudeScore: 88 + (idx % 4),
+        individualScore: 88 + (idx % 4),
+        utsScore: 89 + (idx % 3),
+        uasScore: 90,
+        groupScore: 90,
+        finalScore: 90,
+        letterGrade: 'A',
+      };
+    });
+    return { students, groups, grades };
+  }
+
+  // Semester 1 / Filsafat Ilmu: 13 Mahasiswa Resmi (Husna, Ikha, Indah, dkk & 10 Kelompok RPS)
+  const students: Student[] = JSON.parse(JSON.stringify(INITIAL_STUDENTS));
+  const groups: GroupProject[] = JSON.parse(JSON.stringify(INITIAL_GROUPS));
+  const grades: Record<string, StudentGrade> = JSON.parse(JSON.stringify(INITIAL_DATABASE.grades || {}));
+  return { students, groups, grades };
+}
+
+function generateCohortForSemester(
+  semesterNum: number = 1,
+  roomName: string = '',
+  courseTitle: string = ''
+): { students: Student[]; groups: GroupProject[]; grades: Record<string, StudentGrade> } {
+  // Default to the 13 students that already exist here in the class
+  return getMasterStudentsAndGroups(semesterNum, courseTitle);
+}
+
+// Multi-Course API: Switch active course / kamar
 app.post('/api/courses/switch', (req, res) => {
   const { courseId } = req.body;
   if (!courseId) {
@@ -3990,9 +4207,11 @@ app.post('/api/courses/switch', (req, res) => {
     db.attendance = saved.attendance || { 1: {} };
     db.grades = saved.grades || {};
   } else {
-    // Initialize new course profile
+    // Initialize new course room with its own isolated students
     const dosenName = targetCourse.dosenName || db.courseProfile?.dosenName || 'Risfa Tri Ulfa';
-    const dosenTitle = targetCourse.dosenTitle || db.courseProfile?.dosenTitle || 'S.Pd., M.Pd., Gr.';
+    const dosenTitle = targetCourse.dosenTitle || db.courseProfile?.dosenTitle || 'S.Pd., M.Pd.';
+    const detectedSemNum = Number(targetCourse.semesterNumber) || (targetCourse.semester.includes('III') || targetCourse.semester.includes('3') ? 3 : 1);
+    
     db.courseProfile = {
       name: `${dosenName}, ${dosenTitle}`,
       dosenName,
@@ -4002,17 +4221,48 @@ app.post('/api/courses/switch', (req, res) => {
       courseTitle: targetCourse.title,
       courseCode: targetCourse.code,
       sks: targetCourse.sks || 3,
-      semester: targetCourse.semester || 'Semester Ganjil 2026/2027',
-      studyProgram: targetCourse.studyProgram || 'Manajemen Pendidikan Islam (MPI 1)',
-      classCode: 'MPI 1',
-      academicYear: 'T.A 2026/2027',
+      semester: targetCourse.semester || (detectedSemNum === 3 ? 'Semester III (Ganjil 2026/2027)' : 'Semester I (Ganjil 2026/2027)'),
+      semesterNumber: detectedSemNum,
+      roomName: targetCourse.roomName || (detectedSemNum === 3 ? 'Kamar MPI 3 (Ruang Ibnu Khaldun)' : 'Kamar MPI 1 (Ruang Al-Farabi)'),
+      studyProgram: targetCourse.studyProgram || 'Manajemen Pendidikan Islam (MPI)',
+      classCode: `MPI ${detectedSemNum}`,
+      academicYear: '2026/2027',
       totalMeetings: 16,
-      description: `Mata kuliah ${targetCourse.title} diampu oleh ${dosenName}, ${dosenTitle} pada program studi ${targetCourse.studyProgram}.`,
+      description: targetCourse.description || `Mata kuliah ${targetCourse.title} diampu oleh ${dosenName}, ${dosenTitle}.`,
     };
-    // Keep students list shared or initialized
+
+    const cohort = generateCohortForSemester(detectedSemNum, targetCourse.roomName, targetCourse.title);
+    db.students = cohort.students;
+    db.groups = cohort.groups;
+    db.grades = cohort.grades;
     db.submissions = [];
     db.utsSubmissions = [];
+    db.uasSubmissions = [];
+    db.quizSubmissions = [];
     db.attendance = { 1: {} };
+
+    // Register into allCoursesData
+    if (!db.allCoursesData) db.allCoursesData = {};
+    db.allCoursesData[courseId] = {
+      id: courseId,
+      profile: db.courseProfile,
+      meetings: db.meetings,
+      rpsRawText: '',
+      students: db.students,
+      groups: db.groups,
+      submissions: [],
+      utsQuestions: db.utsQuestions,
+      utsSubmissions: [],
+      uasQuestions: db.uasQuestions,
+      uasSubmissions: [],
+      quizQuestions: db.quizQuestions,
+      quizSubmissions: [],
+      quizSettings: db.quizSettings,
+      utsExamSettings: db.utsExamSettings,
+      uasExamSettings: db.uasExamSettings,
+      attendance: db.attendance,
+      grades: db.grades,
+    };
   }
 
   saveDatabase();
@@ -4024,7 +4274,7 @@ app.post('/api/courses/switch', (req, res) => {
   });
 });
 
-// Multi-Course API: Add new course (Dosen)
+// Multi-Course API: Add new course / kamar / semester (Dosen)
 app.post('/api/courses', async (req, res) => {
   if (!isDosenAuthorized(req)) {
     return res.status(403).json({ error: 'Akses Ditolak: Hanya Dosen yang dapat menambahkan mata kuliah baru!' });
@@ -4035,15 +4285,20 @@ app.post('/api/courses', async (req, res) => {
     code,
     sks = 3,
     semester = 'Semester Ganjil 2026/2027',
-    studyProgram = 'Manajemen Pendidikan Islam (MPI 1)',
+    semesterNumber,
+    roomName,
+    studyProgram = 'Manajemen Pendidikan Islam (MPI)',
     campusName = db.courseProfile?.campusName || 'STAI Jarinabi',
     dosenName = db.courseProfile?.dosenName || 'Risfa Tri Ulfa',
-    dosenTitle = db.courseProfile?.dosenTitle || 'S.Pd., M.Pd., Gr.',
+    dosenTitle = db.courseProfile?.dosenTitle || 'S.Pd., M.Pd.',
     description,
     rpsText,
     rpsBase64,
     rpsFilename,
     defaultPresentationFormat = 'auto',
+    studentOption = 'use_existing_roster', // 'use_existing_roster' | 'copy_from_course' | 'empty' | 'generate_cohort'
+    sourceCourseId,
+    customStudents,
   } = req.body;
 
   if (!title || !title.trim()) {
@@ -4064,7 +4319,26 @@ app.post('/api/courses', async (req, res) => {
     }
   }
 
-  const safeCode = (code || `MK-${Math.floor(100 + Math.random() * 900)}`).trim().toUpperCase();
+  // Determine semester number (e.g. 1, 3, etc.)
+  let parsedSemNum = Number(semesterNumber);
+  if (!parsedSemNum || isNaN(parsedSemNum)) {
+    const semMatch = semester.match(/semester\s*([0-9ivx]+)/i);
+    if (semMatch) {
+      const semStr = semMatch[1].toUpperCase();
+      parsedSemNum = semStr === 'I' || semStr === '1' ? 1
+        : semStr === 'II' || semStr === '2' ? 2
+        : semStr === 'III' || semStr === '3' ? 3
+        : semStr === 'IV' || semStr === '4' ? 4
+        : semStr === 'V' || semStr === '5' ? 5
+        : semStr === 'VI' || semStr === '6' ? 6
+        : 1;
+    } else {
+      parsedSemNum = 1;
+    }
+  }
+
+  const safeRoomName = roomName ? roomName.trim() : `Kamar MPI ${parsedSemNum} (Ruang Kelas)`;
+  const safeCode = (code || `MPI-${parsedSemNum}0${Math.floor(1 + Math.random() * 9)}`).trim().toUpperCase();
   const courseId = `mk-${Date.now().toString(36)}-${Math.random().toString(36).substr(2, 4)}`;
 
   const newCourse: CourseSummary = {
@@ -4073,11 +4347,14 @@ app.post('/api/courses', async (req, res) => {
     code: safeCode,
     sks: Number(sks) || 3,
     semester: semester.trim(),
+    semesterNumber: parsedSemNum,
+    roomName: safeRoomName,
     campusName: campusName.trim(),
     dosenName: dosenName.trim(),
     dosenTitle: dosenTitle.trim(),
     studyProgram: studyProgram.trim(),
-    totalStudents: db.students?.length || 15,
+    totalStudents: 13,
+    description: description || `Mata kuliah ${title.trim()} Semester ${parsedSemNum} (${safeRoomName}).`,
   };
 
   if (!db.courses) db.courses = [];
@@ -4119,25 +4396,34 @@ app.post('/api/courses', async (req, res) => {
     courseCode: newCourse.code,
     sks: newCourse.sks,
     semester: newCourse.semester,
+    semesterNumber: parsedSemNum,
+    roomName: safeRoomName,
     studyProgram: newCourse.studyProgram,
+    classCode: `MPI ${parsedSemNum}`,
+    academicYear: '2026/2027',
+    totalMeetings: 16,
     description: description || `Mata kuliah ${newCourse.title} diampu oleh ${dosenName}, ${dosenTitle}.`,
   };
 
-  // Generate 16 meetings: if RPS text/file is provided, parse it intelligently
+  // Determine students & groups based on studentOption
+  let roomStudents: Student[] = [];
+  let roomGroups: GroupProject[] = [];
+  let roomGrades: Record<string, StudentGrade> = {};
+
   if (combinedRpsText) {
     const { detectedProfile, detectedMeetings, updatedStudents, detectedGroups } = parseRpsContent(
       combinedRpsText,
       defaultPresentationFormat,
-      db.students || [],
-      db.groups || []
+      INITIAL_STUDENTS,
+      INITIAL_GROUPS
     );
 
     db.meetings = detectedMeetings;
     if (updatedStudents && updatedStudents.length > 0) {
-      db.students = updatedStudents;
+      roomStudents = updatedStudents;
     }
     if (detectedGroups && detectedGroups.length > 0) {
-      db.groups = detectedGroups;
+      roomGroups = detectedGroups;
     }
     if (!description && detectedProfile.description) {
       db.courseProfile.description = detectedProfile.description;
@@ -4171,9 +4457,64 @@ app.post('/api/courses', async (req, res) => {
     db.rpsRawText = '';
   }
 
+  // Handle student roster separation
+  if (Array.isArray(customStudents) && customStudents.length > 0) {
+    roomStudents = customStudents;
+  } else if (studentOption === 'copy_from_course' && sourceCourseId && db.allCoursesData?.[sourceCourseId]) {
+    const src = db.allCoursesData[sourceCourseId];
+    roomStudents = JSON.parse(JSON.stringify(src.students || []));
+    roomGroups = JSON.parse(JSON.stringify(src.groups || []));
+    roomGrades = JSON.parse(JSON.stringify(src.grades || {}));
+  } else if (studentOption === 'empty') {
+    roomStudents = [];
+    roomGroups = [];
+    roomGrades = {};
+  } else {
+    // Default & 'use_existing_roster':
+    // Always use the 13 students that already exist here in the system (Husna, Ikha, Indah, dkk)
+    const master = getMasterStudentsAndGroups(parsedSemNum, newCourse.title);
+    roomStudents = master.students;
+    roomGroups = master.groups;
+    roomGrades = master.grades;
+  }
+
+  db.students = roomStudents;
+  db.groups = roomGroups;
+  db.grades = roomGrades;
+  newCourse.totalStudents = roomStudents.length;
+
   db.submissions = [];
   db.utsSubmissions = [];
+  db.uasSubmissions = [];
+  db.quizSubmissions = [];
   db.attendance = { 1: {} };
+
+  // Generate UTS questions tailored for this course
+  db.utsQuestions = generateUtsQuestionsFromMeetings(db.meetings, db.courseProfile);
+  db.uasQuestions = generateUasQuestionsFromMeetings(db.meetings, db.courseProfile);
+
+  // Directly save newly created room state into allCoursesData
+  if (!db.allCoursesData) db.allCoursesData = {};
+  db.allCoursesData[courseId] = {
+    id: courseId,
+    profile: JSON.parse(JSON.stringify(db.courseProfile)),
+    meetings: JSON.parse(JSON.stringify(db.meetings || [])),
+    rpsRawText: db.rpsRawText,
+    students: JSON.parse(JSON.stringify(db.students || [])),
+    groups: JSON.parse(JSON.stringify(db.groups || [])),
+    submissions: [],
+    utsQuestions: JSON.parse(JSON.stringify(db.utsQuestions || [])),
+    utsSubmissions: [],
+    uasQuestions: JSON.parse(JSON.stringify(db.uasQuestions || [])),
+    uasSubmissions: [],
+    quizQuestions: JSON.parse(JSON.stringify(db.quizQuestions || [])),
+    quizSubmissions: [],
+    quizSettings: JSON.parse(JSON.stringify(db.quizSettings || {})),
+    utsExamSettings: JSON.parse(JSON.stringify(db.utsExamSettings || {})),
+    uasExamSettings: JSON.parse(JSON.stringify(db.uasExamSettings || {})),
+    attendance: JSON.parse(JSON.stringify(db.attendance || { 1: {} })),
+    grades: JSON.parse(JSON.stringify(db.grades || {})),
+  };
 
   saveDatabase();
   res.json({
@@ -4183,6 +4524,260 @@ app.post('/api/courses', async (req, res) => {
     activeCourseId: db.activeCourseId,
     courseProfile: db.courseProfile,
     data: db,
+  });
+});
+
+// Multi-Course API: Edit Course (Dosen only)
+const handleEditCourse = (req: express.Request, res: express.Response) => {
+  if (!isDosenAuthorized(req)) {
+    return res.status(403).json({ error: 'Akses Ditolak: Hanya Dosen yang berwenang mengubah data mata kuliah!' });
+  }
+
+  const courseId = req.params.courseId || req.body.courseId;
+  if (!courseId) {
+    return res.status(400).json({ error: 'courseId wajib disertakan' });
+  }
+
+  const {
+    title,
+    code,
+    sks,
+    semester,
+    semesterNumber,
+    roomName,
+    campusName,
+    dosenName,
+    dosenTitle,
+    studyProgram,
+    description,
+  } = req.body;
+
+  if (!title || !title.trim()) {
+    return res.status(400).json({ error: 'Nama mata kuliah wajib diisi!' });
+  }
+
+  const targetCourse = (db.courses || []).find(c => c.id === courseId);
+  if (!targetCourse) {
+    return res.status(404).json({ error: 'Mata kuliah tidak ditemukan dalam database.' });
+  }
+
+  // Update course summary
+  targetCourse.title = title.trim();
+  if (code) targetCourse.code = code.trim();
+  if (sks !== undefined) targetCourse.sks = Number(sks);
+  if (semester) targetCourse.semester = semester.trim();
+  if (semesterNumber !== undefined) targetCourse.semesterNumber = Number(semesterNumber);
+  if (roomName) targetCourse.roomName = roomName.trim();
+  if (campusName) targetCourse.campusName = campusName.trim();
+  if (dosenName) targetCourse.dosenName = dosenName.trim();
+  if (dosenTitle !== undefined) targetCourse.dosenTitle = dosenTitle.trim();
+  if (studyProgram) targetCourse.studyProgram = studyProgram.trim();
+  if (description !== undefined) targetCourse.description = description.trim();
+
+  // Update room profile in allCoursesData
+  if (db.allCoursesData && db.allCoursesData[courseId]) {
+    const p: any = db.allCoursesData[courseId].profile || {};
+    p.courseTitle = targetCourse.title;
+    if (code) p.courseCode = targetCourse.code;
+    if (sks !== undefined) p.sks = targetCourse.sks;
+    if (semester) p.semester = targetCourse.semester;
+    if (semesterNumber !== undefined) p.semesterNumber = targetCourse.semesterNumber;
+    if (roomName) p.roomName = targetCourse.roomName;
+    if (campusName) p.campusName = targetCourse.campusName;
+    if (dosenName) p.dosenName = targetCourse.dosenName;
+    if (dosenTitle !== undefined) p.dosenTitle = targetCourse.dosenTitle;
+    if (studyProgram) p.studyProgram = targetCourse.studyProgram;
+    if (description !== undefined) p.description = targetCourse.description;
+    db.allCoursesData[courseId].profile = p;
+  }
+
+  // Update active courseProfile if currently active
+  if (db.activeCourseId === courseId && db.courseProfile) {
+    db.courseProfile.courseTitle = targetCourse.title;
+    if (code) db.courseProfile.courseCode = targetCourse.code;
+    if (sks !== undefined) db.courseProfile.sks = targetCourse.sks;
+    if (semester) db.courseProfile.semester = targetCourse.semester;
+    if (semesterNumber !== undefined) db.courseProfile.semesterNumber = targetCourse.semesterNumber;
+    if (roomName) db.courseProfile.roomName = targetCourse.roomName;
+    if (campusName) db.courseProfile.campusName = targetCourse.campusName;
+    if (dosenName) db.courseProfile.dosenName = targetCourse.dosenName;
+    if (dosenTitle !== undefined) db.courseProfile.dosenTitle = targetCourse.dosenTitle;
+    if (studyProgram) db.courseProfile.studyProgram = targetCourse.studyProgram;
+    if (description !== undefined) db.courseProfile.description = targetCourse.description;
+  }
+
+  saveDatabase();
+  res.json({
+    success: true,
+    message: `Data mata kuliah "${targetCourse.title}" berhasil diperbarui!`,
+    course: targetCourse,
+    courses: db.courses,
+    activeCourseId: db.activeCourseId,
+    courseProfile: db.courseProfile,
+    data: db,
+  });
+};
+
+app.put('/api/courses/:courseId', handleEditCourse);
+app.post('/api/courses/edit', handleEditCourse);
+
+// Endpoint: Sync Course Roster and Groups with Master RPS Students & Groups
+app.post('/api/courses/sync-roster', (req, res) => {
+  if (!isDosenAuthorized(req)) {
+    return res.status(403).json({ error: 'Akses Ditolak: Hanya Dosen yang berwenang mensinkronkan kelompok!' });
+  }
+
+  const { courseId } = req.body;
+  const targetId = courseId || db.activeCourseId;
+  const targetCourse = (db.courses || []).find(c => c.id === targetId);
+  const semNum = targetCourse?.semesterNumber || (targetCourse?.semester?.includes('3') || targetCourse?.semester?.includes('III') ? 3 : 1);
+  const cTitle = targetCourse?.title || db.courseProfile?.courseTitle || '';
+
+  const master = getMasterStudentsAndGroups(semNum, cTitle);
+
+  if (targetId === db.activeCourseId) {
+    db.students = JSON.parse(JSON.stringify(master.students));
+    db.groups = JSON.parse(JSON.stringify(master.groups));
+    if (!db.grades || Object.keys(db.grades).length === 0) {
+      db.grades = JSON.parse(JSON.stringify(master.grades));
+    }
+  }
+
+  if (!db.allCoursesData) db.allCoursesData = {};
+  if (!db.allCoursesData[targetId]) {
+    db.allCoursesData[targetId] = {
+      id: targetId,
+      profile: JSON.parse(JSON.stringify(targetCourse ? { ...INITIAL_COURSE_PROFILE, courseTitle: targetCourse.title, courseCode: targetCourse.code, semester: targetCourse.semester, semesterNumber: semNum } : INITIAL_COURSE_PROFILE)),
+      meetings: JSON.parse(JSON.stringify(semNum === 3 ? (cTitle.toLowerCase().includes('kebijakan') ? INITIAL_MEETINGS_KEBIJAKAN_SEM3 : INITIAL_MEETINGS_SEM3) : INITIAL_MEETINGS)),
+      students: [],
+      groups: [],
+      submissions: [],
+      utsQuestions: [],
+      utsSubmissions: [],
+      attendance: { 1: {} },
+      grades: {},
+    };
+  }
+
+  db.allCoursesData[targetId].students = JSON.parse(JSON.stringify(master.students));
+  db.allCoursesData[targetId].groups = JSON.parse(JSON.stringify(master.groups));
+  if (!db.allCoursesData[targetId].grades || Object.keys(db.allCoursesData[targetId].grades).length === 0) {
+    db.allCoursesData[targetId].grades = JSON.parse(JSON.stringify(master.grades));
+  }
+
+  if (targetCourse) {
+    targetCourse.totalStudents = master.students.length;
+  }
+
+  const isFilsafat = semNum === 1 || cTitle.toLowerCase().includes('filsafat');
+  const isKebijakan = cTitle.toLowerCase().includes('kebijakan') || cTitle.toLowerCase().includes('analisis');
+  const syncLabel = isFilsafat
+    ? '13 Mahasiswa resmi & 10 Kelompok RPS Filsafat Ilmu (Husna, Ikha, Indah, dkk)'
+    : isKebijakan
+    ? '20 Mahasiswa resmi & 10 Kelompok RPS Analisis Kebijakan Pendidikan (Heru, Sofyan, ... Zaima)'
+    : '20 Mahasiswa resmi & 12 Kelompok RPS Konsep Dasar MPI (Heru, Sofyan, ... Zaima)';
+
+  saveDatabase();
+  res.json({
+    success: true,
+    message: `${syncLabel} berhasil disinkronkan sesuai RPS!`,
+    students: db.students,
+    groups: db.groups,
+    courses: db.courses,
+    activeCourseId: db.activeCourseId,
+    courseProfile: db.courseProfile,
+    data: db,
+  });
+});
+
+// Multi-Course & Multi-Semester API: Tambah Semester Baru beserta MK di dalamnya
+app.post('/api/semesters', (req, res) => {
+  if (!isDosenAuthorized(req)) {
+    return res.status(403).json({ error: 'Akses Ditolak: Hanya Dosen yang berwenang menambah semester!' });
+  }
+
+  const {
+    semesterNumber,
+    semesterName,
+    academicYear = '2026/2027',
+    courseTitle,
+    courseCode,
+    sks = 3,
+    roomName,
+  } = req.body;
+
+  const semNum = Number(semesterNumber) || 1;
+  const roman =
+    semNum === 1 ? 'I' : semNum === 2 ? 'II' : semNum === 3 ? 'III' : semNum === 4 ? 'IV' : semNum === 5 ? 'V' : semNum === 6 ? 'VI' : semNum === 7 ? 'VII' : semNum === 8 ? 'VIII' : String(semNum);
+  const ganjilGenap = semNum % 2 === 1 ? 'Ganjil' : 'Genap';
+  const finalSemesterName = (semesterName && semesterName.trim()) || `Semester ${roman} (${ganjilGenap} ${academicYear})`;
+
+  const title = (courseTitle && courseTitle.trim()) || `Mata Kuliah Utama Semester ${semNum}`;
+  const code = (courseCode && courseCode.trim()) || `MPI-${semNum}01`;
+  const room = (roomName && roomName.trim()) || `Kamar MPI ${semNum} (Ruang Kelas)`;
+  const courseId = `mk-sem${semNum}-${Date.now().toString(36)}`;
+
+  const newCourse: CourseSummary = {
+    id: courseId,
+    title,
+    code,
+    sks: Number(sks) || 3,
+    semester: finalSemesterName,
+    semesterNumber: semNum,
+    roomName: room,
+    campusName: db.courseProfile?.campusName || 'STAI Jarinabi',
+    dosenName: db.courseProfile?.dosenName || 'Risfa Tri Ulfa',
+    dosenTitle: db.courseProfile?.dosenTitle || 'S.Pd., M.Pd.',
+    studyProgram: db.courseProfile?.studyProgram || 'Manajemen Pendidikan Islam (MPI)',
+    totalStudents: 13,
+    description: `Mata kuliah ${title} ${finalSemesterName} (${room}).`,
+  };
+
+  if (!db.courses) db.courses = [];
+  db.courses.push(newCourse);
+
+  const master = getMasterStudentsAndGroups(semNum, title);
+  if (!db.allCoursesData) db.allCoursesData = {};
+  db.allCoursesData[courseId] = {
+    id: courseId,
+    profile: {
+      ...newCourse,
+      name: `${newCourse.dosenName}, ${newCourse.dosenTitle}`,
+      nip: '198806282015032001',
+      courseTitle: title,
+      courseCode: code,
+      totalMeetings: 16,
+      classCode: `MPI ${semNum}`,
+      academicYear,
+    },
+    meetings: INITIAL_MEETINGS.map(m => ({ ...m, title: `Pertemuan ${m.meetingNumber}: ${title}` })),
+    rpsRawText: '',
+    students: master.students,
+    groups: master.groups,
+    submissions: [],
+    utsQuestions: generateUtsQuestionsFromMeetings([], db.courseProfile),
+    utsSubmissions: [],
+    uasQuestions: [],
+    uasSubmissions: [],
+    quizQuestions: INITIAL_QUIZ_QUESTIONS,
+    quizSubmissions: [],
+    quizSettings: db.quizSettings || INITIAL_DATABASE.quizSettings,
+    utsExamSettings: db.utsExamSettings || INITIAL_DATABASE.utsExamSettings,
+    uasExamSettings: db.uasExamSettings || INITIAL_DATABASE.uasExamSettings,
+    attendance: { 1: {} },
+    grades: master.grades,
+  };
+
+  saveDatabase();
+
+  const { dosenPassword, ...safeDb } = db;
+  res.json({
+    success: true,
+    message: `Semester ${semNum} dan mata kuliah "${title}" berhasil ditambahkan dengan 13 Mahasiswa & 10 Kelompok resmi!`,
+    course: newCourse,
+    courses: db.courses,
+    activeCourseId: db.activeCourseId,
+    data: safeDb,
   });
 });
 

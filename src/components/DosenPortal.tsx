@@ -31,6 +31,9 @@ import {
   clearAllMessagesApi,
   restoreBackupToServer,
   updateExamSettingsApi,
+  deleteUtsSubmissionApi,
+  deleteUasSubmissionApi,
+  resetGroupSubmissionApi,
 } from '../services/api';
 import {
   exportAllTasksToExcel,
@@ -718,6 +721,16 @@ export const DosenPortal: React.FC<DosenPortalProps> = ({
   const [isConfirmingReviewSubDelete, setIsConfirmingReviewSubDelete] = useState(false);
   const [actionAlertMsg, setActionAlertMsg] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
 
+  // Delete / Reset exam submissions (UTS essay, UAS essay, or Group Video UAS)
+  const [deleteExamModalData, setDeleteExamModalData] = useState<{
+    type: 'uts' | 'uas' | 'group-uas';
+    studentId?: string;
+    studentName: string;
+    groupId?: number;
+    groupName?: string;
+  } | null>(null);
+  const [isDeletingExamSubmission, setIsDeletingExamSubmission] = useState(false);
+
   // Review & Auto-grading modals for Tugas Individu, UTS, and UAS
   const [reviewIndivSub, setReviewIndivSub] = useState<IndividualSubmission | null>(null);
   const [reviewUtsStudentId, setReviewUtsStudentId] = useState<string | null>(null);
@@ -904,6 +917,70 @@ export const DosenPortal: React.FC<DosenPortalProps> = ({
     }
   };
 
+  // Confirm delete/reset exam submission handler (UTS, UAS, or Group Video UAS)
+  const handleConfirmDeleteExamSubmission = async () => {
+    if (!deleteExamModalData) return;
+    setIsDeletingExamSubmission(true);
+    setActionAlertMsg(null);
+
+    try {
+      if (deleteExamModalData.type === 'uts' && deleteExamModalData.studentId) {
+        const res = await deleteUtsSubmissionApi(deleteExamModalData.studentId);
+        if (res.success) {
+          setActionAlertMsg({
+            type: 'success',
+            text: `Lembar jawaban UTS milik "${deleteExamModalData.studentName}" berhasil direset. Formulir pengumpulan UTS mahasiswa kini terbuka kembali untuk perbaikan (revisi).`,
+          });
+          if (reviewUtsStudentId === deleteExamModalData.studentId) {
+            setReviewUtsStudentId(null);
+          }
+          await onRefreshData();
+        } else {
+          setActionAlertMsg({
+            type: 'error',
+            text: res.error || 'Gagal mereset jawaban UTS.',
+          });
+        }
+      } else if (deleteExamModalData.type === 'uas' && deleteExamModalData.studentId) {
+        const res = await deleteUasSubmissionApi(deleteExamModalData.studentId);
+        if (res.success) {
+          setActionAlertMsg({
+            type: 'success',
+            text: `Tugas/Lembar UAS milik "${deleteExamModalData.studentName}" berhasil direset. Formulir pengumpulan UAS mahasiswa kini terbuka kembali untuk perbaikan (revisi).`,
+          });
+          await onRefreshData();
+        } else {
+          setActionAlertMsg({
+            type: 'error',
+            text: res.error || 'Gagal mereset jawaban UAS.',
+          });
+        }
+      } else if (deleteExamModalData.type === 'group-uas' && deleteExamModalData.groupId) {
+        const res = await resetGroupSubmissionApi(deleteExamModalData.groupId);
+        if (res.success) {
+          setActionAlertMsg({
+            type: 'success',
+            text: `Proyek Video UAS milik ${deleteExamModalData.groupName} berhasil direset. Akses pengumpulan proyek UAS kini terbuka kembali bagi mahasiswa anggota kelompok untuk perbaikan (revisi).`,
+          });
+          await onRefreshData();
+        } else {
+          setActionAlertMsg({
+            type: 'error',
+            text: res.error || 'Gagal mereset proyek kelompok.',
+          });
+        }
+      }
+    } catch {
+      setActionAlertMsg({
+        type: 'error',
+        text: 'Terjadi kesalahan jaringan saat mereset tugas ujian.',
+      });
+    } finally {
+      setIsDeletingExamSubmission(false);
+      setDeleteExamModalData(null);
+    }
+  };
+
   // Submit Individual Grade
   const handleSaveIndivGrade = async (studentId: string) => {
     setIsGradingIndiv(true);
@@ -990,11 +1067,11 @@ export const DosenPortal: React.FC<DosenPortalProps> = ({
             {onOpenCourseSelector && (
               <button
                 onClick={onOpenCourseSelector}
-                className="flex items-center gap-1.5 px-3 py-2 bg-indigo-700 hover:bg-indigo-600 text-white rounded-xl text-xs font-bold transition-colors shadow-xs border border-indigo-500/30"
-                title="Kelola & ganti mata kuliah yang diampu dosen"
+                className="flex items-center gap-1.5 px-3.5 py-2 bg-gradient-to-r from-emerald-700 to-teal-700 hover:from-emerald-600 hover:to-teal-600 text-white rounded-xl text-xs font-bold transition-all shadow-sm border border-emerald-500/40"
+                title="Kelola, edit identitas, dan sinkronkan data mata kuliah & pembagian kelompok sesuai RPS"
               >
                 <Layers size={14} />
-                <span>Ganti / Tambah MK</span>
+                <span>Kelola MK & RPS</span>
               </button>
             )}
 
@@ -1586,9 +1663,29 @@ export const DosenPortal: React.FC<DosenPortalProps> = ({
                           </td>
                           <td className="py-3 px-3 text-center">
                             {utsSub ? (
-                              <span className="inline-flex items-center gap-1 text-[10px] font-bold text-amber-800 bg-amber-100 px-2 py-0.5 rounded-full">
-                                <CheckCircle2 size={11} /> {utsSub.grade !== undefined ? `Nilai: ${utsSub.grade}` : 'Terkumpul'}
-                              </span>
+                              <div className="inline-flex items-center gap-1">
+                                <span className="inline-flex items-center gap-1 text-[10px] font-bold text-amber-800 bg-amber-100 px-2 py-0.5 rounded-full">
+                                  <CheckCircle2 size={11} /> {utsSub.grade !== undefined ? `Nilai: ${utsSub.grade}` : 'Terkumpul'}
+                                </span>
+                                <button
+                                  onClick={() => handleOpenReviewUts(std.id)}
+                                  className="p-1 text-indigo-600 hover:text-indigo-800 hover:bg-indigo-50 rounded transition-colors"
+                                  title="Review & Nilai Lembar Jawaban UTS"
+                                >
+                                  <Eye size={13} />
+                                </button>
+                                <button
+                                  onClick={() => setDeleteExamModalData({
+                                    type: 'uts',
+                                    studentId: std.id,
+                                    studentName: std.name,
+                                  })}
+                                  className="p-1 text-rose-500 hover:text-rose-700 hover:bg-rose-50 rounded transition-colors"
+                                  title="Hapus / Reset lembar UTS (Buka akses revisi)"
+                                >
+                                  <Trash2 size={12} />
+                                </button>
+                              </div>
                             ) : (
                               <span className="text-[10px] font-medium text-slate-400 bg-slate-100 px-2 py-0.5 rounded-full">
                                 Belum
@@ -1597,9 +1694,22 @@ export const DosenPortal: React.FC<DosenPortalProps> = ({
                           </td>
                           <td className="py-3 px-3 text-center">
                             {uasSub ? (
-                              <span className="inline-flex items-center gap-1 text-[10px] font-bold text-purple-800 bg-purple-100 px-2 py-0.5 rounded-full">
-                                <CheckCircle2 size={11} /> {uasSub.grade !== undefined ? `Nilai: ${uasSub.grade}` : 'Terkumpul'}
-                              </span>
+                              <div className="inline-flex items-center gap-1">
+                                <span className="inline-flex items-center gap-1 text-[10px] font-bold text-purple-800 bg-purple-100 px-2 py-0.5 rounded-full">
+                                  <CheckCircle2 size={11} /> {uasSub.grade !== undefined ? `Nilai: ${uasSub.grade}` : 'Terkumpul'}
+                                </span>
+                                <button
+                                  onClick={() => setDeleteExamModalData({
+                                    type: 'uas',
+                                    studentId: std.id,
+                                    studentName: std.name,
+                                  })}
+                                  className="p-1 text-rose-500 hover:text-rose-700 hover:bg-rose-50 rounded transition-colors"
+                                  title="Hapus / Reset tugas UAS (Buka akses revisi)"
+                                >
+                                  <Trash2 size={12} />
+                                </button>
+                              </div>
                             ) : (
                               <span className="text-[10px] font-medium text-slate-400 bg-slate-100 px-2 py-0.5 rounded-full">
                                 Belum
@@ -3220,6 +3330,21 @@ export const DosenPortal: React.FC<DosenPortalProps> = ({
 
                       {sub && (
                         <button
+                          onClick={() => setDeleteExamModalData({
+                            type: 'uts',
+                            studentId: std.id,
+                            studentName: std.name,
+                          })}
+                          className="px-2.5 py-1.5 bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 rounded-lg text-xs font-bold transition-colors shadow-2xs flex items-center gap-1 cursor-pointer"
+                          title="Reset lembar jawaban UTS mahasiswa ini untuk membuka kembali akses revisi"
+                        >
+                          <Trash2 size={13} />
+                          <span>Reset Revisi</span>
+                        </button>
+                      )}
+
+                      {sub && (
+                        <button
                           onClick={() => {
                             handleOpenReviewUts(std.id);
                             handleAutoGradeUts(std.id);
@@ -3420,6 +3545,23 @@ export const DosenPortal: React.FC<DosenPortalProps> = ({
                         >
                           <Zap size={13} className="text-amber-600 fill-amber-500" />
                           <span>Nilai Otomatis</span>
+                        </button>
+                      )}
+
+                      {sub && (
+                        <button
+                          type="button"
+                          onClick={() => setDeleteExamModalData({
+                            type: 'group-uas',
+                            groupId: grp.id,
+                            groupName: grp.name,
+                            studentName: grp.name,
+                          })}
+                          className="flex items-center gap-1 px-2.5 py-2 bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 rounded-lg text-xs font-bold transition-colors shadow-2xs cursor-pointer"
+                          title="Reset pengumpulan video UAS kelompok ini untuk membuka kembali akses revisi"
+                        >
+                          <Trash2 size={13} />
+                          <span>Reset UAS (Revisi)</span>
                         </button>
                       )}
 
@@ -3930,7 +4072,7 @@ export const DosenPortal: React.FC<DosenPortalProps> = ({
                 type="button"
                 onClick={() => setDeleteModalData(null)}
                 disabled={isDeletingSubmission}
-                className="px-4 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-100 rounded-xl transition-colors"
+                className="px-4 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-100 rounded-xl transition-colors cursor-pointer"
               >
                 Batal
               </button>
@@ -3938,10 +4080,68 @@ export const DosenPortal: React.FC<DosenPortalProps> = ({
                 type="button"
                 onClick={handleConfirmDeleteSubmission}
                 disabled={isDeletingSubmission}
-                className="px-5 py-2.5 bg-rose-700 hover:bg-rose-800 text-white rounded-xl text-xs font-bold transition-colors shadow-md flex items-center gap-1.5 disabled:opacity-50"
+                className="px-5 py-2.5 bg-rose-700 hover:bg-rose-800 text-white rounded-xl text-xs font-bold transition-colors shadow-md flex items-center gap-1.5 disabled:opacity-50 cursor-pointer"
               >
                 <Trash2 size={14} />
                 <span>{isDeletingSubmission ? 'Sedang Menghapus...' : 'Konfirmasi Hapus Tugas'}</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL KONFIRMASI RESET / HAPUS UJIAN OLEH DOSEN (UTS & UAS) */}
+      {deleteExamModalData && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs animate-in fade-in">
+          <div className="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl border border-slate-200 space-y-4">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-rose-100 text-rose-700 flex items-center justify-center flex-shrink-0">
+                <Trash2 size={20} />
+              </div>
+              <div>
+                <h3 className="font-bold text-slate-900 text-base">
+                  Reset Status Ujian (Buka Akses Revisi)
+                </h3>
+                <p className="text-xs text-slate-500">
+                  {deleteExamModalData.type === 'uts'
+                    ? 'Ujian Tengah Semester (UTS Esai)'
+                    : deleteExamModalData.type === 'uas'
+                    ? 'Ujian Akhir Semester (UAS Esai)'
+                    : 'Proyek Video UAS Kelompok'}
+                </p>
+              </div>
+            </div>
+
+            <div className="p-3.5 bg-rose-50 border border-rose-200 rounded-xl text-xs text-rose-900 leading-relaxed">
+              Anda akan mereset pengumpulan{' '}
+              <strong>{deleteExamModalData.studentName || deleteExamModalData.groupName}</strong>.
+              Tugas sebelumnya akan dihapus dari sistem, dan status pengumpulan akan direset sehingga
+              mahasiswa/kelompok yang bersangkutan dapat mengirimkan perbaikan (revisi).
+            </div>
+
+            <div className="flex items-center justify-end gap-2 pt-2 border-t border-slate-100">
+              <button
+                type="button"
+                onClick={() => setDeleteExamModalData(null)}
+                disabled={isDeletingExamSubmission}
+                className="px-4 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-100 rounded-xl transition-colors cursor-pointer"
+              >
+                Batal
+              </button>
+              <button
+                type="button"
+                onClick={handleConfirmDeleteExamSubmission}
+                disabled={isDeletingExamSubmission}
+                className="px-4 py-2 bg-rose-600 hover:bg-rose-700 text-white rounded-xl text-xs font-bold transition-colors flex items-center gap-1.5 cursor-pointer shadow-xs disabled:opacity-50"
+              >
+                {isDeletingExamSubmission ? (
+                  <span>Mereset...</span>
+                ) : (
+                  <>
+                    <Trash2 size={13} />
+                    <span>Ya, Reset & Buka Revisi</span>
+                  </>
+                )}
               </button>
             </div>
           </div>
@@ -4496,24 +4696,42 @@ export const DosenPortal: React.FC<DosenPortalProps> = ({
               </div>
 
               {/* Modal Actions */}
-              <div className="pt-2 border-t border-slate-100 flex items-center justify-end gap-2">
-                <button
-                  type="button"
-                  onClick={() => setReviewUtsStudentId(null)}
-                  disabled={isGradingUts}
-                  className="px-4 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-100 rounded-xl transition-colors"
-                >
-                  Batal
-                </button>
-                <button
-                  type="button"
-                  onClick={handleSaveUtsFromReview}
-                  disabled={isGradingUts}
-                  className="px-5 py-2.5 bg-indigo-700 hover:bg-indigo-800 text-white rounded-xl text-xs font-bold transition-colors shadow-md flex items-center gap-1.5 disabled:opacity-50"
-                >
-                  <Check size={14} />
-                  <span>{isGradingUts ? 'Menyimpan...' : 'Simpan Nilai UTS'}</span>
-                </button>
+              <div className="pt-2 border-t border-slate-100 flex items-center justify-between gap-2">
+                {targetSub ? (
+                  <button
+                    type="button"
+                    onClick={() => setDeleteExamModalData({
+                      type: 'uts',
+                      studentId: targetStudent?.id,
+                      studentName: targetStudent?.name || 'Mahasiswa',
+                    })}
+                    className="px-3.5 py-2 bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 rounded-xl text-xs font-bold transition-colors flex items-center gap-1.5 cursor-pointer"
+                    title="Reset lembar jawaban UTS mahasiswa ini untuk membuka kembali akses perbaikan/revisi"
+                  >
+                    <Trash2 size={13} />
+                    <span>Reset Lembar UTS (Buka Revisi)</span>
+                  </button>
+                ) : <div />}
+
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setReviewUtsStudentId(null)}
+                    disabled={isGradingUts}
+                    className="px-4 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-100 rounded-xl transition-colors cursor-pointer"
+                  >
+                    Batal
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleSaveUtsFromReview}
+                    disabled={isGradingUts}
+                    className="px-5 py-2.5 bg-indigo-700 hover:bg-indigo-800 text-white rounded-xl text-xs font-bold transition-colors shadow-md flex items-center gap-1.5 disabled:opacity-50 cursor-pointer"
+                  >
+                    <Check size={14} />
+                    <span>{isGradingUts ? 'Menyimpan...' : 'Simpan Nilai UTS'}</span>
+                  </button>
+                </div>
               </div>
             </div>
           </div>
@@ -4706,24 +4924,46 @@ export const DosenPortal: React.FC<DosenPortalProps> = ({
               </div>
 
               {/* Actions */}
-              <div className="pt-2 border-t border-slate-100 flex items-center justify-end gap-2">
-                <button
-                  type="button"
-                  onClick={() => setReviewGroupId(null)}
-                  disabled={isGradingGroup}
-                  className="px-4 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-100 rounded-xl transition-colors"
-                >
-                  Batal
-                </button>
-                <button
-                  type="button"
-                  onClick={handleSaveGroupFromReview}
-                  disabled={isGradingGroup}
-                  className="px-5 py-2.5 bg-indigo-700 hover:bg-indigo-800 text-white rounded-xl text-xs font-bold transition-colors shadow-md flex items-center gap-1.5 disabled:opacity-50"
-                >
-                  <Check size={14} />
-                  <span>{isGradingGroup ? 'Menyimpan...' : 'Simpan Nilai Video UAS'}</span>
-                </button>
+              <div className="pt-2 border-t border-slate-100 flex items-center justify-between gap-2">
+                {sub ? (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setReviewGroupId(null);
+                      setDeleteExamModalData({
+                        type: 'group-uas',
+                        groupId: grp?.id,
+                        groupName: grp?.name,
+                        studentName: grp?.name,
+                      });
+                    }}
+                    className="px-3.5 py-2 bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 rounded-xl text-xs font-bold transition-colors flex items-center gap-1.5 cursor-pointer"
+                    title="Reset tugas video UAS kelompok ini untuk membuka kembali akses revisi"
+                  >
+                    <Trash2 size={13} />
+                    <span>Reset Video UAS (Buka Revisi)</span>
+                  </button>
+                ) : <div />}
+
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setReviewGroupId(null)}
+                    disabled={isGradingGroup}
+                    className="px-4 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-100 rounded-xl transition-colors"
+                  >
+                    Batal
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleSaveGroupFromReview}
+                    disabled={isGradingGroup}
+                    className="px-5 py-2.5 bg-indigo-700 hover:bg-indigo-800 text-white rounded-xl text-xs font-bold transition-colors shadow-md flex items-center gap-1.5 disabled:opacity-50"
+                  >
+                    <Check size={14} />
+                    <span>{isGradingGroup ? 'Menyimpan...' : 'Simpan Nilai Video UAS'}</span>
+                  </button>
+                </div>
               </div>
             </div>
           </div>

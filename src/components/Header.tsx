@@ -25,6 +25,7 @@ import {
   Sun,
   Moon,
   Trophy,
+  DoorOpen,
 } from 'lucide-react';
 
 interface HeaderProps {
@@ -164,21 +165,39 @@ export const Header: React.FC<HeaderProps> = ({
                 <span className="text-[10px] font-bold bg-emerald-100 text-emerald-800 px-2 py-0.5 rounded">
                   {courseProfile?.courseCode || 'STI 105'} • {courseProfile?.sks || 2} SKS
                 </span>
+
+                {/* Semester & Room Tag */}
+                <span className={`text-[10px] font-bold px-2 py-0.5 rounded flex items-center gap-1 ${
+                  (courseProfile?.semesterNumber === 3 || courseProfile?.semester?.includes('3') || courseProfile?.semester?.includes('III'))
+                    ? 'bg-indigo-100 text-indigo-900 border border-indigo-200'
+                    : 'bg-emerald-100 text-emerald-900 border border-emerald-200'
+                }`}>
+                  <DoorOpen size={11} className="shrink-0" />
+                  <span>
+                    {courseProfile?.roomName || (
+                      (courseProfile?.semesterNumber === 3 || courseProfile?.semester?.includes('3') || courseProfile?.semester?.includes('III'))
+                        ? 'Kamar MPI 3'
+                        : 'Kamar MPI 1'
+                    )}
+                  </span>
+                </span>
                 
-                {/* Course Switcher trigger */}
+                {/* Course & Room Switcher trigger */}
                 <button
                   onClick={onOpenCourseSelect}
-                  className="inline-flex items-center gap-1 text-[11px] font-bold px-2 py-0.5 rounded-md bg-slate-100 hover:bg-slate-200 text-slate-700 transition-colors border border-slate-200"
-                  title="Pilih atau ganti mata kuliah yang diampu"
+                  className="inline-flex items-center gap-1.5 text-[11px] font-bold px-2.5 py-1 rounded-md bg-slate-800 hover:bg-slate-700 text-white transition-colors shadow-2xs border border-slate-700"
+                  title="Pilih, kelola, atau ganti mata kuliah & semester yang diampu"
                 >
-                  <Layers size={12} className="text-emerald-700" />
-                  <span>{coursesCount > 1 ? `${coursesCount} Mata Kuliah` : 'Ganti MK'}</span>
+                  <Layers size={12} className="text-emerald-400" />
+                  <span>{coursesCount > 1 ? `Mata Kuliah & RPS (${coursesCount})` : 'Pilih MK & RPS'}</span>
                 </button>
               </div>
               <div className="text-xs text-slate-500 mt-1 flex items-center gap-2 flex-wrap">
                 <span>{campus}</span>
                 <span>•</span>
                 <span>Prodi: {courseProfile?.studyProgram || 'MPI 1'}</span>
+                <span>•</span>
+                <span className="font-semibold text-slate-700">{courseProfile?.semester || 'Semester I'}</span>
                 <span>•</span>
                 <span className="font-semibold text-emerald-800">{dosenFullName}</span>
               </div>

@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { MeetingSchedule, DosenProfile, Student, GroupProject } from '../types';
+import { getDefaultRpsText } from '../data/initialData';
 import {
   uploadRpsApi,
   parseRpsFileApi,
@@ -181,75 +182,20 @@ export const RpsManagerView: React.FC<RpsManagerViewProps> = ({
 
   // Sample RPS Template Generator
   const handleLoadSampleRps = () => {
-    const sample = `KEMENTERIAN AGAMA
-SEKOLAH TINGGI AGAMA ISLAM (STAI) JARINABI
-RENCANA PEMBELAJARAN SEMESTER (RPS)
-Mata Kuliah: Filsafat Ilmu
-Kode Mata Kuliah: STI 105
-SKS: 2 SKS
-Semester: I (Ganjil 2026/2027)
-Program Studi: MPI
-Dosen Pengampu: Risfa Tri Ulfa, S.Pd., M.Pd.
-
-JADWAL PERTEMUAN DAN MATERI PERKULIAHAN:
-Pertemuan 1: Kontrak Belajar, Silabus, dan Orientasi Analisis Kebijakan Pendidikan
-Pertemuan 2: Pengertian, Ruang Lingkup, dan Urgensi Filsafat Ilmu dalam Manajemen Pendidikan Islam (Buku Saifullah, 2018)
-Pertemuan 3: Hakikat Pengetahuan dan Ilmu: Perbedaan Pengetahuan Biasa, Ilmu, dan Filsafat (Kelompok 1: Husna, Ikha, Indah - OJS UHAMKA 2024)
-Pertemuan 4: Pilar Ontologi Ilmu: Hakikat Ada (Being), Realitas Objek Kajian, dan Aliran-aliran Ontologi (Kelompok 2: Kirana, Khoir - Jurnal JIPPI 2026)
-Pertemuan 5: Pilar Epistemologi Ilmu: Sumber Pengetahuan, Metode Ilmiah, dan Sarana Berpikir Ilmiah (Kelompok 3: Nurazizah, Haza, Tomi - Jurnal UNPAS 2024)
-Pertemuan 6: Pilar Aksiologi Ilmu: Nilai, Etika Keilmuan, Tanggung Jawab Moral, dan Kemanfaatan Sains (Kelompok 4: Estiyani, Munailatul - Jurnal UIN Suka 2014)
-Pertemuan 7: Sejarah Perkembangan Filsafat dan Ilmu (Era Yunani Klasik & Abad Pertengahan) (Kelompok 5: Anggun, Ridho, Nia - Jurnal UPI 2019)
-Pertemuan 8: Evaluasi Tengah Semester (UTS): Ujian Mandiri Tertulis Tanpa Perhitungan Matematis (Materi P2-P7)
-Pertemuan 9: Masa Kejayaan Keilmuan Islam dan Kontribusi Ilmuwan Muslim terhadap Sains Modern (Kelompok 6: Husna, Ikha, Indah - Jurnal Manageria 2016)
-Pertemuan 10: Perkembangan Filsafat Ilmu Era Modern (Positivisme, Rasionalisme, Empirisme) dan Kontemporer (Kelompok 7: Kirana, Khoir - Buku Sastraatmadja 2023)
-Pertemuan 11: Teori-teori Kebenaran Ilmiah (Koherensi, Korespondensi, Pragmatis) & Presentasi Draf Projek Video (PBL - Jurnal UNY 2021)
-Pertemuan 12: Metodologi Penelitian dan Logika Penalaran Ilmiah (Induktif, Deduktif, Abduktif) (Kelompok 8: Nurazizah, Haza, Tomi - Jurnal UNPAS 2024)
-Pertemuan 13: Integrasi Ilmu, Agama, dan Kearifan Lokal (Local Wisdom) dalam Pengelolaan Pendidikan Islam (Kelompok 9: Estiyani, Munailatul - Jurnal JEMR UPI 2026)
-Pertemuan 14: Etika Akademik, Bebas Plagiarisme, dan Akuntabilitas Digitalisasi Berbasis Nilai Amanah (Kelompok 10: Anggun, Ridho, Nia - Jurnal Kariman 2025)
-Pertemuan 15: Display & Skrining Projek Video Edukasi / Analisis Isu Filsafat Ilmu Kontemporer (Kelompok 1-5 - Qanun Journal 2025)
-Pertemuan 16: Evaluasi Akhir Semester (UAS): Ujian Mandiri Tertulis Konseptual-Analitis (Materi P9-P15)`;
+    const currentCourseTitle = courseProfile?.courseTitle || courseForm.courseTitle || courseForm.name || 'Filsafat Ilmu';
+    const sample = getDefaultRpsText(currentCourseTitle);
 
     setPastedRpsText(sample);
     setSyncFeedback({
       type: 'success',
-      message: 'Template RPS Resmi STAI Jarinabi (16 Pertemuan) berhasil dimuat! Anda dapat mengedit teksnya atau langsung klik tombol Sinkronkan.',
+      message: `Template RPS Resmi STAI Jarinabi (${currentCourseTitle}) berhasil dimuat! Anda dapat mengedit teksnya atau langsung klik tombol Sinkronkan.`,
     });
   };
 
   // Generate Complete 16-Meeting RPS Syllabus Automatically
   const handleGenerateRpsAuto = async () => {
-    const currentTitle = courseForm.name || 'Filsafat Ilmu';
-    const currentProdi = courseForm.studyProgram || 'Manajemen Pendidikan Islam (MPI)';
-    const currentCode = courseForm.code || 'STI 105';
-
-    const generatedRps = `RENCANA PEMBELAJARAN SEMESTER (RPS)
-Mata Kuliah: ${currentTitle}
-Kode Mata Kuliah: ${currentCode}
-SKS: ${courseForm.sks || 2} SKS
-Semester: ${courseForm.semester || 'Semester I (Ganjil 2026/2027)'}
-Program Studi: ${currentProdi}
-Dosen Pengampu: ${courseProfile?.name || 'Risfa Tri Ulfa, S.Pd., M.Pd.'}
-
-DESKRIPSI DAN CAPAIAN PEMBELAJARAN:
-Mata kuliah ini membekali mahasiswa dengan wawasan mendalam mengenai fondasi ontologis, epistemologis, dan aksiologis dalam praksis pendidikan Islam, kepemimpinan, dan etika ilmiah modern.
-
-JADWAL PERTEMUAN DAN MATERI PERKULIAHAN:
-Pertemuan 1: Orientasi Perkuliahan, Kontrak Belajar, dan Pengantar ${currentTitle}
-Pertemuan 2: Hakikat Ilmu Pengetahuan dan Perbedaan Ilmu, Pengetahuan, serta Mitos
-Pertemuan 3: Landasan Ontologis Ilmu: Hakikat Realitas dan Objek Studi Pendidikan Islam
-Pertemuan 4: Landasan Epistemologis Ilmu: Sumber Pengetahuan, Rasionalisme, dan Empirisme
-Pertemuan 5: Metode Ilmiah, Validitas Data, dan Pendekatan Riset dalam Manajemen Pendidikan
-Pertemuan 6: Landasan Aksiologis Ilmu: Nilai, Moral, dan Etika Pemanfaatan Ilmu
-Pertemuan 7: Integrasi Ilmu dan Agama: Paradigma Keilmuan Islam Kontemporer
-Pertemuan 8: Evaluasi Tengah Semester (UTS): Analisis Kritis Esai Studi Kasus Filsafat
-Pertemuan 9: Positivisme, Post-Positivisme, dan Kritik Terhadap Saintisme
-Pertemuan 10: Fenomenologi, Hermeneutika, dan Konstruktivisme dalam Studi Manajemen
-Pertemuan 11: Kritisime, Teori Kritis Frankfurt, dan Dekonstruksi Paradigma Pendidikan
-Pertemuan 12: Paradigma Manajemen Pendidikan Islam: Ontologi Kelembagaan dan Kepemimpinan
-Pertemuan 13: Filsafat Teknologi, Artificial Intelligence, dan Tantangan Etika Pendidikan Digital
-Pertemuan 14: Kebijakan Pendidikan Nasional dalam Perspektif Filsafat Humanisme Islam
-Pertemuan 15: Rekonstruksi Epistemologi Keilmuan Menghadapi Era Society 5.0
-Pertemuan 16: Evaluasi Akhir Semester (UAS): Presentasi dan Publikasi Proyek Video Edukasi AI`;
+    const currentCourseTitle = courseProfile?.courseTitle || courseForm.courseTitle || courseForm.name || 'Filsafat Ilmu';
+    const generatedRps = getDefaultRpsText(currentCourseTitle);
 
     setPastedRpsText(generatedRps);
     setIsProcessingSync(true);
@@ -262,7 +208,7 @@ Pertemuan 16: Evaluasi Akhir Semester (UAS): Presentasi dan Publikasi Proyek Vid
       if (res.success) {
         setSyncFeedback({
           type: 'success',
-          message: `✨ Berhasil generate RPS otomatis! 16 pertemuan lengkap untuk ${currentTitle} telah dibuat dan disinkronkan ke jadwal perkuliahan.`,
+          message: `✨ Berhasil generate RPS otomatis! 16 pertemuan lengkap untuk "${currentCourseTitle}" telah dibuat dan disinkronkan ke jadwal perkuliahan.`,
         });
         await onRefreshData();
       } else {

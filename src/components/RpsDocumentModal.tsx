@@ -177,28 +177,40 @@ export const RpsDocumentModal: React.FC<RpsDocumentModalProps> = ({
               <div className="p-3 bg-emerald-50/70 border border-emerald-200/70 rounded-xl">
                 <h4 className="font-bold text-emerald-950 text-xs mb-1 flex items-center space-x-1">
                   <CheckCircle2 className="w-3.5 h-3.5 text-emerald-700" />
-                  <span>Sikap & Integritas Akademik</span>
+                  <span>Sikap & Nilai Etika</span>
                 </h4>
                 <p className="text-xs text-emerald-900">
-                  Menjunjung tinggi nilai kejujuran ilmiah, etika orisinalitas riset, serta komitmen akademik dalam tata kelola keilmuan Islam.
+                  {courseTitle.toLowerCase().includes('kebijakan')
+                    ? 'Menjunjung tinggi integritas kebijakan publik, keadilan sosial, kejujuran intelektual, dan nilai amanah dalam tata kelola regulasi pendidikan Islam.'
+                    : courseTitle.toLowerCase().includes('konsep') || courseTitle.toLowerCase().includes('dasar')
+                    ? 'Meneladani kepemimpinan profetik (Siddiq, Amanah, Tabligh, Fathonah) dalam menggerakkan SDM serta iklim kerja madrasah dan pesantren.'
+                    : 'Menjunjung tinggi nilai kejujuran ilmiah, etika keilmuan, adab akademis, dan komitmen moral dalam menuntut ilmu pengetahuan.'}
                 </p>
               </div>
               <div className="p-3 bg-blue-50/70 border border-blue-200/70 rounded-xl">
                 <h4 className="font-bold text-blue-950 text-xs mb-1 flex items-center space-x-1">
                   <Award className="w-3.5 h-3.5 text-blue-700" />
-                  <span>Penguasaan Pengetahuan Ilmiah</span>
+                  <span>Penguasaan Pengetahuan (Knowledge)</span>
                 </h4>
                 <p className="text-xs text-blue-900">
-                  Menguasai landasan epistemologi, teori kebenaran, metodologi ilmiah deduktif-induktif, dan integrasi ilmu-agama.
+                  {courseTitle.toLowerCase().includes('kebijakan')
+                    ? 'Menguasai siklus kebijakan pendidikan publik (agenda setting, formulasi regulasi, model implementasi, evaluasi CIPP, dana BOS, dan digitalisasi madrasah).'
+                    : courseTitle.toLowerCase().includes('konsep') || courseTitle.toLowerCase().includes('dasar')
+                    ? 'Menguasai fungsi manajerial POAC, tata kelola madrasah/pesantren, kurikulum terpadu, manajemen pendidik, sarpras, dan pembiayaan BOSP.'
+                    : 'Menguasai landasan ontologi, epistemologi, aksiologi, metodologi penalaran deduktif-induktif, dan integrasi sains dengan wahyu ilahi.'}
                 </p>
               </div>
               <div className="p-3 bg-amber-50/70 border border-amber-200/70 rounded-xl">
                 <h4 className="font-bold text-amber-950 text-xs mb-1 flex items-center space-x-1">
                   <Clock className="w-3.5 h-3.5 text-amber-700" />
-                  <span>Keterampilan Tugas Mandiri</span>
+                  <span>Keterampilan Tugas Mandiri & Analisis</span>
                 </h4>
                 <p className="text-xs text-amber-900">
-                  Mampu menyusun makalah ilmiah berbobot dan slide presentasi PPT sistematis serta mempresentasikannya di hadapan forum kelas.
+                  {courseTitle.toLowerCase().includes('kebijakan')
+                    ? 'Mampu menyusun naskah ringkasan kebijakan (policy brief), bedah regulasi KMA/Permendikbud, serta slide presentasi rekomendasi strategis.'
+                    : courseTitle.toLowerCase().includes('konsep') || courseTitle.toLowerCase().includes('dasar')
+                    ? 'Mampu menyusun rencana strategis (Renstra), job description organisasi, serta instrumen audit supervisi madrasah/pesantren.'
+                    : 'Mampu menyusun makalah ilmiah kefilsafatan berbobot, slide presentasi PPT sistematis, serta aktif berdiskusi kritis dalam forum kelas.'}
                 </p>
               </div>
               <div className="p-3 bg-purple-50/70 border border-purple-200/70 rounded-xl">
@@ -207,7 +219,7 @@ export const RpsDocumentModal: React.FC<RpsDocumentModalProps> = ({
                   <span>Keterampilan Proyek Video Edukasi AI</span>
                 </h4>
                 <p className="text-xs text-purple-900">
-                  Mampu berkolaborasi dalam kelompok menghasilkan video edukasi ilmiah berbasis Generative AI yang etis dan berdampak.
+                  Mampu berkolaborasi dalam kelompok menghasilkan video edukasi ilmiah berbasis Generative AI yang etis, mendidik, dan aplikatif.
                 </p>
               </div>
             </div>

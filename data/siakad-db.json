@@ -65,7 +65,7 @@
     "classCode": "MPI 1",
     "academicYear": "2026/2027",
     "totalMeetings": 16,
-    "description": "Mata kuliah Filsafat Ilmu memberikan landasan filosofis, metodologis, dan etis bagi mahasiswa tingkat awal (Semester 1) Program Studi Manajemen Pendidikan Islam (MPI). Pembelajaran difokuskan pada penguasaan konsep dasar pemikiran logis, kritis, dan filosofis tanpa kalkulasi matematis rumit. Mahasiswa diajak memahami pilar utama filsafat ilmu (Ontologi, Epistemologi, dan Aksiologi), sejarah perkembangan pemikiran keilmuan, metodologi pencarian kebenaran ilmiah, serta integrasi nilai-nilai etika Keislaman (amanah, maslahah) dan kearifan lokal (local wisdom) dalam tata kelola pendidikan Islam."
+    "description": "Mata kuliah Filsafat Ilmu memberikan landasan filosofis, metodologis, dan etis bagi mahasiswa tingkat awal (Semester 1 / MPI 1) Program Studi Manajemen Pendidikan Islam (MPI). Pembelajaran difokuskan pada penguasaan konsep dasar pemikiran logis, kritis, dan filosofis tanpa kalkulasi matematis rumit. Mahasiswa diajak memahami pilar utama filsafat ilmu (Ontologi, Epistemologi, dan Aksiologi), sejarah perkembangan pemikiran keilmuan, metodologi pencarian kebenaran ilmiah, serta integrasi nilai-nilai etika Keislaman (amanah, maslahah) dan kearifan lokal (local wisdom) dalam tata kelola pendidikan Islam."
   },
   "students": [
     {
@@ -962,7 +962,7 @@
   "uasFormat": "proyek_video",
   "utsExamSettings": {
     "isOpen": true,
-    "instructions": "Ujian Tengah Semester (UTS) mata kuliah Filsafat Ilmu dibuka oleh Dosen Pengampu. Kerjakan 5 butir soal essay reflektif dengan cermat dan kumpulkan sebelum batas waktu berakhir.",
+    "instructions": "Ujian Tengah Semester (UTS) dibuka oleh Dosen Pengampu. Kerjakan 5 butir soal essay reflektif dengan cermat dan kumpulkan sebelum batas waktu berakhir.",
     "openedAt": "2026-08-10T08:00:00.000Z",
     "openedBy": "Risfa Tri Ulfa, S.Pd., M.Pd."
   },
@@ -1124,7 +1124,7 @@
   "activeHeartbeats": {},
   "dosenPassword": "filsafat2026",
   "messages": [],
-  "lastUpdated": "2026-10-01T01:52:47.070Z",
+  "lastUpdated": "2026-10-05T02:12:30.913Z",
   "allCoursesData": {
     "mk-filsafat-ilmu": {
       "id": "mk-filsafat-ilmu",
@@ -1144,7 +1144,7 @@
         "classCode": "MPI 1",
         "academicYear": "2026/2027",
         "totalMeetings": 16,
-        "description": "Mata kuliah Filsafat Ilmu memberikan landasan filosofis, metodologis, dan etis bagi mahasiswa tingkat awal (Semester 1) Program Studi Manajemen Pendidikan Islam (MPI). Pembelajaran difokuskan pada penguasaan konsep dasar pemikiran logis, kritis, dan filosofis tanpa kalkulasi matematis rumit. Mahasiswa diajak memahami pilar utama filsafat ilmu (Ontologi, Epistemologi, dan Aksiologi), sejarah perkembangan pemikiran keilmuan, metodologi pencarian kebenaran ilmiah, serta integrasi nilai-nilai etika Keislaman (amanah, maslahah) dan kearifan lokal (local wisdom) dalam tata kelola pendidikan Islam."
+        "description": "Mata kuliah Filsafat Ilmu memberikan landasan filosofis, metodologis, dan etis bagi mahasiswa tingkat awal (Semester 1 / MPI 1) Program Studi Manajemen Pendidikan Islam (MPI). Pembelajaran difokuskan pada penguasaan konsep dasar pemikiran logis, kritis, dan filosofis tanpa kalkulasi matematis rumit. Mahasiswa diajak memahami pilar utama filsafat ilmu (Ontologi, Epistemologi, dan Aksiologi), sejarah perkembangan pemikiran keilmuan, metodologi pencarian kebenaran ilmiah, serta integrasi nilai-nilai etika Keislaman (amanah, maslahah) dan kearifan lokal (local wisdom) dalam tata kelola pendidikan Islam."
       },
       "meetings": [
         {
@@ -2040,7 +2040,7 @@
       },
       "utsExamSettings": {
         "isOpen": true,
-        "instructions": "Ujian Tengah Semester (UTS) mata kuliah Filsafat Ilmu dibuka oleh Dosen Pengampu. Kerjakan 5 butir soal essay reflektif dengan cermat dan kumpulkan sebelum batas waktu berakhir.",
+        "instructions": "Ujian Tengah Semester (UTS) dibuka oleh Dosen Pengampu. Kerjakan 5 butir soal essay reflektif dengan cermat dan kumpulkan sebelum batas waktu berakhir.",
         "openedAt": "2026-08-10T08:00:00.000Z",
         "openedBy": "Risfa Tri Ulfa, S.Pd., M.Pd."
       },

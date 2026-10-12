@@ -201,6 +201,60 @@ export const IndividualTaskView: React.FC<IndividualTaskViewProps> = ({
     return (groups || []).find(g => g.name?.toLowerCase() === currentMeetingSchedule?.groupName?.toLowerCase());
   }, [currentMeetingSchedule, selectedMeetingNumber, groups, MEETING_GROUP_MAP]);
 
+  // Meeting Presenters (All students assigned to present in this meeting)
+  const meetingPresenters = useMemo(() => {
+    const matched = new Map<string, Student>();
+
+    // 1. Students explicitly assigned to this meetingNumber
+    (students || []).forEach(s => {
+      if ((Number(s.meetingNumber) || 2) === selectedMeetingNumber) {
+        matched.set(s.id, s);
+      }
+    });
+
+    // 2. Students in currentMeetingSchedule.presenters list (by name)
+    (currentMeetingSchedule?.presenters || []).forEach(name => {
+      const std = (students || []).find(s => s.name.trim().toLowerCase() === name.trim().toLowerCase());
+      if (std) matched.set(std.id, std);
+    });
+
+    // 3. Students in group.members (by name)
+    if (currentMeetingGroup?.members) {
+      currentMeetingGroup.members.forEach(name => {
+        const std = (students || []).find(s => s.name.trim().toLowerCase() === name.trim().toLowerCase());
+        if (std) matched.set(std.id, std);
+      });
+    }
+
+    return Array.from(matched.values());
+  }, [students, selectedMeetingNumber, currentMeetingSchedule, currentMeetingGroup]);
+
+  // Determine if this meeting is configured as a Group Presentation or Individual Task
+  const isMeetingGroupTask = useMemo(() => {
+    if (currentMeetingSchedule?.presentationFormat === 'individu') return false;
+    if (currentMeetingSchedule?.presentationFormat === 'kelompok') return true;
+    // Default: Meeting 2 is individual, Meetings 3-14 with groups are group presentation tasks
+    return Boolean(currentMeetingGroup) || (meetingPresenters?.length || 0) > 1;
+  }, [currentMeetingSchedule, currentMeetingGroup, meetingPresenters]);
+
+  // Check if any representative from this group has already submitted for this meeting
+  const existingGroupSubmission = useMemo(() => {
+    if (!isMeetingGroupTask) return undefined;
+
+    const presenterIds = new Set(meetingPresenters.map(p => p.id));
+    const presenterNames = new Set(meetingPresenters.map(p => p.name.trim().toLowerCase()));
+
+    return (effectiveSubmissions || []).find(s => {
+      if ((Number(s.meetingNumber) || 2) !== selectedMeetingNumber) return false;
+      // Match by group ID if specified
+      if (currentMeetingGroup && s.groupId && s.groupId === currentMeetingGroup.id) return true;
+      // Match by presenter studentId or studentName
+      if (presenterIds.has(s.studentId)) return true;
+      if (s.studentName && presenterNames.has(s.studentName.trim().toLowerCase())) return true;
+      return false;
+    });
+  }, [effectiveSubmissions, selectedMeetingNumber, isMeetingGroupTask, meetingPresenters, currentMeetingGroup]);
+
   const studentScheduledMeetings = useMemo(() => {
     if (!targetStudent) return [];
     const meetingSet = new Set<number>();
@@ -234,9 +288,18 @@ export const IndividualTaskView: React.FC<IndividualTaskViewProps> = ({
     );
   }, [effectiveSubmissions, targetStudent]);
 
-  // Submission for the active student in the currently selected meeting
+  // Submission for the active student in the currently selected meeting:
+  // If this is a Group Task and someone from the group submitted, all group members share that group submission
+  // If it's an Individual Task, each student has their own distinct submission
   const existingSubmission = useMemo(() => {
     if (!targetStudent) return undefined;
+
+    // 1. If group task and representative already submitted, use the group's submission
+    if (isMeetingGroupTask && existingGroupSubmission) {
+      return existingGroupSubmission;
+    }
+
+    // 2. Otherwise (Tugas Individu, or Group Task with no submission yet), search for target student's submission
     return (effectiveSubmissions || []).find(s =>
       s.studentId === targetStudent.id && (Number(s.meetingNumber) || 2) === selectedMeetingNumber
     ) || (effectiveSubmissions || []).find(s =>
@@ -245,7 +308,13 @@ export const IndividualTaskView: React.FC<IndividualTaskViewProps> = ({
         (Boolean(s.studentName) && s.studentName.toLowerCase().trim() === targetStudent.name.toLowerCase().trim())
       )
     );
-  }, [effectiveSubmissions, targetStudent, selectedMeetingNumber]);
+  }, [effectiveSubmissions, targetStudent, selectedMeetingNumber, isMeetingGroupTask, existingGroupSubmission]);
+
+  // Is this submission submitted by a peer representative (not the current targetStudent)?
+  const isSubmittedByPeerRepresentative = useMemo(() => {
+    if (!isMeetingGroupTask || !existingSubmission || !targetStudent) return false;
+    return existingSubmission.studentId !== targetStudent.id;
+  }, [isMeetingGroupTask, existingSubmission, targetStudent]);
 
   // Form states
   const [pptType, setPptType] = useState<'link' | 'file'>(existingSubmission?.pptType || 'link');
@@ -530,6 +599,7 @@ export const IndividualTaskView: React.FC<IndividualTaskViewProps> = ({
     setErrorMsg(null);
     setSubmitSuccessMsg(null);
 
+    const isGroupSub = presentationType === 'kelompok' || isMeetingGroupTask;
     const currentRpsPart =
       selectedMeetingNumber === targetStudent.meetingNumber && targetStudent.rpsPart
         ? targetStudent.rpsPart
@@ -542,7 +612,11 @@ export const IndividualTaskView: React.FC<IndividualTaskViewProps> = ({
       rpsPart: currentRpsPart,
       topic: topic.trim() || currentMeetingSchedule?.title || targetStudent.topic,
       partnerName: partnerName.trim() || undefined,
-      presentationType,
+      presentationType: isGroupSub ? 'kelompok' : 'individu',
+      groupId: isGroupSub && currentMeetingGroup ? currentMeetingGroup.id : undefined,
+      groupName: isGroupSub && currentMeetingGroup ? currentMeetingGroup.name : undefined,
+      groupMembers: isGroupSub && currentMeetingGroup ? currentMeetingGroup.members : undefined,
+      representativeName: isGroupSub ? targetStudent.name : undefined,
       meetingNumber: selectedMeetingNumber,
       submissionChoice,
       pptType,
@@ -632,35 +706,7 @@ export const IndividualTaskView: React.FC<IndividualTaskViewProps> = ({
     }
   };
 
-  // Meeting Presenters & Group Management (Kelompok PPT/Makalah Ditentukan Dosen / RPS 10 Kelompok)
-  const meetingPresenters = useMemo(() => {
-    const matched = new Map<string, Student>();
-
-    // 1. Students explicitly assigned to this meetingNumber
-    (students || []).forEach(s => {
-      if ((Number(s.meetingNumber) || 2) === selectedMeetingNumber) {
-        matched.set(s.id, s);
-      }
-    });
-
-    // 2. Students in currentMeetingSchedule.presenters list (by name)
-    (currentMeetingSchedule?.presenters || []).forEach(name => {
-      const std = (students || []).find(s => s.name.trim().toLowerCase() === name.trim().toLowerCase());
-      if (std) matched.set(std.id, std);
-    });
-
-    // 3. Students in group.members (by name)
-    if (currentMeetingGroup?.members) {
-      currentMeetingGroup.members.forEach(name => {
-        const std = (students || []).find(s => s.name.trim().toLowerCase() === name.trim().toLowerCase());
-        if (std) matched.set(std.id, std);
-      });
-    }
-
-    return Array.from(matched.values());
-  }, [students, selectedMeetingNumber, currentMeetingSchedule, currentMeetingGroup]);
-
-  const isGroupFormat = presentationType === 'kelompok' || (meetingPresenters?.length || 0) > 1 || Boolean(currentMeetingGroup);
+  const isGroupFormat = presentationType === 'kelompok' || isMeetingGroupTask;
   const [showAddPresenterModal, setShowAddPresenterModal] = useState(false);
   const [selectedStudentIdToAdd, setSelectedStudentIdToAdd] = useState('');
   const [customStudentNameToAdd, setCustomStudentNameToAdd] = useState('');
@@ -1554,6 +1600,19 @@ export const IndividualTaskView: React.FC<IndividualTaskViewProps> = ({
                 )}
               </div>
 
+              {/* Notice for multiple presentations */}
+              {studentScheduledMeetings.length > 1 && (
+                <div className="p-3 bg-amber-50 border border-amber-300 rounded-xl text-xs text-amber-950 space-y-1">
+                  <div className="font-bold flex items-center gap-1.5 text-amber-900">
+                    <Sparkles size={14} className="text-amber-600 shrink-0" />
+                    <span>Tampil 2 Kali ({studentScheduledMeetings.map(m => `Pertemuan ${m}`).join(' & ')})</span>
+                  </div>
+                  <p className="text-[11px] leading-relaxed text-amber-800">
+                    Mahasiswa ini memiliki 2 jadwal presentasi. Pengumpulan tugas dilakukan <strong>2 kali secara terpisah</strong> untuk masing-masing pertemuan, jangan disatukan.
+                  </p>
+                </div>
+              )}
+
               <div className="p-3 bg-slate-50 rounded-xl border border-slate-200 space-y-1.5">
                 <div>
                   <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wide block">
@@ -1812,24 +1871,69 @@ export const IndividualTaskView: React.FC<IndividualTaskViewProps> = ({
 
                   {/* Mode Satu Kali Kirim Notice (Hanya Mahasiswa) */}
                   {!isDosen && (
-                    <div className="p-3.5 bg-indigo-50 border border-indigo-200 rounded-xl flex items-start gap-2.5">
-                      <Lock size={16} className="text-indigo-700 shrink-0 mt-0.5" />
-                      <div className="space-y-1">
-                        <div className="flex items-center gap-2">
-                          <span className="text-[10px] font-black uppercase tracking-wider text-indigo-900 bg-indigo-100 px-2 py-0.5 rounded">
-                            FORMULIR TERKUNCI (MODE SATU KALI KIRIM)
-                          </span>
-                          <span className="text-xs font-bold text-indigo-950">
-                            Pertemuan #{selectedMeetingNumber}
-                          </span>
+                    <div className="space-y-3">
+                      {isSubmittedByPeerRepresentative ? (
+                        <div className="p-4 bg-gradient-to-r from-indigo-950 via-slate-900 to-indigo-950 text-white rounded-xl border-2 border-indigo-400 shadow-md space-y-2">
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <span className="text-[10px] font-black uppercase tracking-wider bg-amber-400 text-slate-950 px-2.5 py-0.5 rounded-full shadow-xs">
+                              TUGAS KELOMPOK TERKUMPUL (SATU PERWAKILAN)
+                            </span>
+                            <span className="text-xs text-indigo-200 font-bold">
+                              {currentMeetingGroup?.name || `Kelompok Pertemuan ${selectedMeetingNumber}`}
+                            </span>
+                          </div>
+                          <h4 className="text-sm font-bold text-white flex items-center gap-1.5">
+                            <Users size={16} className="text-indigo-400" />
+                            <span>Tugas Kelompok Telah Dikirimkan oleh Perwakilan: {existingSubmission.studentName}</span>
+                          </h4>
+                          <p className="text-xs text-slate-200 leading-relaxed">
+                            Sesuai aturan perkuliahan, <strong>hanya satu perwakilan saja yang mengirimkan tugas kelompok</strong>, anggota kelompok lainnya tidak perlu mengirim ulang. Berkas yang dikirimkan mewakili seluruh anggota kelompok: <strong>{meetingPresenters.map(p => p.name).join(', ')}</strong>.
+                          </p>
+                          <p className="text-[11px] text-emerald-300 font-medium pt-1 border-t border-white/10">
+                            ✓ Status tugas Anda dan rekan kelompok sudah tercatat aman di sistem dan dapat langsung dinilai oleh Dosen Pengampu.
+                          </p>
                         </div>
-                        <p className="text-xs text-indigo-900 leading-relaxed">
-                          Tugas presentasi Anda untuk <strong>Pertemuan #{selectedMeetingNumber}</strong> telah berhasil dikirim dan tersimpan permanen di database SIAKAD. Sesuai aturan akademik, pengiriman berlaku <em>satu kali kirim</em>.
-                        </p>
-                        <p className="text-[11px] text-amber-900 bg-amber-50 p-2 rounded border border-amber-200 leading-relaxed mt-1">
-                          <strong>Fitur Perbaikan (Revisi):</strong> Mahasiswa hanya dapat mengunggah ulang jika Dosen Pengampu telah <em>mereset atau membuka izin revisi</em> tugas sebelumnya di sistem.
-                        </p>
-                      </div>
+                      ) : isMeetingGroupTask ? (
+                        <div className="p-3.5 bg-indigo-50 border border-indigo-200 rounded-xl flex items-start gap-2.5">
+                          <Users size={16} className="text-indigo-700 shrink-0 mt-0.5" />
+                          <div className="space-y-1">
+                            <div className="flex items-center gap-2">
+                              <span className="text-[10px] font-black uppercase tracking-wider text-indigo-900 bg-indigo-100 px-2 py-0.5 rounded">
+                                PENGIRIM PERWAKILAN KELOMPOK
+                              </span>
+                              <span className="text-xs font-bold text-indigo-950">
+                                {currentMeetingGroup?.name || `Kelompok Pertemuan ${selectedMeetingNumber}`}
+                              </span>
+                            </div>
+                            <p className="text-xs text-indigo-900 leading-relaxed">
+                              Anda telah mengumpulkan tugas ini sebagai <strong>Perwakilan Kelompok</strong> mewakili anggota: <strong>{meetingPresenters.map(p => p.name).join(', ')}</strong>. Seluruh anggota kelompok lainnya otomatis tercatat telah mengumpulkan.
+                            </p>
+                            <p className="text-[11px] text-amber-900 bg-amber-50 p-2 rounded border border-amber-200 leading-relaxed mt-1">
+                              <strong>Fitur Perbaikan (Revisi):</strong> Mahasiswa hanya dapat mengunggah ulang jika Dosen Pengampu telah <em>mereset atau membuka izin revisi</em> tugas sebelumnya di sistem.
+                            </p>
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="p-3.5 bg-slate-100 border border-slate-300 rounded-xl flex items-start gap-2.5">
+                          <Lock size={16} className="text-slate-700 shrink-0 mt-0.5" />
+                          <div className="space-y-1">
+                            <div className="flex items-center gap-2">
+                              <span className="text-[10px] font-black uppercase tracking-wider text-slate-800 bg-slate-200 px-2 py-0.5 rounded">
+                                TUGAS INDIVIDU TERKUNCI (SATU KALI KIRIM)
+                              </span>
+                              <span className="text-xs font-bold text-slate-900">
+                                Pertemuan #{selectedMeetingNumber}
+                              </span>
+                            </div>
+                            <p className="text-xs text-slate-800 leading-relaxed">
+                              Tugas mandiri (individu) Anda untuk <strong>Pertemuan #{selectedMeetingNumber}</strong> telah berhasil dikirim dan tersimpan permanen di database SIAKAD. Sesuai aturan akademik, pengiriman berlaku <em>satu kali kirim</em>.
+                            </p>
+                            <p className="text-[11px] text-amber-900 bg-amber-50 p-2 rounded border border-amber-200 leading-relaxed mt-1">
+                              <strong>Fitur Perbaikan (Revisi):</strong> Mahasiswa hanya dapat mengunggah ulang jika Dosen Pengampu telah <em>mereset atau membuka izin revisi</em> tugas sebelumnya di sistem.
+                            </p>
+                          </div>
+                        </div>
+                      )}
                     </div>
                   )}
 
@@ -2296,6 +2400,48 @@ export const IndividualTaskView: React.FC<IndividualTaskViewProps> = ({
                 <div className="p-3.5 bg-rose-50 border border-rose-300 rounded-xl text-xs text-rose-900 flex items-start gap-2">
                   <AlertCircle size={16} className="text-rose-600 flex-shrink-0 mt-0.5" />
                   <div>{errorMsg}</div>
+                </div>
+              )}
+
+              {/* Guidance Banner: Satu Perwakilan Kelompok vs Individu */}
+              {isMeetingGroupTask ? (
+                <div className="p-3.5 bg-gradient-to-r from-indigo-950 via-slate-900 to-indigo-950 text-white rounded-xl border border-indigo-400/50 shadow-xs flex items-start gap-3">
+                  <div className="w-8 h-8 rounded-lg bg-amber-400 text-slate-950 flex items-center justify-center font-bold text-xs shrink-0 mt-0.5">
+                    👥
+                  </div>
+                  <div className="space-y-1">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <span className="text-[10px] font-black uppercase tracking-wider bg-amber-400 text-slate-950 px-2 py-0.5 rounded-full">
+                        ATURAN TUGAS KELOMPOK
+                      </span>
+                      <span className="text-xs font-bold text-indigo-200">
+                        Cukup 1 Perwakilan Pengunggah
+                      </span>
+                    </div>
+                    <p className="text-xs text-slate-200 leading-relaxed">
+                      Hanya <strong>satu perwakilan saja yang mengirimkan tugas</strong> untuk kelompok ini ({currentMeetingGroup?.name || 'Kelompok'}).
+                      Setelah berhasil dikirim oleh Anda ({targetStudent.name}) atau rekan Anda, formulir anggota kelompok lainnya ({meetingPresenters.map(p => p.name).join(', ')}) akan otomatis terkunci dan tugas langsung tersimpan di portal dosen.
+                    </p>
+                  </div>
+                </div>
+              ) : (
+                <div className="p-3.5 bg-slate-100 rounded-xl border border-slate-300 text-slate-800 flex items-start gap-3">
+                  <div className="w-8 h-8 rounded-lg bg-slate-800 text-white flex items-center justify-center font-bold text-xs shrink-0 mt-0.5">
+                    👤
+                  </div>
+                  <div className="space-y-1">
+                    <div className="flex items-center gap-2">
+                      <span className="text-[10px] font-black uppercase tracking-wider bg-slate-800 text-white px-2 py-0.5 rounded-full">
+                        ATURAN TUGAS INDIVIDU
+                      </span>
+                      <span className="text-xs font-bold text-slate-900">
+                        Penugasan Mandiri
+                      </span>
+                    </div>
+                    <p className="text-xs text-slate-700 leading-relaxed">
+                      Ini adalah tugas individu. Setiap mahasiswa wajib mengunggah tugas Makalah & PPT secara mandiri untuk Pertemuan #{selectedMeetingNumber}.
+                    </p>
+                  </div>
                 </div>
               )}
 
@@ -2976,7 +3122,15 @@ export const IndividualTaskView: React.FC<IndividualTaskViewProps> = ({
                 <AlertCircle size={18} className="text-amber-600 dark:text-amber-400 shrink-0 mt-0.5" />
                 <div className="text-[11px] leading-relaxed">
                   <strong className="font-bold block mb-0.5">PERINGATAN ATURAN PENGUMPULAN:</strong>
-                  Sesuai kebijakan akademik SIAKAD, pengumpulan tugas Pertemuan {selectedMeetingNumber} ini bersifat <strong>Satu Kali Kirim (One-Time Submit)</strong>. Setelah dikirim, formulir pertemuan ini akan langsung terkunci permanen dan Anda tidak dapat mengganti file secara mandiri kecuali Dosen membuka kunci status tugas Anda.
+                  {isMeetingGroupTask ? (
+                    <span>
+                      Anda mengirimkan tugas ini sebagai <strong>Perwakilan Kelompok ({currentMeetingGroup?.name || 'Kelompok'})</strong> mewakili ({meetingPresenters.map(p => p.name).join(', ')}). Sesuai aturan akademik, <strong>hanya satu perwakilan saja yang mengirimkan tugas kelompok</strong>. Setelah dikirim, formulir seluruh anggota kelompok akan terkunci otomatis (Satu Kali Kirim) dan tugas langsung terhubung ke portal Dosen.
+                    </span>
+                  ) : (
+                    <span>
+                      Ini adalah <strong>Tugas Individu</strong> untuk Pertemuan {selectedMeetingNumber}. Pengiriman bersifat <strong>Satu Kali Kirim (One-Time Submit)</strong>. Setelah dikirim, formulir pertemuan ini akan langsung terkunci permanen.
+                    </span>
+                  )}
                 </div>
               </div>
             </div>

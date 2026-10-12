@@ -11,8 +11,10 @@ import {
   Award,
   GraduationCap,
   HeartHandshake,
+  Zap,
 } from 'lucide-react';
 import { Student } from '../types';
+import { getActivityTier } from './StudentProfileModal';
 
 export interface EducationalQuote {
   id: number;
@@ -152,12 +154,14 @@ interface DailyMotivationCardProps {
   currentStudent?: Student | null;
   onOpenMessageModal: () => void;
   onOpenStudentSelect?: () => void;
+  onOpenProfile?: () => void;
 }
 
 export const DailyMotivationCard: React.FC<DailyMotivationCardProps> = ({
   currentStudent,
   onOpenMessageModal,
   onOpenStudentSelect,
+  onOpenProfile,
 }) => {
   // Compute daily quote based on local calendar date
   const getTodayQuoteIndex = (): number => {
@@ -286,6 +290,43 @@ export const DailyMotivationCard: React.FC<DailyMotivationCardProps> = ({
           </div>
 
         </div>
+
+        {/* Student Activity Points Motivation Banner */}
+        {currentStudent && (
+          <div className="mb-5 p-3.5 sm:p-4 rounded-xl bg-gradient-to-r from-amber-500/20 via-emerald-500/15 to-teal-500/20 border border-amber-400/40 backdrop-blur-md flex flex-wrap items-center justify-between gap-3 shadow-md">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-amber-400 to-amber-600 text-slate-950 flex items-center justify-center font-black shadow-sm shrink-0">
+                <Zap className="w-5 h-5 fill-slate-950" />
+              </div>
+              <div>
+                <div className="flex flex-wrap items-center gap-2">
+                  <span className="text-xs font-bold text-amber-300">Poin Keaktifan Saya:</span>
+                  <span className="text-sm sm:text-base font-black font-mono text-amber-300 bg-slate-950/70 px-2.5 py-0.5 rounded-lg border border-amber-400/40">
+                    {currentStudent.activityPoints || 0} Poin
+                  </span>
+                  <span className="text-xs font-semibold px-2.5 py-0.5 rounded-lg bg-white/10 text-emerald-200 border border-white/15 inline-flex items-center gap-1">
+                    <span>{getActivityTier(currentStudent.activityPoints || 0).icon}</span>
+                    <span>{getActivityTier(currentStudent.activityPoints || 0).title}</span>
+                  </span>
+                </div>
+                <p className="text-[11px] text-emerald-100/90 mt-1">
+                  {currentStudent.activityPointLogs && currentStudent.activityPointLogs.length > 0
+                    ? `Catatan Dosen Terbaru: "${currentStudent.activityPointLogs[0].reason}" (${currentStudent.activityPointLogs[0].points > 0 ? '+' : ''}${currentStudent.activityPointLogs[0].points} Poin)`
+                    : 'Terus aktif bertanya, mengemukakan argumen kritis, dan menanggapi diskusi untuk meraih gelar Cendekia!'}
+                </p>
+              </div>
+            </div>
+
+            <button
+              type="button"
+              onClick={onOpenProfile}
+              className="px-3.5 py-2 bg-gradient-to-r from-amber-400 to-amber-500 hover:from-amber-300 hover:to-amber-400 text-slate-950 text-xs font-extrabold rounded-xl transition-all shadow-md flex items-center gap-1.5 cursor-pointer ml-auto sm:ml-0 active:scale-95"
+            >
+              <Sparkles size={13} className="text-slate-950" />
+              <span>Lihat Rincian Poin & Pangkat</span>
+            </button>
+          </div>
+        )}
 
         {/* Main Quote Block */}
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 items-center">

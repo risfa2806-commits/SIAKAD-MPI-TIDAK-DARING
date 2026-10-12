@@ -13,6 +13,17 @@ import {
 import { AttendanceRecapModal } from './AttendanceRecapModal';
 import { AttendanceExportModal } from './AttendanceExportModal';
 import {
+  ResponsiveContainer,
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip as RechartsTooltip,
+  Legend as RechartsLegend,
+  Cell,
+} from 'recharts';
+import {
   Calendar,
   CheckCircle,
   AlertCircle,
@@ -33,6 +44,10 @@ import {
   Loader2,
   SlidersHorizontal,
   UserPlus,
+  BarChart3,
+  TrendingUp,
+  ChevronDown,
+  ChevronUp,
 } from 'lucide-react';
 
 interface AttendanceViewProps {
@@ -70,9 +85,11 @@ export const AttendanceView: React.FC<AttendanceViewProps> = ({
 
   // Persistent local attendance state to guarantee immediate UI updates on click,
   // eliminate UI mismatches, and ensure 'Sudah Absen' + disabled state persist across re-renders.
+  // Isolated per course code/title so different MK & semester rosters never clash!
+  const courseStorageKey = `siakad_local_attendance_${courseProfile?.courseCode || courseProfile?.courseTitle || 'default'}`;
   const [localAttendance, setLocalAttendance] = useState<Record<number, Record<string, AttendanceStatus>>>(() => {
     try {
-      const saved = localStorage.getItem('siakad_local_attendance_v1');
+      const saved = localStorage.getItem(courseStorageKey);
       if (saved && (saved.trim().startsWith('{') || saved.trim().startsWith('['))) {
         return JSON.parse(saved);
       }
@@ -84,11 +101,16 @@ export const AttendanceView: React.FC<AttendanceViewProps> = ({
 
   useEffect(() => {
     try {
-      localStorage.setItem('siakad_local_attendance_v1', JSON.stringify(localAttendance));
+      localStorage.setItem(courseStorageKey, JSON.stringify(localAttendance));
     } catch (e) {
       console.error(e);
     }
-  }, [localAttendance]);
+  }, [localAttendance, courseStorageKey]);
+
+  // Recharts Bar Chart Visualisation state
+  const [chartMode, setChartMode] = useState<'composition' | 'rate'>('composition');
+  const [isChartCollapsed, setIsChartCollapsed] = useState(false);
+  const [isHeaderCompact, setIsHeaderCompact] = useState(false);
 
   // Merge server attendance with immediate local attendance overrides
   const effectiveAttendance = useMemo(() => {
@@ -200,6 +222,101 @@ export const AttendanceView: React.FC<AttendanceViewProps> = ({
     meetings,
     attendance: effectiveAttendance,
     grades,
+  };
+
+  // Recharts: Calculate meeting attendance trends across 16 meetings
+  const meetingChartData = useMemo(() => {
+    const totalEnrolled = students.length || 1;
+    return (meetings || []).map((m) => {
+      const mAtt = effectiveAttendance[m.meetingNumber] || {};
+      let hadir = 0;
+      let izin = 0;
+      let sakit = 0;
+      let alfa = 0;
+      let belum = 0;
+
+      students.forEach((s) => {
+        const st = mAtt[s.id] || 'BELUM';
+        if (st === 'H') hadir++;
+        else if (st === 'I') izin++;
+        else if (st === 'S') sakit++;
+        else if (st === 'A') alfa++;
+        else belum++;
+      });
+
+      const rate = totalEnrolled > 0 ? Math.round((hadir / totalEnrolled) * 100) : 0;
+      return {
+        meetingNumber: m.meetingNumber,
+        label: `P${m.meetingNumber}`,
+        fullTitle: m.title,
+        dateStr: m.dateStr,
+        hadir,
+        izin,
+        sakit,
+        alfa,
+        belum,
+        rate,
+        totalEnrolled,
+      };
+    });
+  }, [meetings, effectiveAttendance, students]);
+
+  // Overall attendance statistics across all 16 meetings
+  const chartSummaryStats = useMemo(() => {
+    const totalEnrolled = students.length || 1;
+    let totalHadirOverall = 0;
+    let meetingsWithAttendance = 0;
+    let highestAttendanceMeeting = 1;
+    let highestAttendanceCount = 0;
+
+    meetingChartData.forEach((item) => {
+      totalHadirOverall += item.hadir;
+      if (item.hadir > 0 || item.izin > 0 || item.sakit > 0 || item.alfa > 0) {
+        meetingsWithAttendance++;
+      }
+      if (item.hadir >= highestAttendanceCount) {
+        highestAttendanceCount = item.hadir;
+        highestAttendanceMeeting = item.meetingNumber;
+      }
+    });
+
+    const divisor = (meetingsWithAttendance || 1) * totalEnrolled;
+    const avgAttendancePercent = Math.min(100, Math.round((totalHadirOverall / divisor) * 100));
+
+    return {
+      avgAttendancePercent,
+      highestAttendanceMeeting,
+      highestAttendanceCount,
+      totalEnrolled,
+      meetingsCount: meetings.length,
+    };
+  }, [meetingChartData, students.length, meetings.length]);
+
+  const CustomChartTooltip = ({ active, payload }: any) => {
+    if (active && payload && payload.length) {
+      const data = payload[0].payload;
+      return (
+        <div className="bg-slate-900 text-white p-3 rounded-xl shadow-xl border border-slate-700 text-xs max-w-xs z-50">
+          <div className="flex items-center justify-between gap-2 border-b border-slate-700 pb-1.5 mb-2">
+            <span className="font-black text-emerald-400">Pertemuan #{data.meetingNumber}</span>
+            <span className="text-[10px] text-slate-300 font-medium">{data.dateStr}</span>
+          </div>
+          <p className="font-semibold text-slate-200 line-clamp-1 mb-2 text-[11px]">{data.fullTitle}</p>
+          <div className="grid grid-cols-2 gap-x-3 gap-y-1 text-[11px]">
+            <span className="text-emerald-300">● Hadir (H): <strong>{data.hadir}</strong></span>
+            <span className="text-blue-300">● Izin (I): <strong>{data.izin}</strong></span>
+            <span className="text-amber-300">● Sakit (S): <strong>{data.sakit}</strong></span>
+            <span className="text-rose-300">● Alfa (A): <strong>{data.alfa}</strong></span>
+          </div>
+          <div className="mt-2 pt-1.5 border-t border-slate-700 flex items-center justify-between text-[11px]">
+            <span className="text-slate-400">Tingkat Hadir:</span>
+            <span className="font-black text-emerald-400">{data.rate}% ({data.hadir}/{data.totalEnrolled} Mhs)</span>
+          </div>
+          <p className="text-[9px] text-slate-400 italic mt-1 text-center">Klik batang untuk membuka presensi pertemuan ini</p>
+        </div>
+      );
+    }
+    return null;
   };
 
 
@@ -391,10 +508,10 @@ export const AttendanceView: React.FC<AttendanceViewProps> = ({
               <span>Sistem Presensi Kelas Tatap Muka (16 Pertemuan)</span>
             </div>
             <h2 className="text-xl sm:text-2xl font-bold text-slate-900 font-serif-title">
-              Presensi Perkuliahan Tatap Muka Filsafat Ilmu (16 Pertemuan)
+              Presensi Perkuliahan Tatap Muka {courseProfile?.courseTitle || 'Mata Kuliah'} (16 Pertemuan)
             </h2>
             <p className="text-xs sm:text-sm text-slate-600 mt-1 max-w-2xl leading-relaxed">
-              Mencatat kehadiran resmi 13 mahasiswa dengan 4 status: <strong>Hadir (H)</strong>, <strong>Izin (I)</strong>, <strong>Sakit (S)</strong>, dan <strong>Alfa (A)</strong> pada perkuliahan tatap muka di ruang kelas STAI Jarinabi. Diverifikasi langsung oleh Dosen Pengampu melalui Portal Dosen.
+              Mencatat kehadiran resmi {students.length} mahasiswa dengan 4 status: <strong>Hadir (H)</strong>, <strong>Izin (I)</strong>, <strong>Sakit (S)</strong>, dan <strong>Alfa (A)</strong> pada perkuliahan tatap muka di {courseProfile?.roomName || 'ruang kelas'} {courseProfile?.campusName || 'STAI Jarinabi'} ({courseProfile?.semester || 'Semester'}). Diverifikasi langsung oleh Dosen Pengampu melalui Portal Dosen.
             </p>
           </div>
 
@@ -521,6 +638,264 @@ export const AttendanceView: React.FC<AttendanceViewProps> = ({
             <span>{actionFeedback}</span>
           </div>
         )}
+
+        {/* VISUALISASI DATA RECHARTS: TREN KEHADIRAN 16 PERTEMUAN (GRAFIK BATANG) */}
+        <div className="mt-5 p-4 sm:p-5 bg-gradient-to-b from-slate-50 via-white to-slate-50/70 border border-slate-200 rounded-2xl shadow-xs space-y-4">
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 pb-3 border-b border-slate-200/80">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-emerald-700 text-white flex items-center justify-center shadow-xs shrink-0">
+                <BarChart3 size={20} />
+              </div>
+              <div>
+                <div className="flex items-center gap-2 flex-wrap">
+                  <h3 className="text-sm sm:text-base font-black text-slate-900 tracking-tight">
+                    Visualisasi Tren Kehadiran 16 Pertemuan
+                  </h3>
+                  <span className="text-[10px] bg-emerald-100 text-emerald-800 font-bold px-2 py-0.5 rounded-full border border-emerald-300/60 flex items-center gap-1">
+                    <TrendingUp size={11} />
+                    <span>Recharts Bar Chart</span>
+                  </span>
+                </div>
+                <p className="text-[11px] text-slate-500 mt-0.5">
+                  Grafik batang kehadiran perkuliahan tatap muka <strong>{courseProfile?.courseTitle || 'Mata Kuliah'}</strong> ({courseProfile?.semester || 'Semester'}). Klik salah satu batang untuk langsung memilih pertemuan.
+                </p>
+              </div>
+            </div>
+
+            {/* Chart Mode & Actions */}
+            <div className="flex items-center gap-2 flex-wrap">
+              <div className="bg-slate-200/80 p-0.5 rounded-xl flex items-center gap-1 text-xs">
+                <button
+                  type="button"
+                  onClick={() => setChartMode('composition')}
+                  className={`px-2.5 py-1 rounded-lg font-bold text-xs transition-all cursor-pointer ${
+                    chartMode === 'composition'
+                      ? 'bg-white text-slate-900 shadow-2xs'
+                      : 'text-slate-600 hover:text-slate-900'
+                  }`}
+                  title="Tampilkan grafik batang komposisi jumlah status Hadir, Izin, Sakit, Alfa"
+                >
+                  Komposisi (H/I/S/A)
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setChartMode('rate')}
+                  className={`px-2.5 py-1 rounded-lg font-bold text-xs transition-all cursor-pointer ${
+                    chartMode === 'rate'
+                      ? 'bg-emerald-700 text-white shadow-2xs'
+                      : 'text-slate-600 hover:text-slate-900'
+                  }`}
+                  title="Tampilkan grafik batang persentase kehadiran 0 - 100%"
+                >
+                  Persentase (%)
+                </button>
+              </div>
+
+              {/* Ekspor Laporan PDF Button */}
+              <button
+                type="button"
+                id="btn-chart-export-pdf"
+                onClick={handleDirectDownload16Pdf}
+                disabled={isDownloadingPdf}
+                className="flex items-center gap-1.5 px-3 py-1.5 bg-rose-700 hover:bg-rose-800 active:bg-rose-900 text-white rounded-xl text-xs font-bold transition-all shadow-xs cursor-pointer disabled:opacity-50"
+                title="Unduh laporan kehadiran 16 pertemuan lengkap dalam format PDF"
+              >
+                {isDownloadingPdf ? <Loader2 size={13} className="animate-spin" /> : <Printer size={13} />}
+                <span>{isDownloadingPdf ? 'Membuat PDF...' : 'Ekspor PDF'}</span>
+              </button>
+
+              {/* Toggle Perkecil / Perluas Tampilan Grafik */}
+              <button
+                type="button"
+                onClick={() => setIsChartCollapsed(prev => !prev)}
+                className="flex items-center gap-1 px-2.5 py-1.5 bg-white hover:bg-slate-100 text-slate-700 border border-slate-200 rounded-xl text-xs font-semibold transition-all cursor-pointer shadow-2xs"
+                title={isChartCollapsed ? 'Perluas tampilan grafik batang' : 'Perkecil grafik batang'}
+              >
+                {isChartCollapsed ? <ChevronDown size={14} /> : <ChevronUp size={14} />}
+                <span className="hidden sm:inline">{isChartCollapsed ? 'Buka Grafik' : 'Perkecil Grafik'}</span>
+              </button>
+            </div>
+          </div>
+
+          {!isChartCollapsed && (
+            <>
+              {/* Summary KPIs Row */}
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
+                <div className="bg-emerald-50/80 border border-emerald-200/80 rounded-xl p-3">
+                  <span className="text-[10px] font-bold text-emerald-800 uppercase tracking-wider block">
+                    Rata-Rata Kehadiran Kelas
+                  </span>
+                  <div className="flex items-baseline gap-1.5 mt-1">
+                    <span className="text-xl sm:text-2xl font-black text-emerald-950 font-serif-title">
+                      {chartSummaryStats.avgAttendancePercent}%
+                    </span>
+                    <span className="text-[10px] font-semibold text-emerald-700">
+                      {chartSummaryStats.avgAttendancePercent >= 80 ? '● Sangat Baik' : '● Perlu Perhatian'}
+                    </span>
+                  </div>
+                </div>
+
+                <div className="bg-blue-50/80 border border-blue-200/80 rounded-xl p-3">
+                  <span className="text-[10px] font-bold text-blue-800 uppercase tracking-wider block">
+                    Total Mahasiswa Terdaftar
+                  </span>
+                  <div className="flex items-baseline gap-1.5 mt-1">
+                    <span className="text-xl sm:text-2xl font-black text-blue-950 font-serif-title">
+                      {students.length}
+                    </span>
+                    <span className="text-[10px] font-semibold text-blue-700">Mahasiswa</span>
+                  </div>
+                </div>
+
+                <div className="bg-purple-50/80 border border-purple-200/80 rounded-xl p-3">
+                  <span className="text-[10px] font-bold text-purple-800 uppercase tracking-wider block">
+                    Pertemuan Hadir Terbanyak
+                  </span>
+                  <div className="flex items-baseline gap-1.5 mt-1">
+                    <span className="text-xl sm:text-2xl font-black text-purple-950 font-serif-title">
+                      Temu #{chartSummaryStats.highestAttendanceMeeting}
+                    </span>
+                    <span className="text-[10px] font-semibold text-purple-700">
+                      ({chartSummaryStats.highestAttendanceCount} Hadir)
+                    </span>
+                  </div>
+                </div>
+
+                <div className="bg-amber-50/80 border border-amber-200/80 rounded-xl p-3">
+                  <span className="text-[10px] font-bold text-amber-800 uppercase tracking-wider block">
+                    Pertemuan Terpilih Saat Ini
+                  </span>
+                  <div className="flex items-baseline gap-1.5 mt-1">
+                    <span className="text-xl sm:text-2xl font-black text-amber-950 font-serif-title">
+                      Temu #{selectedMeetingNumber}
+                    </span>
+                    <span className="text-[10px] font-semibold text-amber-800">
+                      ({hadirCount}/{students.length} Hadir)
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Recharts Bar Chart Container */}
+              <div className="w-full bg-white rounded-xl border border-slate-200/90 p-3 sm:p-4 pt-5">
+                <div className="h-[270px] sm:h-[310px] w-full">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <BarChart
+                      data={meetingChartData}
+                      margin={{ top: 10, right: 10, left: -20, bottom: 5 }}
+                      onClick={(state: any) => {
+                        if (state && state.activePayload && state.activePayload[0]) {
+                          const clickedMeeting = state.activePayload[0].payload.meetingNumber;
+                          setSelectedMeetingNumber(clickedMeeting);
+                          triggerActionFeedback(`Membuka presensi Pertemuan #${clickedMeeting}`);
+                        }
+                      }}
+                    >
+                      <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
+                      <XAxis
+                        dataKey="label"
+                        tick={{ fontSize: 11, fontWeight: 700, fill: '#475569' }}
+                        axisLine={{ stroke: '#cbd5e1' }}
+                        tickLine={false}
+                      />
+                      <YAxis
+                        tick={{ fontSize: 11, fill: '#64748b' }}
+                        axisLine={{ stroke: '#cbd5e1' }}
+                        tickLine={false}
+                        domain={chartMode === 'rate' ? [0, 100] : [0, 'auto']}
+                        unit={chartMode === 'rate' ? '%' : ''}
+                      />
+                      <RechartsTooltip content={<CustomChartTooltip />} cursor={{ fill: 'rgba(16, 185, 129, 0.08)' }} />
+                      <RechartsLegend wrapperStyle={{ fontSize: '11px', paddingTop: '10px' }} />
+
+                      {chartMode === 'composition' ? (
+                        <>
+                          <Bar
+                            dataKey="hadir"
+                            name="Hadir (H)"
+                            fill="#059669"
+                            radius={[3, 3, 0, 0]}
+                            cursor="pointer"
+                          />
+                          <Bar
+                            dataKey="izin"
+                            name="Izin (I)"
+                            fill="#3b82f6"
+                            radius={[3, 3, 0, 0]}
+                            cursor="pointer"
+                          />
+                          <Bar
+                            dataKey="sakit"
+                            name="Sakit (S)"
+                            fill="#f59e0b"
+                            radius={[3, 3, 0, 0]}
+                            cursor="pointer"
+                          />
+                          <Bar
+                            dataKey="alfa"
+                            name="Alfa (A)"
+                            fill="#ef4444"
+                            radius={[3, 3, 0, 0]}
+                            cursor="pointer"
+                          />
+                        </>
+                      ) : (
+                        <Bar
+                          dataKey="rate"
+                          name="% Kehadiran Kelas"
+                          fill="#0d9488"
+                          radius={[4, 4, 0, 0]}
+                          cursor="pointer"
+                        >
+                          {meetingChartData.map((entry) => (
+                            <Cell
+                              key={`cell-${entry.meetingNumber}`}
+                              fill={
+                                entry.meetingNumber === selectedMeetingNumber
+                                  ? '#047857'
+                                  : entry.rate >= 80
+                                  ? '#059669'
+                                  : entry.rate >= 60
+                                  ? '#f59e0b'
+                                  : '#ef4444'
+                              }
+                            />
+                          ))}
+                        </Bar>
+                      )}
+                    </BarChart>
+                  </ResponsiveContainer>
+                </div>
+
+                <div className="flex flex-col sm:flex-row items-center justify-between gap-2 mt-3 pt-3 border-t border-slate-100 text-[11px] text-slate-500">
+                  <div className="flex items-center gap-2">
+                    <span className="inline-block w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+                    <span>Klik pada salah satu batang untuk langsung beralih ke daftar presensi pertemuan tersebut.</span>
+                  </div>
+                  <div className="flex items-center gap-3 font-semibold text-slate-700">
+                    <button
+                      type="button"
+                      onClick={handlePrint16Pdf}
+                      className="text-rose-700 hover:text-rose-900 underline flex items-center gap-1 cursor-pointer"
+                    >
+                      <Printer size={12} />
+                      <span>Cetak Dialog PDF</span>
+                    </button>
+                    <span>•</span>
+                    <button
+                      type="button"
+                      onClick={handleDirectDownload16Pdf}
+                      className="text-emerald-700 hover:text-emerald-900 underline flex items-center gap-1 cursor-pointer"
+                    >
+                      <Download size={12} />
+                      <span>Unduh File .PDF</span>
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </>
+          )}
+        </div>
 
 
         {/* 16 Pertemuan Horizontal Selector Bar */}

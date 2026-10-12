@@ -410,12 +410,18 @@ export const NotificationCenterModal: React.FC<NotificationCenterModalProps> = (
                       </div>
 
                       <button
-                        className={`text-xs font-bold flex items-center gap-1 flex-shrink-0 self-center px-2.5 py-1.5 rounded-lg transition-colors ${
+                        type="button"
+                        onClick={() => {
+                          onMarkSingleRead(sub.id);
+                          onNavigateTab(sub.tabTarget || (sub.type === 'grade' ? 'nilai' : 'tugas-individu'));
+                          onClose();
+                        }}
+                        className={`text-xs font-bold flex items-center gap-1 flex-shrink-0 self-center px-2.5 py-1.5 rounded-lg transition-colors cursor-pointer ${
                           sub.type === 'grade'
                             ? 'bg-emerald-600 hover:bg-emerald-700 text-white shadow-2xs'
                             : 'bg-emerald-50 hover:bg-emerald-100 text-emerald-700'
                         }`}
-                        title="Buka tugas"
+                        title={sub.type === 'grade' ? 'Buka rekap nilai di tab Nilai' : 'Buka tugas di tab terkait'}
                       >
                         <span>{sub.type === 'grade' ? 'Lihat Nilai' : 'Lihat'}</span>
                         <ExternalLink size={12} />

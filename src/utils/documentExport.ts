@@ -1111,7 +1111,7 @@ export function generateAttendancePrintHtml(options: ExportAttendanceOptions): s
           <span>Pratinjau Resmi: Rekapitulasi Presensi Kehadiran Mahasiswa (A4 Landscape)</span>
         </div>
         <div style="display:flex; align-items:center; gap:8px;">
-          <button onclick="window.print()" style="background:#10b981; hover:background:#059669; color:#ffffff; border:none; padding:7px 18px; border-radius:8px; font-weight:700; font-size:12px; cursor:pointer; display:inline-flex; align-items:center; gap:6px; box-shadow:0 1px 3px rgba(0,0,0,0.2);">
+          <button onclick="window.print()" style="background:#10b981; color:#ffffff; border:none; padding:7px 18px; border-radius:8px; font-weight:700; font-size:12px; cursor:pointer; display:inline-flex; align-items:center; gap:6px; box-shadow:0 1px 3px rgba(0,0,0,0.2);">
             🖨️ Cetak / Simpan PDF Sekarang
           </button>
           <button onclick="window.close()" style="background:rgba(255,255,255,0.18); color:#ffffff; border:none; padding:7px 14px; border-radius:8px; font-weight:600; font-size:12px; cursor:pointer;">

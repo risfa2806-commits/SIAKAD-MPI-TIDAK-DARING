@@ -41,6 +41,7 @@ import {
   QuizQuestion,
   QuizSubmission,
   QuizSettings,
+  ActivityPointLog,
 } from './src/types';
 
 const app = express();
@@ -1514,7 +1515,16 @@ function loadDatabase(): SiakadDatabase {
             );
           }
           if (!s.phone) s.phone = initMatch?.phone || `08123456${(s.nim || '0000').slice(-4)}`;
+          if (s.activityPoints === undefined) {
+            s.activityPoints = initMatch?.activityPoints !== undefined ? initMatch.activityPoints : 25;
+          }
+          if (!s.activityPointLogs || !Array.isArray(s.activityPointLogs)) {
+            s.activityPointLogs = initMatch?.activityPointLogs ? [...initMatch.activityPointLogs] : [];
+          }
         });
+      }
+      if (!loaded.activityPointLogs) {
+        loaded.activityPointLogs = {};
       }
       if (!loaded.quizSettings) {
         loaded.quizSettings = INITIAL_DATABASE.quizSettings || {
@@ -1598,6 +1608,21 @@ function loadDatabase(): SiakadDatabase {
 function saveDatabase(): void {
   try {
     db.lastUpdated = new Date().toISOString();
+
+    // Ensure all changes to active course are mirrored into allCoursesData for cross-semester persistence
+    if (db.allCoursesData && db.activeCourseId && db.allCoursesData[db.activeCourseId]) {
+      if (db.students) db.allCoursesData[db.activeCourseId].students = db.students;
+      if (db.meetings) db.allCoursesData[db.activeCourseId].meetings = db.meetings;
+      if (db.groups) db.allCoursesData[db.activeCourseId].groups = db.groups;
+      if (db.attendance) db.allCoursesData[db.activeCourseId].attendance = db.attendance;
+      if (db.grades) db.allCoursesData[db.activeCourseId].grades = db.grades;
+      if (db.courseProfile) db.allCoursesData[db.activeCourseId].profile = db.courseProfile;
+      if (db.submissions) db.allCoursesData[db.activeCourseId].submissions = db.submissions;
+      if (db.utsSubmissions) db.allCoursesData[db.activeCourseId].utsSubmissions = db.utsSubmissions;
+      if (db.uasSubmissions) db.allCoursesData[db.activeCourseId].uasSubmissions = db.uasSubmissions;
+      if (db.quizSubmissions) db.allCoursesData[db.activeCourseId].quizSubmissions = db.quizSubmissions;
+    }
+
     const jsonStr = JSON.stringify(db, null, 2);
     // 1. Atomic write using temporary file to prevent partial write or corruption
     const tmpFile = `${DATA_FILE}.tmp.${Date.now()}`;
@@ -1791,24 +1816,78 @@ app.post('/api/submissions', (req, res) => {
     }
   }
 
-  // Check if student already has a submission for this specific meeting, update it or add new
+  // 1. Identify if this is a Group Task or Individual Task
   const targetMeetingNumber = Number(submissionData.meetingNumber) || 2;
-  const existingIndex = db.submissions.findIndex(
-    s => (s.id && submissionData.id && s.id === submissionData.id) ||
-         (s.studentId === submissionData.studentId && (Number(s.meetingNumber) || 2) === targetMeetingNumber)
-  );
+  const isGroupSubmission = submissionData.presentationType === 'kelompok' || Boolean(submissionData.groupId);
 
-  // Satu Kali Kirim: Prevent student from overwriting an existing submission unless Dosen has reset/removed it
+  const MEETING_TO_GROUP: Record<number, number> = {
+    3: 1, 4: 2, 5: 3, 6: 4, 7: 5, 9: 6, 10: 7, 12: 8, 13: 9, 14: 10
+  };
+
+  let targetGroup = submissionData.groupId ? (db.groups || []).find(g => g.id === Number(submissionData.groupId)) : undefined;
+  if (!targetGroup && isGroupSubmission) {
+    const mappedGId = MEETING_TO_GROUP[targetMeetingNumber];
+    if (mappedGId) {
+      targetGroup = (db.groups || []).find(g => g.id === mappedGId);
+    }
+  }
+
+  // Check existing submission:
+  // If Group: check if any submission exists for this group in this meeting
+  // If Individual: check strictly for this studentId in this meeting
+  let existingIndex = -1;
+  let existingGroupSub: IndividualSubmission | undefined = undefined;
+
+  if (isGroupSubmission && targetGroup) {
+    const groupMemberNames = new Set((targetGroup.members || []).map(m => m.trim().toLowerCase()));
+    const groupMemberIds = new Set(
+      (db.students || [])
+        .filter(s => groupMemberNames.has(s.name.trim().toLowerCase()) || s.groupId === targetGroup?.id)
+        .map(s => s.id)
+    );
+    groupMemberIds.add(submissionData.studentId);
+
+    existingIndex = db.submissions.findIndex(s =>
+      (Number(s.meetingNumber) || 2) === targetMeetingNumber && (
+        (s.groupId && s.groupId === targetGroup?.id) ||
+        (s.id && submissionData.id && s.id === submissionData.id) ||
+        groupMemberIds.has(s.studentId) ||
+        groupMemberNames.has((s.studentName || '').trim().toLowerCase())
+      )
+    );
+    if (existingIndex >= 0) {
+      existingGroupSub = db.submissions[existingIndex];
+    }
+  } else {
+    existingIndex = db.submissions.findIndex(
+      s => (s.id && submissionData.id && s.id === submissionData.id) ||
+           (s.studentId === submissionData.studentId && (Number(s.meetingNumber) || 2) === targetMeetingNumber)
+    );
+  }
+
+  // Satu Kali Kirim:
+  // If student is not dosen, prevent submitting if already submitted
   if (existingIndex >= 0 && !isDosenAuthorized(req)) {
+    if (isGroupSubmission && existingGroupSub && existingGroupSub.studentId !== submissionData.studentId) {
+      return res.status(403).json({
+        error: `Tugas Kelompok (${targetGroup?.name || 'Kelompok'}) Pertemuan ${targetMeetingNumber} sudah berhasil dikirimkan sebelumnya oleh perwakilan kelompok (${existingGroupSub.studentName}). Sesuai aturan akademik, hanya 1 perwakilan saja yang mengirimkan tugas kelompok, anggota lainnya tidak perlu mengirim ulang.`
+      });
+    }
+
     return res.status(403).json({
-      error: `Tugas presentasi Pertemuan ${targetMeetingNumber} sudah berhasil dikirimkan sebelumnya (Mode Satu Kali Kirim). Formulir pengiriman terkunci. Mahasiswa hanya dapat mengunggah ulang jika Dosen Pengampu telah mereset/menghapus tugas sebelumnya untuk keperluan perbaikan (revisi).`
+      error: `Tugas ${isGroupSubmission ? 'kelompok' : 'individu'} Pertemuan ${targetMeetingNumber} sudah berhasil dikirimkan sebelumnya (Mode Satu Kali Kirim). Formulir pengiriman terkunci. Mahasiswa hanya dapat mengunggah ulang jika Dosen Pengampu telah mereset/menghapus tugas sebelumnya untuk keperluan perbaikan (revisi).`
     });
   }
 
   const updatedSubmission: IndividualSubmission = {
     ...submissionData,
     meetingNumber: targetMeetingNumber,
-    id: submissionData.id || `sub-${Date.now()}-${Math.random().toString(36).substr(2, 5)}`,
+    id: (existingIndex >= 0 && existingGroupSub ? existingGroupSub.id : submissionData.id) || `sub-${Date.now()}-${Math.random().toString(36).substr(2, 5)}`,
+    groupId: targetGroup?.id || submissionData.groupId,
+    groupName: targetGroup?.name || submissionData.groupName,
+    groupMembers: targetGroup?.members || submissionData.groupMembers,
+    representativeName: submissionData.representativeName || submissionData.studentName,
+    presentationType: isGroupSubmission ? 'kelompok' : 'individu',
     pptUrl,
     pptFileData,
     makalahUrl,
@@ -1843,6 +1922,28 @@ app.post('/api/submissions', (req, res) => {
       letterGrade: 'A',
       notes: `Tugas Terkumpul: ${updatedSubmission.topic}`,
     };
+  }
+
+  // If group submission, sync notes to all members of the group
+  if (isGroupSubmission && targetGroup) {
+    const memberNames = new Set((targetGroup.members || []).map(m => m.trim().toLowerCase()));
+    (db.students || []).forEach(member => {
+      if (memberNames.has(member.name.trim().toLowerCase()) || member.groupId === targetGroup?.id) {
+        if (!db.grades[member.id]) {
+          db.grades[member.id] = {
+            attendanceScore: 100,
+            attitudeScore: 85,
+            individualScore: updatedSubmission.grade !== undefined ? updatedSubmission.grade : 85,
+            utsScore: 85,
+            uasScore: 85,
+            groupScore: 85,
+            finalScore: 85,
+            letterGrade: 'A',
+            notes: `Tugas Kelompok Terkumpul (${targetGroup.name}): ${updatedSubmission.topic}`,
+          };
+        }
+      }
+    });
   } else if (updatedSubmission.grade !== undefined) {
     db.grades[submissionData.studentId].individualScore = updatedSubmission.grade;
   }
@@ -2131,13 +2232,21 @@ app.post('/api/individual-grade', (req, res) => {
     return res.status(403).json({ error: 'Akses Ditolak: Hanya Dosen yang memiliki hak akses untuk memberikan nilai tugas individu!' });
   }
 
-  const { studentId, grade, feedback } = req.body;
+  const { studentId, submissionId, meetingNumber, grade, feedback } = req.body;
   if (!studentId) {
     return res.status(400).json({ error: 'studentId wajib disertakan' });
   }
 
   if (!db.submissions) db.submissions = [];
-  let sub = (db.submissions || []).find(s => s.studentId === studentId);
+  let sub = (db.submissions || []).find(s =>
+    (submissionId && s.id === submissionId) ||
+    (s.studentId === studentId && meetingNumber !== undefined && (Number(s.meetingNumber) || 2) === Number(meetingNumber))
+  );
+  if (!sub && !meetingNumber && !submissionId) {
+    // Fallback search by studentId only if meetingNumber/submissionId not specified
+    sub = (db.submissions || []).find(s => s.studentId === studentId);
+  }
+
   if (sub) {
     sub.grade = Number(grade);
     sub.feedback = feedback || '';
@@ -2145,13 +2254,14 @@ app.post('/api/individual-grade', (req, res) => {
   } else {
     // If student hadn't submitted a formal file yet, create submission record so grade is preserved permanently
     const std = (db.students || []).find(s => s.id === studentId || s.nim === studentId);
+    const targetMeeting = meetingNumber !== undefined ? Number(meetingNumber) : (std?.meetingNumber || 2);
     sub = {
-      id: `sub-${Date.now()}-${studentId}`,
+      id: submissionId || `sub-${Date.now()}-${studentId}`,
       studentId,
       studentName: std ? std.name : 'Mahasiswa',
-      rpsPart: std?.rpsPart || `Pertemuan ${std?.meetingNumber || 2}`,
+      rpsPart: std?.rpsPart || `Pertemuan ${targetMeeting}`,
       topic: std?.topic || 'Tugas Presentasi RPS',
-      meetingNumber: std?.meetingNumber || 2,
+      meetingNumber: targetMeeting,
       presentationType: 'individu',
       pptType: 'link',
       submittedAt: new Date().toISOString(),
@@ -2162,25 +2272,62 @@ app.post('/api/individual-grade', (req, res) => {
     db.submissions.push(sub);
   }
 
+  // Calculate composite individual score (average if multiple presentations for students appearing twice)
+  const gradedStudentSubs = (db.submissions || []).filter(
+    s => s.studentId === studentId && s.grade !== undefined && !isNaN(Number(s.grade))
+  );
+  const calculatedIndivScore = gradedStudentSubs.length > 0
+    ? Math.round(gradedStudentSubs.reduce((acc, curr) => acc + Number(curr.grade || 0), 0) / gradedStudentSubs.length)
+    : Number(grade);
+
   if (!db.grades) db.grades = {};
   if (!db.grades[studentId]) {
     db.grades[studentId] = {
       attendanceScore: 100,
       attitudeScore: 85,
-      individualScore: Number(grade),
+      individualScore: calculatedIndivScore,
       utsScore: 85,
       uasScore: 85,
       groupScore: 85,
       finalScore: 88,
       letterGrade: 'A-',
-      notes: feedback || `Nilai Tugas Presentasi: ${grade}`,
+      notes: feedback || `Nilai Tugas Presentasi: ${calculatedIndivScore}`,
     };
   } else {
-    db.grades[studentId].individualScore = Number(grade);
+    db.grades[studentId].individualScore = calculatedIndivScore;
     if (feedback) db.grades[studentId].notes = feedback;
   }
 
   recalculateStudentGrade(db.grades[studentId]);
+
+  // If this submission is for a presentation group, also apply the score to all members of that group
+  if (sub.presentationType === 'kelompok' && sub.groupId) {
+    const group = (db.groups || []).find(g => g.id === sub.groupId);
+    if (group && group.members) {
+      const memberNames = new Set(group.members.map(m => m.trim().toLowerCase()));
+      (db.students || []).forEach(member => {
+        if (memberNames.has(member.name.trim().toLowerCase()) || member.groupId === group.id) {
+          if (!db.grades[member.id]) {
+            db.grades[member.id] = {
+              attendanceScore: 100,
+              attitudeScore: 85,
+              individualScore: calculatedIndivScore,
+              utsScore: 85,
+              uasScore: 85,
+              groupScore: 85,
+              finalScore: 88,
+              letterGrade: 'A-',
+              notes: feedback || `Nilai Tugas Presentasi ${group.name}: ${calculatedIndivScore}`,
+            };
+          } else {
+            db.grades[member.id].individualScore = calculatedIndivScore;
+            if (feedback) db.grades[member.id].notes = feedback;
+          }
+          recalculateStudentGrade(db.grades[member.id]);
+        }
+      });
+    }
+  }
 
   if (db.allCoursesData && db.activeCourseId && db.allCoursesData[db.activeCourseId]) {
     db.allCoursesData[db.activeCourseId].submissions = db.submissions;
@@ -3706,6 +3853,158 @@ app.put('/api/students/:id', (req, res) => {
   res.json({ success: true, student });
 });
 
+// 10a-2b. Add or Adjust Student Activity Points (Poin Keaktifan) (Dosen Only)
+app.post('/api/students/:id/activity-points', (req, res) => {
+  if (!isDosenAuthorized(req)) {
+    return res.status(403).json({ error: 'Akses ditolak: Hanya Dosen yang berwenang menambah atau mengurangi Poin Keaktifan mahasiswa!' });
+  }
+
+  const { id } = req.params;
+  const student = (db.students || []).find(s => s.id === id || s.nim === id);
+  if (!student) {
+    return res.status(404).json({ error: 'Mahasiswa tidak ditemukan di database' });
+  }
+
+  const { points, reason, category, meetingNumber } = req.body;
+  const pointDelta = Number(points);
+  if (isNaN(pointDelta)) {
+    return res.status(400).json({ error: 'Nilai poin tidak valid' });
+  }
+
+  const logReason = typeof reason === 'string' && reason.trim()
+    ? reason.trim()
+    : (pointDelta >= 0 ? 'Poin Keaktifan Partisipasi Kelas' : 'Pengurangan Poin Keaktifan');
+
+  const dosenTitle = db.courseProfile?.name || 'Risfa Tri Ulfa, S.Pd., M.Pd.';
+
+  const newLog: ActivityPointLog = {
+    id: `act-${Date.now()}-${Math.random().toString(36).substr(2, 5)}`,
+    points: pointDelta,
+    reason: logReason,
+    category: category || (pointDelta >= 0 ? 'manual' : 'sikap'),
+    meetingNumber: meetingNumber ? Number(meetingNumber) : undefined,
+    timestamp: new Date().toISOString(),
+    dosenName: dosenTitle,
+  };
+
+  if (!student.activityPointLogs) student.activityPointLogs = [];
+  student.activityPointLogs.unshift(newLog);
+
+  // Recalculate or add total points (minimum 0)
+  const currentTotal = student.activityPoints !== undefined ? student.activityPoints : 0;
+  student.activityPoints = Math.max(0, currentTotal + pointDelta);
+
+  // Sync to database level map
+  if (!db.activityPointLogs) db.activityPointLogs = {};
+  db.activityPointLogs[student.id] = student.activityPointLogs;
+
+  // Sync to active course in allCoursesData if available
+  if (db.activeCourseId && db.allCoursesData && db.allCoursesData[db.activeCourseId]) {
+    const coursePayload = db.allCoursesData[db.activeCourseId];
+    if (coursePayload.students) {
+      const matchInCourse = coursePayload.students.find(s => s.id === student.id || s.nim === student.nim);
+      if (matchInCourse) {
+        matchInCourse.activityPoints = student.activityPoints;
+        matchInCourse.activityPointLogs = student.activityPointLogs;
+      }
+    }
+  }
+
+  saveDatabase();
+  res.json({
+    success: true,
+    student,
+    log: newLog,
+    totalPoints: student.activityPoints,
+    message: `Poin keaktifan mahasiswa ${student.name} berhasil diperbarui (${pointDelta > 0 ? '+' : ''}${pointDelta} poin).`,
+  });
+});
+
+// 10a-2c. Delete an Activity Point Log Entry (Dosen Only)
+app.delete('/api/students/:id/activity-points/:logId', (req, res) => {
+  if (!isDosenAuthorized(req)) {
+    return res.status(403).json({ error: 'Akses ditolak: Hanya Dosen yang berwenang mengelola log poin keaktifan!' });
+  }
+
+  const { id, logId } = req.params;
+  const student = (db.students || []).find(s => s.id === id || s.nim === id);
+  if (!student) {
+    return res.status(404).json({ error: 'Mahasiswa tidak ditemukan' });
+  }
+
+  if (!student.activityPointLogs) student.activityPointLogs = [];
+  const logIndex = student.activityPointLogs.findIndex(l => l.id === logId);
+  if (logIndex === -1) {
+    return res.status(404).json({ error: 'Catatan poin keaktifan tidak ditemukan' });
+  }
+
+  const removedLog = student.activityPointLogs[logIndex];
+  student.activityPointLogs.splice(logIndex, 1);
+
+  // Adjust total points
+  student.activityPoints = Math.max(0, (student.activityPoints || 0) - removedLog.points);
+
+  if (!db.activityPointLogs) db.activityPointLogs = {};
+  db.activityPointLogs[student.id] = student.activityPointLogs;
+
+  saveDatabase();
+  res.json({
+    success: true,
+    student,
+    totalPoints: student.activityPoints,
+    message: 'Catatan poin keaktifan berhasil dihapus.',
+  });
+});
+
+// 10a-2d. Bulk Add Activity Points (e.g. for an entire presentation group) (Dosen Only)
+app.post('/api/students/bulk-activity-points', (req, res) => {
+  if (!isDosenAuthorized(req)) {
+    return res.status(403).json({ error: 'Akses ditolak: Hanya Dosen yang berwenang memberikan poin masal!' });
+  }
+
+  const { studentIds, points, reason, category, meetingNumber } = req.body;
+  if (!Array.isArray(studentIds) || studentIds.length === 0) {
+    return res.status(400).json({ error: 'Daftar studentIds wajib disertakan' });
+  }
+
+  const pointDelta = Number(points);
+  if (isNaN(pointDelta)) {
+    return res.status(400).json({ error: 'Nilai poin tidak valid' });
+  }
+
+  const dosenTitle = db.courseProfile?.name || 'Risfa Tri Ulfa, S.Pd., M.Pd.';
+  let updatedCount = 0;
+
+  studentIds.forEach(sId => {
+    const student = (db.students || []).find(s => s.id === sId || s.nim === sId);
+    if (student) {
+      if (!student.activityPointLogs) student.activityPointLogs = [];
+      const log: ActivityPointLog = {
+        id: `act-${Date.now()}-${Math.random().toString(36).substr(2, 5)}`,
+        points: pointDelta,
+        reason: reason || 'Poin Keaktifan Kelompok Presentasi',
+        category: category || 'presentasi',
+        meetingNumber: meetingNumber ? Number(meetingNumber) : undefined,
+        timestamp: new Date().toISOString(),
+        dosenName: dosenTitle,
+      };
+      student.activityPointLogs.unshift(log);
+      student.activityPoints = Math.max(0, (student.activityPoints || 0) + pointDelta);
+
+      if (!db.activityPointLogs) db.activityPointLogs = {};
+      db.activityPointLogs[student.id] = student.activityPointLogs;
+      updatedCount++;
+    }
+  });
+
+  saveDatabase();
+  res.json({
+    success: true,
+    updatedCount,
+    message: `Berhasil menambahkan poin keaktifan ke ${updatedCount} mahasiswa.`,
+  });
+});
+
 // 10a-3. Delete Student (Dosen Only)
 app.delete('/api/students/:id', (req, res) => {
   if (!isDosenAuthorized(req)) {
@@ -4457,9 +4756,87 @@ app.post('/api/courses', async (req, res) => {
     db.rpsRawText = '';
   }
 
-  // Handle student roster separation
+  // Handle student roster separation (allows different custom student names per course/semester)
+  let parsedCustomStudents: Student[] = [];
   if (Array.isArray(customStudents) && customStudents.length > 0) {
-    roomStudents = customStudents;
+    parsedCustomStudents = customStudents.map((item, idx) => {
+      if (typeof item === 'string') {
+        const nameUpper = item.trim().toUpperCase().replace(/^[0-9]+[\.\-\)\s]+/, '').trim();
+        return {
+          id: `mhs-${Date.now()}-${idx + 1}-${Math.random().toString(36).substr(2, 4)}`,
+          nim: `2026${String(idx + 1).padStart(4, '0')}`,
+          name: nameUpper,
+          birthPlace: 'Pasuruan',
+          birthDate: '2000-01-01',
+          address: 'Kabupaten Pasuruan',
+          gender: nameUpper.includes('SARI') || nameUpper.includes('LESTARI') || nameUpper.includes('FATIMAH') || nameUpper.includes('DEWI') ? 'Perempuan' : 'Laki-laki',
+          phone: `08123456${String(idx + 1).padStart(4, '0')}`,
+          rpsPart: `Pertemuan ${((idx % 14) + 1)}`,
+          topic: `Materi Perkuliahan #${((idx % 14) + 1)}`,
+          meetingNumber: ((idx % 14) + 1),
+          groupId: (idx % 10) + 1,
+          createdAt: new Date().toISOString(),
+        };
+      }
+      return item;
+    });
+  } else if (typeof req.body.customStudentNames === 'string' && req.body.customStudentNames.trim()) {
+    const rawNames = req.body.customStudentNames
+      .split(/[\n,;]+/)
+      .map(s => s.trim().replace(/^[0-9]+[\.\-\)\s]+/, '').trim())
+      .filter(s => s.length > 1);
+    
+    parsedCustomStudents = rawNames.map((name, idx) => {
+      const nameUpper = name.toUpperCase();
+      return {
+        id: `mhs-${Date.now()}-${idx + 1}-${Math.random().toString(36).substr(2, 4)}`,
+        nim: `2026${String(idx + 1).padStart(4, '0')}`,
+        name: nameUpper,
+        birthPlace: 'Pasuruan',
+        birthDate: '2000-01-01',
+        address: 'Kabupaten Pasuruan',
+        gender: nameUpper.includes('SARI') || nameUpper.includes('LESTARI') || nameUpper.includes('FATIMAH') || nameUpper.includes('DEWI') ? 'Perempuan' : 'Laki-laki',
+        phone: `08123456${String(idx + 1).padStart(4, '0')}`,
+        rpsPart: `Pertemuan ${((idx % 14) + 1)}`,
+        topic: `Materi Perkuliahan #${((idx % 14) + 1)}`,
+        meetingNumber: ((idx % 14) + 1),
+        groupId: (idx % 10) + 1,
+        createdAt: new Date().toISOString(),
+      };
+    });
+  }
+
+  if (parsedCustomStudents.length > 0) {
+    roomStudents = parsedCustomStudents;
+    // Auto-generate balanced groups for the new custom students
+    const groupCount = Math.min(10, Math.max(1, Math.ceil(roomStudents.length / 2)));
+    roomGroups = [];
+    for (let g = 1; g <= groupCount; g++) {
+      const members = roomStudents.filter((_, idx) => (idx % groupCount) + 1 === g).map(s => s.name);
+      roomGroups.push({
+        id: g,
+        name: `Kelompok ${g}`,
+        title: `Kajian Topik Kelompok ${g}: ${newCourse.title}`,
+        members,
+        description: `Analisis & Pembahasan Tema Kelompok ${g} mata kuliah ${newCourse.title}`,
+        toolsSuggested: 'Canva / PowerPoint / Google Slides',
+        grade: 85,
+      });
+    }
+    // Initialize student grades
+    roomGrades = {};
+    roomStudents.forEach(s => {
+      roomGrades[s.id] = {
+        attendanceScore: 100,
+        attitudeScore: 85,
+        individualScore: 85,
+        groupScore: 85,
+        utsScore: 85,
+        uasScore: 85,
+        finalScore: 88,
+        letterGrade: 'A-',
+      };
+    });
   } else if (studentOption === 'copy_from_course' && sourceCourseId && db.allCoursesData?.[sourceCourseId]) {
     const src = db.allCoursesData[sourceCourseId];
     roomStudents = JSON.parse(JSON.stringify(src.students || []));
@@ -5807,7 +6184,10 @@ app.get('/api/health', (req, res) => {
 async function startServer() {
   if (process.env.NODE_ENV !== 'production') {
     const vite = await createViteServer({
-      server: { middlewareMode: true },
+      server: {
+        middlewareMode: true,
+        hmr: false,
+      },
       appType: 'spa',
     });
     app.use(vite.middlewares);

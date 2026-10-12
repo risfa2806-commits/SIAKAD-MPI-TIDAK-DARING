@@ -26,6 +26,7 @@ import {
   ChevronDown,
   ChevronUp,
   Save,
+  UserPlus,
 } from 'lucide-react';
 import { CourseSummary, DosenProfile } from '../types';
 import {
@@ -66,8 +67,9 @@ export const CourseSelectorModal: React.FC<CourseSelectorModalProps> = ({
   const [semester, setSemester] = useState('Semester III (Ganjil 2026/2027)');
   const [roomName, setRoomName] = useState('Kamar MPI 3A (Ruang Ibnu Khaldun)');
   const [studentOption, setStudentOption] = useState<
-    'use_existing_roster' | 'copy_from_course' | 'empty' | 'generate_cohort'
+    'use_existing_roster' | 'custom_roster' | 'copy_from_course' | 'empty' | 'generate_cohort'
   >('use_existing_roster');
+  const [customStudentNamesText, setCustomStudentNamesText] = useState('');
   const [sourceCourseId, setSourceCourseId] = useState<string>(activeCourseId || courses?.[0]?.id || '');
   const [studyProgram, setStudyProgram] = useState(courseProfile?.studyProgram || 'Manajemen Pendidikan Islam (MPI)');
   const [campusName, setCampusName] = useState(courseProfile?.campusName || 'STAI Jarinabi');
@@ -451,7 +453,8 @@ export const CourseSelectorModal: React.FC<CourseSelectorModalProps> = ({
         semester: semester.trim(),
         semesterNumber,
         roomName: roomName.trim(),
-        studentOption,
+        studentOption: studentOption === 'custom_roster' ? undefined : studentOption,
+        customStudentNames: studentOption === 'custom_roster' ? customStudentNamesText.trim() : undefined,
         sourceCourseId: studentOption === 'copy_from_course' ? sourceCourseId : undefined,
         studyProgram: studyProgram.trim(),
         campusName: campusName.trim(),
@@ -1027,11 +1030,22 @@ export const CourseSelectorModal: React.FC<CourseSelectorModalProps> = ({
                               </button>
                             )}
 
-                            <div className={`w-7 h-7 rounded-full flex items-center justify-center transition-transform ${
-                              isActive ? 'bg-emerald-600 text-white' : 'bg-slate-100 text-slate-400'
-                            }`}>
-                              {isActive ? <Check className="w-3.5 h-3.5" /> : <ArrowRight className="w-3.5 h-3.5" />}
-                            </div>
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleSwitch(c.id);
+                              }}
+                              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer shadow-2xs ${
+                                isActive
+                                  ? 'bg-emerald-700 text-white hover:bg-emerald-800'
+                                  : 'bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-300'
+                              }`}
+                              title={isActive ? 'Kamar kuliah ini sedang aktif' : 'Masuk ke kamar perkuliahan ini'}
+                            >
+                              {isActive ? <Check className="w-3.5 h-3.5" /> : <DoorOpen className="w-3.5 h-3.5" />}
+                              <span>{isActive ? 'Kamar Aktif' : 'Pilih Kamar'}</span>
+                            </button>
                           </div>
                         </div>
 
@@ -1312,7 +1326,31 @@ export const CourseSelectorModal: React.FC<CourseSelectorModalProps> = ({
                       </div>
                     </button>
 
-                    {/* Option 2: Copy from specific course */}
+                    {/* Option 2: Custom roster with different student names */}
+                    <button
+                      type="button"
+                      onClick={() => setStudentOption('custom_roster')}
+                      className={`p-3 rounded-xl border-2 text-left text-xs transition-all flex items-start gap-2.5 ${
+                        studentOption === 'custom_roster'
+                          ? 'bg-white text-emerald-950 border-emerald-600 shadow-sm ring-2 ring-emerald-500/20'
+                          : 'bg-white/70 text-slate-700 border-emerald-200 hover:bg-white'
+                      }`}
+                    >
+                      <div className="p-1.5 rounded-lg bg-emerald-100 text-emerald-800 shrink-0 mt-0.5">
+                        <UserPlus className="w-4 h-4" />
+                      </div>
+                      <div>
+                        <span className="font-bold text-slate-900 block flex items-center gap-1">
+                          <span>Input / Tempel Daftar Nama Mahasiswa Beda</span>
+                          {studentOption === 'custom_roster' && <Check className="w-3.5 h-3.5 text-emerald-600 inline" />}
+                        </span>
+                        <span className="text-[10px] text-slate-600 block mt-0.5 leading-snug">
+                          Ketik atau tempel nama-nama mahasiswa khusus untuk mata kuliah & semester baru ini.
+                        </span>
+                      </div>
+                    </button>
+
+                    {/* Option 3: Copy from specific course */}
                     <button
                       type="button"
                       onClick={() => setStudentOption('copy_from_course')}
@@ -1336,7 +1374,7 @@ export const CourseSelectorModal: React.FC<CourseSelectorModalProps> = ({
                       </div>
                     </button>
 
-                    {/* Option 3: Clean Empty */}
+                    {/* Option 4: Clean Empty */}
                     <button
                       type="button"
                       onClick={() => setStudentOption('empty')}
@@ -1356,28 +1394,30 @@ export const CourseSelectorModal: React.FC<CourseSelectorModalProps> = ({
                         </span>
                       </div>
                     </button>
+                  </div>
 
-                    {/* Option 4: Generate Cohort */}
-                    <button
-                      type="button"
-                      onClick={() => setStudentOption('generate_cohort')}
-                      className={`p-3 rounded-xl border-2 text-left text-xs transition-all flex items-start gap-2.5 ${
-                        studentOption === 'generate_cohort'
-                          ? 'bg-white text-slate-900 border-slate-700 shadow-sm'
-                          : 'bg-white/70 text-slate-700 border-slate-200 hover:bg-white'
-                      }`}
-                    >
-                      <div className="p-1.5 rounded-lg bg-slate-100 text-slate-800 shrink-0 mt-0.5">
-                        <Sparkles className="w-4 h-4" />
-                      </div>
-                      <div>
-                        <span className="font-bold text-slate-900 block">Generate Mahasiswa Baru</span>
-                        <span className="text-[10px] text-slate-600 block mt-0.5 leading-snug">
-                          Generate otomatis data sampel acak untuk simulasi kelas lain.
+                  {studentOption === 'custom_roster' && (
+                    <div className="mt-3 p-3.5 bg-emerald-50/70 border border-emerald-300 rounded-xl space-y-2">
+                      <div className="flex items-center justify-between">
+                        <label className="block text-xs font-bold text-emerald-950">
+                          Daftar Nama Mahasiswa Baru (1 nama per baris atau dipisah koma):
+                        </label>
+                        <span className="text-[11px] font-bold bg-emerald-200 text-emerald-900 px-2 py-0.5 rounded-full">
+                          Terdeteksi: {customStudentNamesText.split(/[\n,;]+/).map(s => s.trim().replace(/^[0-9]+[\.\-\)\s]+/, '').trim()).filter(s => s.length > 1).length} Mahasiswa
                         </span>
                       </div>
-                    </button>
-                  </div>
+                      <textarea
+                        rows={5}
+                        value={customStudentNamesText}
+                        onChange={(e) => setCustomStudentNamesText(e.target.value)}
+                        placeholder={`Contoh tempel atau ketik nama mahasiswa baru:\n1. Ahmad Zaki Al-Farisi\n2. Siti Nurhaliza\n3. Budi Santoso\n4. Putri Dewi Lestari\n5. Muhammad Ridwan`}
+                        className="w-full p-2.5 text-xs font-mono rounded-lg border border-emerald-300 focus:outline-none focus:ring-2 focus:ring-emerald-500 bg-white"
+                      />
+                      <p className="text-[10px] text-emerald-800">
+                        * Sistem akan otomatis membuatkan NIM, akun mahasiswa, pembagian kelompok, dan rekap penilaian tersendiri untuk MK ini.
+                      </p>
+                    </div>
+                  )}
 
                   {studentOption === 'copy_from_course' && (
                     <div className="pt-2">

@@ -34,7 +34,11 @@ import {
   deleteUtsSubmissionApi,
   deleteUasSubmissionApi,
   resetGroupSubmissionApi,
+  addStudentActivityPointsApi,
+  deleteStudentActivityPointLogApi,
+  bulkAddActivityPointsApi,
 } from '../services/api';
+import { getActivityTier } from './StudentProfileModal';
 import {
   exportAllTasksToExcel,
   exportAllTasksToJson,
@@ -142,8 +146,27 @@ export const DosenPortal: React.FC<DosenPortalProps> = ({
   onOpenSemesterTransition,
   onOpenRpsModal,
 }) => {
-  const [subTab, setSubTab] = useState<'monitoring' | 'pesan-mhs' | 'rps-sync' | 'kelompok-ppt' | 'nilai-ppt' | 'nilai-uts' | 'nilai-video' | 'keamanan' | 'cadangan-data'>('monitoring');
+  const [subTab, setSubTab] = useState<'monitoring' | 'poin-keaktifan' | 'pesan-mhs' | 'rps-sync' | 'kelompok-ppt' | 'nilai-ppt' | 'nilai-uts' | 'nilai-video' | 'keamanan' | 'cadangan-data'>('monitoring');
   const [searchTerm, setSearchTerm] = useState('');
+
+  // Activity Points (Poin Keaktifan) State
+  const [actSearch, setActSearch] = useState('');
+  const [actGroupFilter, setActGroupFilter] = useState<string>('all');
+  const [actTierFilter, setActTierFilter] = useState<string>('all');
+  const [actSortBy, setActSortBy] = useState<'points_desc' | 'points_asc' | 'name_asc' | 'group_asc'>('points_desc');
+  const [pointModalStudent, setPointModalStudent] = useState<Student | null>(null);
+  const [pointDeltaInput, setPointDeltaInput] = useState<number>(10);
+  const [pointReasonInput, setPointReasonInput] = useState<string>('');
+  const [pointCategoryInput, setPointCategoryInput] = useState<'pertanyaan' | 'jawaban' | 'argumen' | 'presentasi' | 'kehadiran' | 'sikap' | 'manual'>('jawaban');
+  const [pointMeetingInput, setPointMeetingInput] = useState<number>(3);
+  const [isSavingPoints, setIsSavingPoints] = useState(false);
+  const [expandedLogStudentId, setExpandedLogStudentId] = useState<string | null>(null);
+
+  // Bulk Activity Points State (Per Kelompok)
+  const [bulkGroupTarget, setBulkGroupTarget] = useState<number>(1);
+  const [bulkPointsDelta, setBulkPointsDelta] = useState<number>(10);
+  const [bulkReasonInput, setBulkReasonInput] = useState<string>('Presentasi kelompok unggul & aktif berdiskusi dalam sesi kelas');
+  const [isSavingBulk, setIsSavingBulk] = useState(false);
 
   // Full database instance for reliable exports and backups
   const currentFullDb: SiakadDatabase = db || {
@@ -773,15 +796,163 @@ export const DosenPortal: React.FC<DosenPortalProps> = ({
     if (!reviewIndivSub) return;
     setIsGradingIndiv(true);
     try {
-      await gradeIndividualTask(reviewIndivSub.studentId, indivScoreInput, indivFeedbackInput);
+      await gradeIndividualTask(reviewIndivSub.studentId, indivScoreInput, indivFeedbackInput, {
+        submissionId: reviewIndivSub.id,
+        meetingNumber: reviewIndivSub.meetingNumber,
+      });
       setActionAlertMsg({
         type: 'success',
-        text: `Nilai tugas ${reviewIndivSub.studentName} (${indivScoreInput}) berhasil disimpan!`,
+        text: `Nilai tugas Pertemuan ${reviewIndivSub.meetingNumber} mahasiswa ${reviewIndivSub.studentName} (${indivScoreInput}) berhasil disimpan!`,
       });
       setReviewIndivSub(null);
       await onRefreshData();
     } finally {
       setIsGradingIndiv(false);
+    }
+  };
+
+  // Activity Points (Poin Keaktifan) Handlers
+  const handleQuickAwardPoints = async (
+    student: Student,
+    delta: number,
+    defaultReason: string,
+    category: 'pertanyaan' | 'jawaban' | 'argumen' | 'presentasi' | 'kehadiran' | 'sikap' | 'manual' = 'manual'
+  ) => {
+    try {
+      const res = await addStudentActivityPointsApi(student.id, {
+        points: delta,
+        reason: defaultReason,
+        category,
+        meetingNumber: student.meetingNumber || 3,
+      });
+      if (res.success) {
+        setActionAlertMsg({
+          type: 'success',
+          text: `Poin keaktifan ${student.name} berhasil diperbarui (${delta > 0 ? '+' : ''}${delta} Poin: "${defaultReason}")!`,
+        });
+        await onRefreshData();
+      } else {
+        setActionAlertMsg({
+          type: 'error',
+          text: res.error || 'Gagal memperbarui poin keaktifan.',
+        });
+      }
+    } catch {
+      setActionAlertMsg({
+        type: 'error',
+        text: 'Terjadi gangguan jaringan saat memperbarui poin.',
+      });
+    }
+  };
+
+  const handleOpenCustomPointsModal = (student: Student) => {
+    setPointModalStudent(student);
+    setPointDeltaInput(10);
+    setPointReasonInput('Aktif bertanya secara kritis pada sesi diskusi pleno');
+    setPointCategoryInput('pertanyaan');
+    setPointMeetingInput(student.meetingNumber || 3);
+  };
+
+  const handleSaveCustomPoints = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!pointModalStudent) return;
+    setIsSavingPoints(true);
+    try {
+      const cleanReason = pointReasonInput.trim() || (pointDeltaInput >= 0 ? 'Poin Keaktifan Kelas' : 'Pengurangan Poin Keaktifan');
+      const res = await addStudentActivityPointsApi(pointModalStudent.id, {
+        points: pointDeltaInput,
+        reason: cleanReason,
+        category: pointCategoryInput,
+        meetingNumber: pointMeetingInput,
+      });
+      if (res.success) {
+        setActionAlertMsg({
+          type: 'success',
+          text: `Berhasil mencatat ${pointDeltaInput > 0 ? '+' : ''}${pointDeltaInput} poin keaktifan untuk ${pointModalStudent.name}!`,
+        });
+        setPointModalStudent(null);
+        await onRefreshData();
+      } else {
+        setActionAlertMsg({
+          type: 'error',
+          text: res.error || 'Gagal menyimpan poin.',
+        });
+      }
+    } catch {
+      setActionAlertMsg({
+        type: 'error',
+        text: 'Terjadi gangguan saat menyimpan poin keaktifan.',
+      });
+    } finally {
+      setIsSavingPoints(false);
+    }
+  };
+
+  const handleDeletePointLog = async (student: Student, logId: string) => {
+    if (!window.confirm('Hapus catatan poin keaktifan ini? Poin mahasiswa akan disesuaikan otomatis.')) return;
+    try {
+      const res = await deleteStudentActivityPointLogApi(student.id, logId);
+      if (res.success) {
+        setActionAlertMsg({
+          type: 'success',
+          text: `Catatan poin keaktifan ${student.name} berhasil dihapus.`,
+        });
+        await onRefreshData();
+      } else {
+        setActionAlertMsg({
+          type: 'error',
+          text: res.error || 'Gagal menghapus catatan poin.',
+        });
+      }
+    } catch {
+      setActionAlertMsg({
+        type: 'error',
+        text: 'Gangguan saat menghapus catatan poin.',
+      });
+    }
+  };
+
+  const handleSaveBulkPoints = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const grp = (groups || []).find(g => g.id === bulkGroupTarget);
+    if (!grp || !grp.members || grp.members.length === 0) {
+      setActionAlertMsg({ type: 'error', text: `Kelompok ${bulkGroupTarget} tidak memiliki anggota.` });
+      return;
+    }
+
+    // Match student IDs
+    const matchedIds: string[] = [];
+    grp.members.forEach(mem => {
+      const st = (students || []).find(s => s.name.trim().toLowerCase() === mem.trim().toLowerCase());
+      if (st) matchedIds.push(st.id);
+    });
+
+    if (matchedIds.length === 0) {
+      setActionAlertMsg({ type: 'error', text: 'Tidak ada mahasiswa yang cocok di database untuk kelompok ini.' });
+      return;
+    }
+
+    setIsSavingBulk(true);
+    try {
+      const res = await bulkAddActivityPointsApi(matchedIds, {
+        points: bulkPointsDelta,
+        reason: bulkReasonInput.trim() || `Poin Keaktifan Kelompok ${bulkGroupTarget}`,
+        category: 'presentasi',
+        meetingNumber: (grp as any)?.meetingNumber || 3,
+      });
+      if (res.success) {
+        setActionAlertMsg({
+          type: 'success',
+          text: `Berhasil menambahkan ${bulkPointsDelta > 0 ? '+' : ''}${bulkPointsDelta} poin ke seluruh anggota ${grp.name}!`,
+        });
+        await onRefreshData();
+      } else {
+        setActionAlertMsg({ type: 'error', text: res.error || 'Gagal menambahkan poin masal.' });
+      }
+    } catch {
+      setActionAlertMsg({ type: 'error', text: 'Gangguan jaringan saat memberikan poin kelompok.' });
+    } finally {
+      setIsSavingBulk(false);
     }
   };
 
@@ -1178,6 +1349,24 @@ export const DosenPortal: React.FC<DosenPortalProps> = ({
           >
             <Users size={14} />
             <span>Monitoring Mahasiswa Online ({onlineStudentsCount})</span>
+          </button>
+
+          <button
+            id="subtab-poin-keaktifan"
+            onClick={() => setSubTab('poin-keaktifan')}
+            className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all whitespace-nowrap cursor-pointer ${
+              subTab === 'poin-keaktifan'
+                ? 'bg-amber-500 text-slate-950 shadow-md font-black ring-2 ring-amber-300'
+                : 'bg-amber-500/20 text-amber-200 hover:bg-amber-500/30 border border-amber-400/40'
+            }`}
+          >
+            <Zap size={14} className={subTab === 'poin-keaktifan' ? 'fill-slate-950 text-slate-950' : 'fill-amber-400 text-amber-400'} />
+            <span>Poin Keaktifan Mahasiswa</span>
+            <span className={`ml-1 px-1.5 py-0.2 rounded-full text-[10px] font-bold ${
+              subTab === 'poin-keaktifan' ? 'bg-slate-950 text-amber-300' : 'bg-amber-400 text-slate-950'
+            }`}>
+              {students.reduce((acc, s) => acc + (s.activityPoints || 0), 0)} Poin
+            </span>
           </button>
 
           <button
@@ -1774,6 +1963,601 @@ export const DosenPortal: React.FC<DosenPortalProps> = ({
               </table>
             </div>
           </div>
+        </div>
+      )}
+
+      {/* SUB-TAB: SISTEM POIN KEAKTIFAN & MOTIVASI MAHASISWA */}
+      {subTab === 'poin-keaktifan' && (
+        <div className="space-y-6">
+          {/* Header & Quick Statistics */}
+          <div className="bg-white rounded-2xl border border-slate-200 shadow-xs p-5 sm:p-6 space-y-4">
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-slate-100 pb-4">
+              <div>
+                <div className="flex items-center gap-2">
+                  <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-amber-500 to-amber-300 text-slate-950 flex items-center justify-center font-black shadow-sm">
+                    <Zap size={22} className="fill-slate-950" />
+                  </div>
+                  <div>
+                    <h3 className="text-base sm:text-lg font-bold text-slate-900 flex items-center gap-2">
+                      <span>Sistem Poin Keaktifan & Motivasi Mahasiswa</span>
+                      <span className="text-xs font-semibold px-2.5 py-0.5 rounded-full bg-amber-100 text-amber-900 border border-amber-300">
+                        Portal Dosen
+                      </span>
+                    </h3>
+                    <p className="text-xs text-slate-500 mt-0.5">
+                      Dosen dapat menambah atau mengurangi poin keaktifan secara manual berdasarkan partisipasi aktif mahasiswa (pertanyaan kritis, jawaban dialektika, argumen ilmiah, dan etika).
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-2 flex-wrap self-start md:self-auto">
+                <button
+                  type="button"
+                  onClick={() => window.print()}
+                  className="px-3.5 py-2 bg-slate-100 hover:bg-slate-200 text-slate-800 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer shadow-xs border border-slate-200"
+                  title="Cetak Laporan Rekapitulasi Poin Keaktifan"
+                >
+                  <Printer size={14} />
+                  <span>Cetak / PDF</span>
+                </button>
+                <span className="px-3.5 py-1.5 rounded-xl bg-amber-50 text-amber-900 border border-amber-300 text-xs font-black flex items-center gap-1.5 shadow-2xs">
+                  <Sparkles size={13} className="text-amber-600" />
+                  <span>Total Kelas: {students.reduce((acc, s) => acc + (s.activityPoints || 0), 0)} Poin</span>
+                </span>
+              </div>
+            </div>
+
+            {/* Quick Stats Grid */}
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 pt-1">
+              <div className="p-3.5 rounded-xl bg-amber-50/70 border border-amber-200/80">
+                <div className="text-[11px] font-semibold text-amber-900">Total Akumulasi Poin</div>
+                <div className="text-xl sm:text-2xl font-black text-amber-700 font-mono mt-0.5">
+                  {students.reduce((acc, s) => acc + (s.activityPoints || 0), 0)}
+                </div>
+                <div className="text-[10px] text-amber-800/80 mt-0.5">Seluruh mahasiswa aktif</div>
+              </div>
+
+              <div className="p-3.5 rounded-xl bg-emerald-50/70 border border-emerald-200/80">
+                <div className="text-[11px] font-semibold text-emerald-900">Rata-rata Kelas</div>
+                <div className="text-xl sm:text-2xl font-black text-emerald-700 font-mono mt-0.5">
+                  {students.length > 0
+                    ? Math.round((students.reduce((acc, s) => acc + (s.activityPoints || 0), 0) / students.length) * 10) / 10
+                    : 0}
+                </div>
+                <div className="text-[10px] text-emerald-800/80 mt-0.5">Poin per mahasiswa</div>
+              </div>
+
+              <div className="p-3.5 rounded-xl bg-indigo-50/70 border border-indigo-200/80">
+                <div className="text-[11px] font-semibold text-indigo-900">Bintang Kelas Teraktif</div>
+                <div className="text-base sm:text-lg font-black text-indigo-900 truncate mt-0.5" title={[...students].sort((a,b) => (b.activityPoints || 0) - (a.activityPoints || 0))[0]?.name}>
+                  {[...students].sort((a, b) => (b.activityPoints || 0) - (a.activityPoints || 0))[0]?.name?.split(' ')[0] || '-'}
+                </div>
+                <div className="text-[10px] text-indigo-700 mt-0.5 font-mono">
+                  {[...students].sort((a, b) => (b.activityPoints || 0) - (a.activityPoints || 0))[0]?.activityPoints || 0} Poin Keaktifan
+                </div>
+              </div>
+
+              <div className="p-3.5 rounded-xl bg-teal-50/70 border border-teal-200/80">
+                <div className="text-[11px] font-semibold text-teal-900">Riwayat Terverifikasi</div>
+                <div className="text-xl sm:text-2xl font-black text-teal-700 font-mono mt-0.5">
+                  {students.reduce((acc, s) => acc + (s.activityPointLogs?.length || 0), 0)}
+                </div>
+                <div className="text-[10px] text-teal-800/80 mt-0.5">Catatan keaktifan dosen</div>
+              </div>
+            </div>
+
+            {/* Bulk Points Award Box (Per Presentation Group) */}
+            <div className="p-4 rounded-xl bg-gradient-to-r from-indigo-900 via-slate-900 to-indigo-950 text-white space-y-3 shadow-sm border border-indigo-800/60">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                <div className="flex items-center gap-2">
+                  <Users size={16} className="text-amber-400" />
+                  <span className="font-bold text-xs sm:text-sm">Beri Poin Cepat ke Seluruh Anggota 1 Kelompok RPS:</span>
+                </div>
+                <span className="text-[11px] text-indigo-200">
+                  Semua mahasiswa di kelompok terpilih akan mendapatkan poin dan catatan sekaligus
+                </span>
+              </div>
+
+              <form onSubmit={handleSaveBulkPoints} className="grid grid-cols-1 sm:grid-cols-12 gap-2.5 items-end">
+                <div className="sm:col-span-3">
+                  <label className="block text-[10px] font-bold text-indigo-200 uppercase mb-1">Pilih Kelompok:</label>
+                  <select
+                    value={bulkGroupTarget}
+                    onChange={e => setBulkGroupTarget(Number(e.target.value))}
+                    className="w-full px-3 py-1.5 bg-slate-800 border border-slate-700 rounded-lg text-xs font-semibold text-white focus:outline-none focus:ring-1 focus:ring-amber-400"
+                  >
+                    {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map(n => {
+                      const grp = (groups || []).find(g => g.id === n);
+                      return (
+                        <option key={n} value={n}>
+                          Kelompok {n} ({grp?.members?.length || 0} Mahasiswa)
+                        </option>
+                      );
+                    })}
+                  </select>
+                </div>
+
+                <div className="sm:col-span-2">
+                  <label className="block text-[10px] font-bold text-indigo-200 uppercase mb-1">Jumlah Poin:</label>
+                  <select
+                    value={bulkPointsDelta}
+                    onChange={e => setBulkPointsDelta(Number(e.target.value))}
+                    className="w-full px-3 py-1.5 bg-slate-800 border border-slate-700 rounded-lg text-xs font-bold text-amber-300 focus:outline-none focus:ring-1 focus:ring-amber-400 font-mono"
+                  >
+                    <option value={5}>+5 Poin</option>
+                    <option value={10}>+10 Poin</option>
+                    <option value={15}>+15 Poin</option>
+                    <option value={20}>+20 Poin</option>
+                    <option value={-5}>-5 Poin (Kurang Kompak)</option>
+                  </select>
+                </div>
+
+                <div className="sm:col-span-5">
+                  <label className="block text-[10px] font-bold text-indigo-200 uppercase mb-1">Alasan / Catatan Dosen:</label>
+                  <input
+                    type="text"
+                    value={bulkReasonInput}
+                    onChange={e => setBulkReasonInput(e.target.value)}
+                    placeholder="Contoh: Presentasi kelompok unggul & aktif menjawab tanggapan kelas"
+                    className="w-full px-3 py-1.5 bg-slate-800 border border-slate-700 rounded-lg text-xs text-white focus:outline-none focus:ring-1 focus:ring-amber-400"
+                  />
+                </div>
+
+                <div className="sm:col-span-2">
+                  <button
+                    type="submit"
+                    disabled={isSavingBulk}
+                    className="w-full px-3 py-2 bg-gradient-to-r from-amber-400 to-amber-500 hover:from-amber-300 hover:to-amber-400 disabled:opacity-50 text-slate-950 font-black text-xs rounded-lg transition-all shadow-md flex items-center justify-center gap-1.5 cursor-pointer active:scale-95"
+                  >
+                    <Zap size={14} className="fill-slate-950" />
+                    <span>{isSavingBulk ? 'Mengirim...' : 'Kirim Poin'}</span>
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+
+          {/* Filter, Search & Sort Toolbar */}
+          <div className="bg-white rounded-2xl border border-slate-200 shadow-xs p-4 sm:p-5 space-y-3">
+            <div className="grid grid-cols-1 sm:grid-cols-12 gap-2.5 items-center">
+              {/* Search */}
+              <div className="sm:col-span-4 relative">
+                <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+                <input
+                  type="text"
+                  value={actSearch}
+                  onChange={e => setActSearch(e.target.value)}
+                  placeholder="Cari nama mahasiswa, NIM, atau topik..."
+                  className="w-full pl-9 pr-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-900 focus:outline-none focus:ring-2 focus:ring-amber-400"
+                />
+                {actSearch && (
+                  <button
+                    type="button"
+                    onClick={() => setActSearch('')}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
+                  >
+                    <X size={14} />
+                  </button>
+                )}
+              </div>
+
+              {/* Group Filter */}
+              <div className="sm:col-span-3">
+                <select
+                  value={actGroupFilter}
+                  onChange={e => setActGroupFilter(e.target.value)}
+                  className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold text-slate-800 focus:outline-none focus:ring-2 focus:ring-amber-400"
+                >
+                  <option value="all">Semua Kelompok RPS (1-10)</option>
+                  {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map(n => (
+                    <option key={n} value={String(n)}>Kelompok {n}</option>
+                  ))}
+                </select>
+              </div>
+
+              {/* Tier Filter */}
+              <div className="sm:col-span-3">
+                <select
+                  value={actTierFilter}
+                  onChange={e => setActTierFilter(e.target.value)}
+                  className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold text-slate-800 focus:outline-none focus:ring-2 focus:ring-amber-400"
+                >
+                  <option value="all">Semua Tingkat Keaktifan</option>
+                  <option value="Maestro">👑 Maestro Cendekia (≥60)</option>
+                  <option value="Bintang">🌟 Bintang Cendekia (40-59)</option>
+                  <option value="Aktif">⭐ Cendekia Aktif (20-39)</option>
+                  <option value="Diskusi">💬 Pejuang Diskusi (10-19)</option>
+                  <option value="Pemula">🌱 Cendekia Pemula (1-9)</option>
+                  <option value="Belum">⚪ Belum Memiliki Poin (0)</option>
+                </select>
+              </div>
+
+              {/* Sort By */}
+              <div className="sm:col-span-2">
+                <select
+                  value={actSortBy}
+                  onChange={e => setActSortBy(e.target.value as any)}
+                  className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold text-slate-800 focus:outline-none focus:ring-2 focus:ring-amber-400"
+                >
+                  <option value="points_desc">Poin Tertinggi ↓</option>
+                  <option value="points_asc">Poin Terendah ↑</option>
+                  <option value="name_asc">Nama (A - Z)</option>
+                  <option value="group_asc">Kelompok (1 - 10)</option>
+                </select>
+              </div>
+            </div>
+          </div>
+
+          {/* Student Activity Cards / List */}
+          <div className="space-y-3">
+            {(() => {
+              const displayList = (students || [])
+                .filter(s => {
+                  const q = actSearch.toLowerCase().trim();
+                  const matchQuery = !q || s.name.toLowerCase().includes(q) || (s.nim && s.nim.includes(q)) || (s.topic && s.topic.toLowerCase().includes(q));
+                  const matchGroup = actGroupFilter === 'all' || String(s.groupId) === actGroupFilter;
+                  const tier = getActivityTier(s.activityPoints || 0);
+                  const matchTier = actTierFilter === 'all' || tier.title.toLowerCase().includes(actTierFilter.toLowerCase());
+                  return matchQuery && matchGroup && matchTier;
+                })
+                .sort((a, b) => {
+                  const ptsA = a.activityPoints || 0;
+                  const ptsB = b.activityPoints || 0;
+                  if (actSortBy === 'points_desc') return ptsB - ptsA;
+                  if (actSortBy === 'points_asc') return ptsA - ptsB;
+                  if (actSortBy === 'name_asc') return a.name.localeCompare(b.name);
+                  if (actSortBy === 'group_asc') return (a.groupId || 1) - (b.groupId || 1);
+                  return ptsB - ptsA;
+                });
+
+              if (displayList.length === 0) {
+                return (
+                  <div className="bg-white rounded-2xl border border-dashed border-slate-300 p-10 text-center text-xs text-slate-500">
+                    Tidak ditemukan data mahasiswa yang sesuai dengan kata kunci atau filter pencarian.
+                  </div>
+                );
+              }
+
+              return displayList.map((student, idx) => {
+                const pts = student.activityPoints || 0;
+                const tier = getActivityTier(pts);
+                const logs = student.activityPointLogs || [];
+                const isExpanded = expandedLogStudentId === student.id;
+
+                return (
+                  <div
+                    key={student.id}
+                    className="bg-white rounded-2xl border border-slate-200 shadow-xs hover:shadow-md transition-all p-4 sm:p-5 space-y-3.5"
+                  >
+                    <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+                      {/* Left Student Info */}
+                      <div className="flex items-start gap-3">
+                        <div className="w-11 h-11 rounded-2xl bg-gradient-to-br from-indigo-800 to-slate-900 text-white flex items-center justify-center font-bold text-sm shrink-0 shadow-xs">
+                          {student.name.slice(0, 2).toUpperCase()}
+                        </div>
+                        <div className="space-y-1">
+                          <div className="flex flex-wrap items-center gap-2">
+                            <span className="font-bold text-sm sm:text-base text-slate-900">
+                              {student.name}
+                            </span>
+                            <span className="text-[11px] font-mono text-slate-500 bg-slate-100 px-2 py-0.5 rounded-md">
+                              NIM: {student.nim}
+                            </span>
+                            <span className="text-xs font-semibold px-2 py-0.5 rounded-md bg-indigo-50 text-indigo-800 border border-indigo-200">
+                              Kelompok {student.groupId}
+                            </span>
+                            <span className="text-xs text-slate-400">
+                              • Pertemuan {student.meetingNumber || 3}
+                            </span>
+                          </div>
+                          <p className="text-xs text-slate-600 line-clamp-1 italic max-w-xl">
+                            "{student.topic || 'Kajian Filsafat Ilmu MPI'}"
+                          </p>
+                        </div>
+                      </div>
+
+                      {/* Center Points Badge & Tier */}
+                      <div className="flex items-center gap-3 shrink-0 self-start lg:self-center">
+                        <div className="text-right">
+                          <div className="flex items-baseline gap-1 justify-end">
+                            <span className="text-2xl sm:text-3xl font-black text-amber-600 font-mono">
+                              {pts}
+                            </span>
+                            <span className="text-xs font-bold text-slate-700">Poin</span>
+                          </div>
+                          <span className={`text-[10px] font-black uppercase tracking-wider px-2 py-0.5 rounded-full border inline-flex items-center gap-1 ${tier.badgeColor}`}>
+                            <span>{tier.icon}</span>
+                            <span>{tier.title}</span>
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Action Bar: Quick Preset Buttons & Manual Form Button */}
+                    <div className="pt-2 border-t border-slate-100 flex flex-wrap items-center justify-between gap-2">
+                      <div className="flex flex-wrap items-center gap-1.5">
+                        <span className="text-[11px] font-bold text-slate-500 mr-1 hidden sm:inline">
+                          Aksi Cepat:
+                        </span>
+
+                        {/* +5 Tanya Kritis */}
+                        <button
+                          type="button"
+                          onClick={() => handleQuickAwardPoints(student, 5, 'Aktif bertanya kritis pada materi perkuliahan', 'pertanyaan')}
+                          className="px-2.5 py-1 rounded-lg bg-emerald-50 hover:bg-emerald-100 text-emerald-900 border border-emerald-300 text-xs font-bold transition-all flex items-center gap-1 cursor-pointer active:scale-95 shadow-2xs"
+                          title="Tambah +5 Poin untuk pertanyaan kritis mahasiswa"
+                        >
+                          <Plus size={12} className="text-emerald-700" />
+                          <span>Tanya Kritis (+5)</span>
+                        </button>
+
+                        {/* +10 Jawab Dialektika */}
+                        <button
+                          type="button"
+                          onClick={() => handleQuickAwardPoints(student, 10, 'Menjawab pertanyaan dosen dengan argumen logis dan rujukan sahih', 'jawaban')}
+                          className="px-2.5 py-1 rounded-lg bg-emerald-50 hover:bg-emerald-100 text-emerald-900 border border-emerald-300 text-xs font-bold transition-all flex items-center gap-1 cursor-pointer active:scale-95 shadow-2xs"
+                          title="Tambah +10 Poin untuk jawaban dialektika yang tepat"
+                        >
+                          <Plus size={12} className="text-emerald-700" />
+                          <span>Jawab Dialektika (+10)</span>
+                        </button>
+
+                        {/* +15 Presentasi Unggul */}
+                        <button
+                          type="button"
+                          onClick={() => handleQuickAwardPoints(student, 15, 'Penyampaian presentasi sangat komprehensif & memimpin diskusi kelas dengan cemerlang', 'presentasi')}
+                          className="px-2.5 py-1 rounded-lg bg-amber-50 hover:bg-amber-100 text-amber-900 border border-amber-300 text-xs font-bold transition-all flex items-center gap-1 cursor-pointer active:scale-95 shadow-2xs"
+                          title="Tambah +15 Poin untuk presentasi materi luar biasa"
+                        >
+                          <Sparkles size={12} className="text-amber-700" />
+                          <span>Presentasi Unggul (+15)</span>
+                        </button>
+
+                        {/* -5 Kurang Fokus / Pasif */}
+                        <button
+                          type="button"
+                          onClick={() => handleQuickAwardPoints(student, -5, 'Kurang fokus atau pasif selama sesi diskusi tatap muka', 'sikap')}
+                          className="px-2 py-1 rounded-lg bg-rose-50 hover:bg-rose-100 text-rose-800 border border-rose-200 text-xs font-semibold transition-all flex items-center gap-1 cursor-pointer active:scale-95"
+                          title="Kurangi 5 Poin jika kurang fokus / pasif"
+                        >
+                          <span>-5 Poin</span>
+                        </button>
+
+                        {/* -10 Pelanggaran Etika */}
+                        <button
+                          type="button"
+                          onClick={() => handleQuickAwardPoints(student, -10, 'Pelanggaran etika akademik atau terlambat hadir tanpa keterangan', 'sikap')}
+                          className="px-2 py-1 rounded-lg bg-rose-50 hover:bg-rose-100 text-rose-900 border border-rose-300 text-xs font-bold transition-all flex items-center gap-1 cursor-pointer active:scale-95"
+                          title="Kurangi 10 Poin untuk pelanggaran etika"
+                        >
+                          <span>-10 Poin</span>
+                        </button>
+
+                        {/* Atur Manual (+/-) */}
+                        <button
+                          type="button"
+                          onClick={() => handleOpenCustomPointsModal(student)}
+                          className="px-2.5 py-1 rounded-lg bg-indigo-50 hover:bg-indigo-100 text-indigo-900 border border-indigo-200 text-xs font-bold transition-all flex items-center gap-1 cursor-pointer shadow-2xs"
+                          title="Buka form input poin kustom & catatan detail dosen"
+                        >
+                          <Edit3 size={12} className="text-indigo-700" />
+                          <span>Atur Kustom (+ / -)</span>
+                        </button>
+                      </div>
+
+                      {/* Expand History Toggle */}
+                      <button
+                        type="button"
+                        onClick={() => setExpandedLogStudentId(isExpanded ? null : student.id)}
+                        className="text-xs font-bold text-slate-600 hover:text-indigo-800 flex items-center gap-1 cursor-pointer transition-colors"
+                      >
+                        <Clock size={13} className="text-indigo-600" />
+                        <span>Riwayat Catatan ({logs.length})</span>
+                      </button>
+                    </div>
+
+                    {/* Expandable History of Point Logs */}
+                    {isExpanded && (
+                      <div className="pt-3 border-t border-slate-100 space-y-2 bg-slate-50/70 p-3.5 rounded-xl border animate-in fade-in">
+                        <div className="flex items-center justify-between text-xs font-bold text-slate-700 border-b border-slate-200 pb-1.5">
+                          <span>Catatan Log Poin: {student.name}</span>
+                          <span className="text-[11px] text-slate-500 font-normal">
+                            Total {logs.length} catatan tercatat di database
+                          </span>
+                        </div>
+
+                        {logs.length === 0 ? (
+                          <div className="text-center py-4 text-xs text-slate-400">
+                            Belum ada catatan poin untuk mahasiswa ini.
+                          </div>
+                        ) : (
+                          <div className="divide-y divide-slate-200/60 max-h-56 overflow-y-auto">
+                            {logs.map(log => {
+                              const isPos = log.points >= 0;
+                              return (
+                                <div key={log.id} className="py-2 flex items-center justify-between gap-3 text-xs">
+                                  <div className="space-y-0.5">
+                                    <div className="flex items-center gap-2">
+                                      <span className={`px-2 py-0.2 rounded font-mono font-black text-[11px] ${
+                                        isPos ? 'bg-emerald-100 text-emerald-900 border border-emerald-300' : 'bg-rose-100 text-rose-900 border border-rose-300'
+                                      }`}>
+                                        {isPos ? `+${log.points}` : log.points} Poin
+                                      </span>
+                                      {log.meetingNumber && (
+                                        <span className="text-[10px] font-bold bg-slate-200 text-slate-700 px-1.5 py-0.2 rounded">
+                                          P{log.meetingNumber}
+                                        </span>
+                                      )}
+                                      <span className="text-[10px] text-slate-400">
+                                        {new Date(log.timestamp).toLocaleString('id-ID', { dateStyle: 'medium', timeStyle: 'short' })}
+                                      </span>
+                                    </div>
+                                    <p className="text-slate-800 font-medium">"{log.reason}"</p>
+                                  </div>
+
+                                  <button
+                                    type="button"
+                                    onClick={() => handleDeletePointLog(student, log.id)}
+                                    className="p-1 rounded text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition-colors shrink-0 cursor-pointer"
+                                    title="Hapus catatan poin ini"
+                                  >
+                                    <Trash2 size={13} />
+                                  </button>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                );
+              });
+            })()}
+          </div>
+
+          {/* Modal Form: Atur Poin Kustom Dosen */}
+          {pointModalStudent && (
+            <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-950/70 backdrop-blur-xs animate-in fade-in">
+              <div className="bg-white rounded-3xl shadow-2xl border border-slate-200 w-full max-w-lg overflow-hidden animate-in zoom-in-95">
+                <div className="p-5 bg-gradient-to-r from-indigo-900 to-slate-900 text-white flex items-center justify-between">
+                  <div className="flex items-center gap-2.5">
+                    <div className="w-9 h-9 rounded-xl bg-amber-400 text-slate-950 flex items-center justify-center font-black">
+                      <Zap size={18} className="fill-slate-950" />
+                    </div>
+                    <div>
+                      <h4 className="font-bold text-sm sm:text-base">Atur Poin Keaktifan Mahasiswa</h4>
+                      <div className="text-xs text-indigo-200">
+                        {pointModalStudent.name} (NIM: {pointModalStudent.nim})
+                      </div>
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setPointModalStudent(null)}
+                    className="p-1.5 rounded-lg text-white/80 hover:text-white hover:bg-white/10"
+                  >
+                    <X size={16} />
+                  </button>
+                </div>
+
+                <form onSubmit={handleSaveCustomPoints} className="p-5 sm:p-6 space-y-4">
+                  <div>
+                    <label className="block text-xs font-bold text-slate-700 mb-1">
+                      Jumlah Perubahan Poin (Positif / Negatif):
+                    </label>
+                    <div className="flex items-center gap-2">
+                      <input
+                        type="number"
+                        required
+                        value={pointDeltaInput}
+                        onChange={e => setPointDeltaInput(Number(e.target.value))}
+                        placeholder="Contoh: 10 atau -5"
+                        className="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-xl text-base font-black font-mono focus:outline-none focus:ring-2 focus:ring-amber-400"
+                      />
+                      <span className="text-xs font-bold text-slate-500 whitespace-nowrap">
+                        Poin ({pointDeltaInput >= 0 ? `+${pointDeltaInput}` : pointDeltaInput})
+                      </span>
+                    </div>
+
+                    {/* Quick helper buttons for delta */}
+                    <div className="flex flex-wrap gap-1.5 mt-2">
+                      {[5, 10, 15, 20, -5, -10].map(val => (
+                        <button
+                          key={val}
+                          type="button"
+                          onClick={() => setPointDeltaInput(val)}
+                          className={`px-2.5 py-1 rounded-lg text-xs font-bold border transition-all ${
+                            pointDeltaInput === val
+                              ? 'bg-slate-900 text-white border-slate-900 shadow-2xs'
+                              : val > 0
+                              ? 'bg-emerald-50 text-emerald-900 border-emerald-300 hover:bg-emerald-100'
+                              : 'bg-rose-50 text-rose-900 border-rose-300 hover:bg-rose-100'
+                          }`}
+                        >
+                          {val > 0 ? `+${val}` : val}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div>
+                      <label className="block text-xs font-bold text-slate-700 mb-1">Kategori Keaktifan:</label>
+                      <select
+                        value={pointCategoryInput}
+                        onChange={e => setPointCategoryInput(e.target.value as any)}
+                        className="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-xl text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-amber-400"
+                      >
+                        <option value="pertanyaan">Pertanyaan Kritis</option>
+                        <option value="jawaban">Jawaban Dialektika</option>
+                        <option value="argumen">Argumen & Sanggahan</option>
+                        <option value="presentasi">Presentasi Unggul</option>
+                        <option value="kehadiran">Kehadiran & Disiplin</option>
+                        <option value="sikap">Sikap & Etika Akademik</option>
+                        <option value="manual">Penetapan Manual</option>
+                      </select>
+                    </div>
+
+                    <div>
+                      <label className="block text-xs font-bold text-slate-700 mb-1">Pertemuan Perkuliahan:</label>
+                      <select
+                        value={pointMeetingInput}
+                        onChange={e => setPointMeetingInput(Number(e.target.value))}
+                        className="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-xl text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-amber-400"
+                      >
+                        {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16].map(m => (
+                          <option key={m} value={m}>Pertemuan {m}</option>
+                        ))}
+                      </select>
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-bold text-slate-700 mb-1">Alasan / Catatan Dosen:</label>
+                    <textarea
+                      rows={2}
+                      required
+                      value={pointReasonInput}
+                      onChange={e => setPointReasonInput(e.target.value)}
+                      placeholder="Contoh: Sangat aktif bertanya dan mengaitkan materi ontologi dengan problem manajemen madrasah..."
+                      className="w-full p-3 bg-slate-50 border border-slate-300 rounded-xl text-xs text-slate-900 focus:outline-none focus:ring-2 focus:ring-amber-400"
+                    />
+                  </div>
+
+                  {/* Summary Preview */}
+                  <div className="p-3 rounded-xl bg-amber-50 border border-amber-200 text-xs text-amber-950 flex items-center justify-between">
+                    <span>Estimasi Total Baru:</span>
+                    <span className="font-bold font-mono text-sm">
+                      {(pointModalStudent.activityPoints || 0)} ➜{' '}
+                      <strong className="text-amber-800">
+                        {Math.max(0, (pointModalStudent.activityPoints || 0) + pointDeltaInput)} Poin
+                      </strong>
+                    </span>
+                  </div>
+
+                  <div className="flex items-center justify-end gap-2 pt-2 border-t border-slate-100">
+                    <button
+                      type="button"
+                      onClick={() => setPointModalStudent(null)}
+                      className="px-4 py-2 rounded-xl border border-slate-300 text-slate-700 font-semibold text-xs hover:bg-slate-100"
+                    >
+                      Batal
+                    </button>
+                    <button
+                      type="submit"
+                      disabled={isSavingPoints}
+                      className="px-5 py-2 rounded-xl bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-slate-950 font-black text-xs transition-all shadow-md flex items-center gap-1.5 cursor-pointer"
+                    >
+                      <Zap size={14} className="fill-slate-950" />
+                      <span>{isSavingPoints ? 'Menyimpan...' : 'Simpan & Terapkan Poin'}</span>
+                    </button>
+                  </div>
+                </form>
+              </div>
+            </div>
+          )}
         </div>
       )}
 
@@ -2815,7 +3599,23 @@ export const DosenPortal: React.FC<DosenPortalProps> = ({
                             (NIM: {std.nim})
                           </span>
                         )}
+                        {sub.presentationType === 'kelompok' ? (
+                          <span className="text-[10px] font-black uppercase tracking-wider bg-indigo-100 text-indigo-900 border border-indigo-300 px-2.5 py-0.5 rounded-full flex items-center gap-1">
+                            <Users size={12} className="text-indigo-600" />
+                            <span>{sub.groupName || (std?.groupId ? `Kelompok ${std.groupId}` : 'Tugas Kelompok')} • 1 Perwakilan</span>
+                          </span>
+                        ) : (
+                          <span className="text-[10px] font-bold bg-slate-100 text-slate-700 px-2 py-0.5 rounded-full">
+                            👤 Tugas Individu
+                          </span>
+                        )}
                       </div>
+
+                      {sub.presentationType === 'kelompok' && sub.groupMembers && sub.groupMembers.length > 0 && (
+                        <div className="text-[11px] text-indigo-900 bg-indigo-50 px-2.5 py-1 rounded-lg border border-indigo-200 font-medium">
+                          <span className="font-bold text-indigo-950">Mewakili Anggota Kelompok:</span> {sub.groupMembers.join(', ')}
+                        </div>
+                      )}
 
                       <div className="text-xs sm:text-sm text-slate-700 font-medium leading-relaxed">
                         "{sub.topic}"

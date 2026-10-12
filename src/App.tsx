@@ -33,6 +33,7 @@ import { NotificationCenterModal } from './components/NotificationCenterModal';
 import { DailyMotivationCard } from './components/DailyMotivationCard';
 import { StudentMessageModal } from './components/StudentMessageModal';
 import { LeaderboardView } from './components/LeaderboardView';
+import { StudentProfileModal } from './components/StudentProfileModal';
 import {
   calculateAllDeadlines,
   getRecentSubmissionsList,
@@ -110,6 +111,7 @@ export default function App() {
   const [isBiodataModalOpen, setIsBiodataModalOpen] = useState(false);
   const [isNotificationCenterOpen, setIsNotificationCenterOpen] = useState(false);
   const [isStudentMessageOpen, setIsStudentMessageOpen] = useState(false);
+  const [isStudentProfileOpen, setIsStudentProfileOpen] = useState(false);
   const [activeToast, setActiveToast] = useState<AppNotification | null>(null);
   const [isDeadlineSimulated, setIsDeadlineSimulated] = useState<boolean>(() => {
     return isUrgentDeadlineSimulated();
@@ -412,6 +414,7 @@ export default function App() {
         onOpenNotificationCenter={() => setIsNotificationCenterOpen(true)}
         onToggleSound={handleToggleSound}
         onOpenStudentSelect={() => setIsStudentModalOpen(true)}
+        onOpenStudentProfile={() => setIsStudentProfileOpen(true)}
         onOpenDosenLogin={() => setIsDosenLoginOpen(true)}
         onLogoutDosen={handleDosenLogout}
         onOpenShareModal={() => setIsShareModalOpen(true)}
@@ -479,9 +482,10 @@ export default function App() {
 
         {/* Daily Motivation & Educational Quotes Card */}
         <DailyMotivationCard
-          studentName={currentStudent?.name}
-          isDosen={isDosen}
+          currentStudent={currentStudent}
           onOpenMessageModal={() => setIsStudentMessageOpen(true)}
+          onOpenStudentSelect={() => setIsStudentModalOpen(true)}
+          onOpenProfile={() => setIsStudentProfileOpen(true)}
         />
 
         {/* TAB 1: JADWAL & RPS 16 PERTEMUAN */}
@@ -888,6 +892,16 @@ export default function App() {
         courseProfile={db.courseProfile}
         allMessages={db.messages || []}
         onMessageSent={reloadData}
+      />
+
+      {/* Student Activity Points Profile Modal */}
+      <StudentProfileModal
+        isOpen={isStudentProfileOpen}
+        onClose={() => setIsStudentProfileOpen(false)}
+        student={currentStudent}
+        allStudents={db.students || []}
+        dosenName={db.courseProfile?.name}
+        courseTitle={db.courseProfile?.courseTitle}
       />
 
       {/* Global Footer */}

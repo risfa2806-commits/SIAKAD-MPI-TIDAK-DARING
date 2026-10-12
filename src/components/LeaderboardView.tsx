@@ -25,6 +25,7 @@ import {
   Star,
   Shield,
   User,
+  Zap,
 } from 'lucide-react';
 import { isStudentOnline } from '../services/api';
 
@@ -50,6 +51,7 @@ export interface StudentScoreCard {
   quizPoints: number;
   examPoints: number;
   bonusPoints: number;
+  activityPoints: number;
   isOnline: boolean;
   hasSubmittedTask: boolean;
   quizBestScore: number;
@@ -71,7 +73,7 @@ export const LeaderboardView: React.FC<LeaderboardViewProps> = ({
   isDosen,
 }) => {
   const [activeCategory, setActiveCategory] = useState<
-    'all' | 'presentation' | 'quiz' | 'exam' | 'attendance'
+    'all' | 'activity' | 'presentation' | 'quiz' | 'exam' | 'attendance'
   >('all');
   const [searchQuery, setSearchQuery] = useState('');
 
@@ -121,8 +123,11 @@ export const LeaderboardView: React.FC<LeaderboardViewProps> = ({
       const isOnline = isStudentOnline(std.lastActive);
       const bonusPoints = (isOnline ? 15 : 5) + (sub ? 10 : 0);
 
+      // Activity Points
+      const activityPoints = std.activityPoints || 0;
+
       // Total composite points
-      const totalPoints = attendancePoints + presentationPoints + quizPoints + examPoints + bonusPoints;
+      const totalPoints = attendancePoints + presentationPoints + quizPoints + examPoints + bonusPoints + activityPoints;
 
       // Badges
       const badges: Array<{ name: string; icon: string; color: string }> = [];
@@ -138,6 +143,9 @@ export const LeaderboardView: React.FC<LeaderboardViewProps> = ({
       if (utsScore >= 90 || uasScore >= 90) {
         badges.push({ name: 'Cendekiawan Filsafat', icon: '📜', color: 'bg-purple-100 text-purple-800' });
       }
+      if (activityPoints >= 35) {
+        badges.push({ name: 'Bintang Keaktifan', icon: '⚡', color: 'bg-amber-100 text-amber-900 border border-amber-300' });
+      }
 
       return {
         student: std,
@@ -148,6 +156,7 @@ export const LeaderboardView: React.FC<LeaderboardViewProps> = ({
         quizPoints,
         examPoints,
         bonusPoints,
+        activityPoints,
         isOnline,
         hasSubmittedTask: Boolean(sub),
         quizBestScore: bestQuizScore,
@@ -156,6 +165,9 @@ export const LeaderboardView: React.FC<LeaderboardViewProps> = ({
         badges,
       };
     }).sort((a, b) => {
+      if (activeCategory === 'activity') {
+        return b.activityPoints - a.activityPoints;
+      }
       if (activeCategory === 'presentation') return b.presentationPoints - a.presentationPoints;
       if (activeCategory === 'quiz') return b.quizPoints - a.quizPoints;
       if (activeCategory === 'exam') return b.examPoints - a.examPoints;
@@ -246,6 +258,18 @@ export const LeaderboardView: React.FC<LeaderboardViewProps> = ({
             >
               <Trophy size={14} />
               <span>⭐ Total Akumulasi Poin</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setActiveCategory('activity')}
+              className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all whitespace-nowrap flex items-center gap-1.5 cursor-pointer ${
+                activeCategory === 'activity'
+                  ? 'bg-amber-500 text-slate-950 shadow-md font-black'
+                  : 'bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700'
+              }`}
+            >
+              <Zap size={14} className={activeCategory === 'activity' ? 'fill-slate-950 text-slate-950' : 'fill-amber-400 text-amber-500'} />
+              <span>⚡ Poin Keaktifan Dosen</span>
             </button>
             <button
               type="button"

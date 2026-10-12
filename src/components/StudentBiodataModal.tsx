@@ -642,7 +642,12 @@ export const StudentBiodataModal: React.FC<StudentBiodataModalProps> = ({
 
                             <td className="py-2.5 px-3">
                               <div className="font-bold text-slate-900">{std.name}</div>
-                              <div className="text-[11px] font-mono text-emerald-700">{std.nim || '-'}</div>
+                              <div className="flex items-center gap-1.5 mt-0.5">
+                                <span className="text-[11px] font-mono text-emerald-700">{std.nim || '-'}</span>
+                                <span className="px-1.5 py-0.2 rounded font-black text-[9px] bg-amber-100 text-amber-900 border border-amber-300" title="Poin Keaktifan Mahasiswa">
+                                  ⚡ {std.activityPoints || 0} Poin
+                                </span>
+                              </div>
                               <div className="text-[10px] text-slate-400">
                                 {std.gender || 'Laki-laki'}
                               </div>

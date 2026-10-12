@@ -477,6 +477,113 @@ export const INITIAL_STUDENTS: Student[] = [
   },
 ];
 
+// Inisialisasi Poin Keaktifan Default untuk memotivasi mahasiswa
+const INITIAL_STUDENT_ACTIVITY: Record<string, { points: number; logs: any[] }> = {
+  'mhs-1': {
+    points: 45,
+    logs: [
+      { id: 'act-1-1', points: 15, reason: 'Aktif bertanya kritis mengenai dialektika dan hakikat ilmu', category: 'pertanyaan', meetingNumber: 3, timestamp: '2026-09-08T09:30:00Z', dosenName: 'Risfa Tri Ulfa, S.Pd., M.Pd.' },
+      { id: 'act-1-2', points: 15, reason: 'Pemaparan presentasi materi ontologi sangat komprehensif', category: 'presentasi', meetingNumber: 3, timestamp: '2026-09-08T10:15:00Z', dosenName: 'Risfa Tri Ulfa, S.Pd., M.Pd.' },
+      { id: 'act-1-3', points: 15, reason: 'Menjawab pertanyaan sanggahan audiens dengan dalil logis', category: 'jawaban', meetingNumber: 3, timestamp: '2026-09-08T10:45:00Z', dosenName: 'Risfa Tri Ulfa, S.Pd., M.Pd.' },
+    ],
+  },
+  'mhs-2': {
+    points: 35,
+    logs: [
+      { id: 'act-2-1', points: 15, reason: 'Kolaborasi aktif dan slide presentasi sangat kreatif', category: 'presentasi', meetingNumber: 3, timestamp: '2026-09-08T10:00:00Z', dosenName: 'Risfa Tri Ulfa, S.Pd., M.Pd.' },
+      { id: 'act-2-2', points: 10, reason: 'Memberikan argumentasi komparatif antara ilmu dan mitos', category: 'argumen', meetingNumber: 3, timestamp: '2026-09-08T10:30:00Z', dosenName: 'Risfa Tri Ulfa, S.Pd., M.Pd.' },
+      { id: 'act-2-3', points: 10, reason: 'Menjawab pertanyaan diskusi kelompok dengan runtut', category: 'jawaban', meetingNumber: 3, timestamp: '2026-09-08T10:50:00Z', dosenName: 'Risfa Tri Ulfa, S.Pd., M.Pd.' },
+    ],
+  },
+  'mhs-3': {
+    points: 30,
+    logs: [
+      { id: 'act-3-1', points: 15, reason: 'Pemaparan definisi ilmu secara ontologis sangat jelas', category: 'presentasi', meetingNumber: 3, timestamp: '2026-09-08T10:10:00Z', dosenName: 'Risfa Tri Ulfa, S.Pd., M.Pd.' },
+      { id: 'act-3-2', points: 15, reason: 'Aktif merespon pertanyaan rekan mahasiswa di forum kelas', category: 'jawaban', meetingNumber: 3, timestamp: '2026-09-08T10:40:00Z', dosenName: 'Risfa Tri Ulfa, S.Pd., M.Pd.' },
+    ],
+  },
+  'mhs-4': {
+    points: 40,
+    logs: [
+      { id: 'act-4-1', points: 15, reason: 'Sangat menguasai aliran-aliran ontologi (idealisme vs realisme)', category: 'presentasi', meetingNumber: 4, timestamp: '2026-09-15T09:40:00Z', dosenName: 'Risfa Tri Ulfa, S.Pd., M.Pd.' },
+      { id: 'act-4-2', points: 15, reason: 'Pertanyaan tajam mengenai batas wilayah kajian metafisika', category: 'pertanyaan', meetingNumber: 4, timestamp: '2026-09-15T10:20:00Z', dosenName: 'Risfa Tri Ulfa, S.Pd., M.Pd.' },
+      { id: 'act-4-3', points: 10, reason: 'Kontribusi aktif dalam sintesis diskusi pleno', category: 'argumen', meetingNumber: 4, timestamp: '2026-09-15T10:55:00Z', dosenName: 'Risfa Tri Ulfa, S.Pd., M.Pd.' },
+    ],
+  },
+  'mhs-5': {
+    points: 25,
+    logs: [
+      { id: 'act-5-1', points: 15, reason: 'Penyampaian studi kasus ontologi pada manajemen madrasah', category: 'presentasi', meetingNumber: 4, timestamp: '2026-09-15T10:00:00Z', dosenName: 'Risfa Tri Ulfa, S.Pd., M.Pd.' },
+      { id: 'act-5-2', points: 10, reason: 'Menjawab pertanyaan tentang hakikat objek formal ilmu', category: 'jawaban', meetingNumber: 4, timestamp: '2026-09-15T10:35:00Z', dosenName: 'Risfa Tri Ulfa, S.Pd., M.Pd.' },
+    ],
+  },
+  'mhs-6': {
+    points: 35,
+    logs: [
+      { id: 'act-6-1', points: 15, reason: 'Presentasi metode ilmiah induktif dan deduktif sangat apik', category: 'presentasi', meetingNumber: 5, timestamp: '2026-09-22T09:45:00Z', dosenName: 'Risfa Tri Ulfa, S.Pd., M.Pd.' },
+      { id: 'act-6-2', points: 10, reason: 'Aktif mengajukan contoh verifikasi empiris dalam riset', category: 'pertanyaan', meetingNumber: 5, timestamp: '2026-09-22T10:15:00Z', dosenName: 'Risfa Tri Ulfa, S.Pd., M.Pd.' },
+      { id: 'act-6-3', points: 10, reason: 'Mempertahankan argumen epistemologi keilmuan Islam', category: 'argumen', meetingNumber: 5, timestamp: '2026-09-22T10:45:00Z', dosenName: 'Risfa Tri Ulfa, S.Pd., M.Pd.' },
+    ],
+  },
+  'mhs-7': {
+    points: 30,
+    logs: [
+      { id: 'act-7-1', points: 15, reason: 'Pemaparan teori kebenaran korespondensi vs koherensi', category: 'presentasi', meetingNumber: 5, timestamp: '2026-09-22T10:00:00Z', dosenName: 'Risfa Tri Ulfa, S.Pd., M.Pd.' },
+      { id: 'act-7-2', points: 15, reason: 'Menjawab pertanyaan diskusi dengan referensi buku rujukan', category: 'jawaban', meetingNumber: 5, timestamp: '2026-09-22T10:30:00Z', dosenName: 'Risfa Tri Ulfa, S.Pd., M.Pd.' },
+    ],
+  },
+  'mhs-8': {
+    points: 25,
+    logs: [
+      { id: 'act-8-1', points: 15, reason: 'Membawakan materi metode ilmiah dengan visualisasi bagan', category: 'presentasi', meetingNumber: 5, timestamp: '2026-09-22T10:10:00Z', dosenName: 'Risfa Tri Ulfa, S.Pd., M.Pd.' },
+      { id: 'act-8-2', points: 10, reason: 'Menanggapi pertanyaan rekan terkait validitas riset', category: 'jawaban', meetingNumber: 5, timestamp: '2026-09-22T10:40:00Z', dosenName: 'Risfa Tri Ulfa, S.Pd., M.Pd.' },
+    ],
+  },
+  'mhs-9': {
+    points: 35,
+    logs: [
+      { id: 'act-9-1', points: 15, reason: 'Pemaparan landasan aksiologi dan etika keilmuan sangat mendalam', category: 'presentasi', meetingNumber: 6, timestamp: '2026-09-29T09:35:00Z', dosenName: 'Risfa Tri Ulfa, S.Pd., M.Pd.' },
+      { id: 'act-9-2', points: 10, reason: 'Pertanyaan kritis tentang tanggung jawab moral ilmuwan', category: 'pertanyaan', meetingNumber: 6, timestamp: '2026-09-29T10:10:00Z', dosenName: 'Risfa Tri Ulfa, S.Pd., M.Pd.' },
+      { id: 'act-9-3', points: 10, reason: 'Mengaitkan aksiologi dengan integritas pemimpin pendidikan', category: 'argumen', meetingNumber: 6, timestamp: '2026-09-29T10:40:00Z', dosenName: 'Risfa Tri Ulfa, S.Pd., M.Pd.' },
+    ],
+  },
+  'mhs-10': {
+    points: 25,
+    logs: [
+      { id: 'act-10-1', points: 15, reason: 'Presentasi nilai estetika dan etika dalam filsafat ilmu', category: 'presentasi', meetingNumber: 6, timestamp: '2026-09-29T09:50:00Z', dosenName: 'Risfa Tri Ulfa, S.Pd., M.Pd.' },
+      { id: 'act-10-2', points: 10, reason: 'Aktif berdiskusi menjawab sanggahan rekan sekelas', category: 'jawaban', meetingNumber: 6, timestamp: '2026-09-29T10:25:00Z', dosenName: 'Risfa Tri Ulfa, S.Pd., M.Pd.' },
+    ],
+  },
+  'mhs-11': {
+    points: 30,
+    logs: [
+      { id: 'act-11-1', points: 15, reason: 'Ulasan sejarah filsafat era Yunani Klasik sangat runtut', category: 'presentasi', meetingNumber: 7, timestamp: '2026-10-06T09:30:00Z', dosenName: 'Risfa Tri Ulfa, S.Pd., M.Pd.' },
+      { id: 'act-11-2', points: 15, reason: 'Memberikan komparasi pemikiran Socrates, Plato, dan Aristoteles', category: 'argumen', meetingNumber: 7, timestamp: '2026-10-06T10:15:00Z', dosenName: 'Risfa Tri Ulfa, S.Pd., M.Pd.' },
+    ],
+  },
+  'mhs-12': {
+    points: 25,
+    logs: [
+      { id: 'act-12-1', points: 15, reason: 'Penyampaian transisi era Skolastik ke era Modern', category: 'presentasi', meetingNumber: 7, timestamp: '2026-10-06T09:50:00Z', dosenName: 'Risfa Tri Ulfa, S.Pd., M.Pd.' },
+      { id: 'act-12-2', points: 10, reason: 'Menjawab pertanyaan forum mengenai pengaruh filsafat Islam di Eropa', category: 'jawaban', meetingNumber: 7, timestamp: '2026-10-06T10:30:00Z', dosenName: 'Risfa Tri Ulfa, S.Pd., M.Pd.' },
+    ],
+  },
+  'mhs-13': {
+    points: 25,
+    logs: [
+      { id: 'act-13-1', points: 15, reason: 'Slide presentasi sejarah filsafat sangat estetik dan jelas', category: 'presentasi', meetingNumber: 7, timestamp: '2026-10-06T10:05:00Z', dosenName: 'Risfa Tri Ulfa, S.Pd., M.Pd.' },
+      { id: 'act-13-2', points: 10, reason: 'Aktif menanggapi pertanyaan seputar zaman kegelapan Eropa', category: 'jawaban', meetingNumber: 7, timestamp: '2026-10-06T10:45:00Z', dosenName: 'Risfa Tri Ulfa, S.Pd., M.Pd.' },
+    ],
+  },
+};
+
+// Pasang poin keaktifan dan log ke mahasiswa
+INITIAL_STUDENTS.forEach(s => {
+  const act = INITIAL_STUDENT_ACTIVITY[s.id];
+  s.activityPoints = act ? act.points : 20;
+  s.activityPointLogs = act ? act.logs : [];
+});
+
 export const INITIAL_GROUPS: GroupProject[] = [
   {
     id: 1,

@@ -310,9 +310,15 @@ export const StudentSelectorModal: React.FC<StudentSelectorModalProps> = ({
                     </div>
 
                     <div>
-                      <div className="flex items-center gap-2">
+                      <div className="flex items-center gap-2 flex-wrap">
                         <span className="font-bold text-slate-900 text-xs sm:text-sm">
                           {std.name}
+                        </span>
+                        <span
+                          className="inline-flex items-center gap-0.5 px-2 py-0.5 rounded-full text-[10px] font-black bg-amber-100 text-amber-900 border border-amber-300 shadow-2xs"
+                          title="Poin Keaktifan Mahasiswa"
+                        >
+                          ⚡ {std.activityPoints || 0} Poin
                         </span>
                         {online && (
                           <span className="text-[10px] font-bold text-emerald-700 bg-emerald-100 px-2 py-0.2 rounded-full">
@@ -338,7 +344,16 @@ export const StudentSelectorModal: React.FC<StudentSelectorModalProps> = ({
                         <Check size={14} /> Aktif
                       </span>
                     ) : (
-                      <button className="text-xs font-semibold text-slate-600 hover:text-emerald-700 border border-slate-200 px-2.5 py-1 rounded-lg hover:border-emerald-300 transition-colors">
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          onSelectStudent(std);
+                          onClose();
+                        }}
+                        className="text-xs font-semibold text-slate-600 hover:text-emerald-700 border border-slate-200 px-2.5 py-1 rounded-lg hover:border-emerald-300 transition-colors cursor-pointer"
+                        title={`Pilih ${std.name} sebagai mahasiswa aktif`}
+                      >
                         Pilih
                       </button>
                     )}

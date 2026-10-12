@@ -148,8 +148,9 @@ export const TopDeadlineBanner: React.FC<TopDeadlineBannerProps> = ({
             <div className="text-[11px] text-slate-300 font-medium mr-1 hidden sm:inline">
               {currentIndex + 1} dari {urgentDeadlines.length}
               <button
+                type="button"
                 onClick={() => setCurrentIndex((currentIndex + 1) % urgentDeadlines.length)}
-                className="ml-1.5 underline hover:text-white"
+                className="ml-1.5 underline hover:text-white cursor-pointer"
               >
                 Berikutnya
               </button>
@@ -158,6 +159,7 @@ export const TopDeadlineBanner: React.FC<TopDeadlineBannerProps> = ({
 
           {/* Quick Submission CTA button */}
           <button
+            type="button"
             id="btn-banner-submit-task"
             onClick={handleGoToTask}
             className="flex items-center gap-1.5 px-3 py-1.5 bg-amber-400 hover:bg-amber-300 active:bg-amber-500 text-slate-950 rounded-lg text-xs font-bold transition-all shadow-sm cursor-pointer"
@@ -171,6 +173,7 @@ export const TopDeadlineBanner: React.FC<TopDeadlineBannerProps> = ({
           {/* Settings / Simulation configure (Khusus Dosen) */}
           {isDosen && onOpenDeadlineSettings && (
             <button
+              type="button"
               onClick={onOpenDeadlineSettings}
               className="p-1.5 text-amber-300 hover:text-white rounded-lg hover:bg-white/10 transition-colors cursor-pointer"
               title="Khusus Dosen: Atur tenggat waktu & simulasi deadline"
@@ -181,6 +184,7 @@ export const TopDeadlineBanner: React.FC<TopDeadlineBannerProps> = ({
 
           {/* Close / Dismiss Banner */}
           <button
+            type="button"
             onClick={handleDismiss}
             className="p-1.5 text-slate-400 hover:text-white rounded-lg hover:bg-white/10 transition-colors cursor-pointer"
             title="Tutup pengingat ini sementara (2 jam)"

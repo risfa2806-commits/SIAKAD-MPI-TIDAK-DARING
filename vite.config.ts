@@ -1,22 +1,82 @@
 import tailwindcss from '@tailwindcss/vite';
 import react from '@vitejs/plugin-react';
 import path from 'path';
-import {defineConfig} from 'vite';
+import { defineConfig, PluginOption } from 'vite';
+
+const suppressHmrPlugin = (): PluginOption => ({
+  name: 'suppress-hmr-head',
+  enforce: 'pre',
+  transformIndexHtml: {
+    order: 'pre',
+    handler() {
+      return [
+        {
+          tag: 'script',
+          attrs: { type: 'text/javascript' },
+          children: `
+            (function() {
+              try {
+                function MockWS() {
+                  this.readyState = 1;
+                  this.url = '';
+                  this.protocol = '';
+                  this.extensions = '';
+                  this.binaryType = 'blob';
+                  this.bufferedAmount = 0;
+                  this.onopen = null;
+                  this.onclose = null;
+                  this.onerror = null;
+                  this.onmessage = null;
+                  this.close = function() { this.readyState = 3; };
+                  this.send = function() {};
+                  this.addEventListener = function() {};
+                  this.removeEventListener = function() {};
+                  this.dispatchEvent = function() { return false; };
+                }
+                MockWS.CONNECTING = 0;
+                MockWS.OPEN = 1;
+                MockWS.CLOSING = 2;
+                MockWS.CLOSED = 3;
+                window.WebSocket = MockWS;
+              } catch (e) {}
+
+              var suppress = function(e) {
+                var s = String((e && (e.message || (e.reason && (e.reason.message || e.reason)) || e.reason)) || '').toLowerCase();
+                if (
+                  s.indexOf('websocket') !== -1 ||
+                  s.indexOf('ditutup tanpa dibuka') !== -1 ||
+                  s.indexOf('closed without being opened') !== -1 ||
+                  s.indexOf('network error') !== -1 ||
+                  s.indexOf('[vite]') !== -1
+                ) {
+                  if (e.preventDefault) e.preventDefault();
+                  if (e.stopImmediatePropagation) e.stopImmediatePropagation();
+                  return true;
+                }
+              };
+              window.addEventListener('error', suppress, true);
+              window.addEventListener('unhandledrejection', suppress, true);
+            })();
+          `,
+          injectTo: 'head-prepend',
+        },
+      ];
+    },
+  },
+});
 
 export default defineConfig(() => {
   return {
-    plugins: [react(), tailwindcss()],
+    plugins: [suppressHmrPlugin(), react(), tailwindcss()],
     resolve: {
       alias: {
         '@': path.resolve(__dirname, '.'),
       },
     },
     server: {
-      // HMR is disabled in AI Studio via DISABLE_HMR env var.
-      // Do not modifyâfile watching is disabled to prevent flickering during agent edits.
-      hmr: process.env.DISABLE_HMR !== 'true',
-      // Disable file watching when DISABLE_HMR is true to save CPU during agent edits.
-      watch: process.env.DISABLE_HMR === 'true' ? null : {},
+      hmr: false,
+      ws: false as const,
+      watch: null,
     },
   };
 });

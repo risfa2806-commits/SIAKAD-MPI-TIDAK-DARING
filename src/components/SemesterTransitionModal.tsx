@@ -327,8 +327,10 @@ export const SemesterTransitionModal: React.FC<SemesterTransitionModalProps> = (
             </div>
           </div>
           <button
+            type="button"
             onClick={onClose}
-            className="w-8 h-8 rounded-lg bg-white/10 hover:bg-white/20 flex items-center justify-center text-white transition-colors"
+            className="w-8 h-8 rounded-lg bg-white/10 hover:bg-white/20 active:bg-white/30 flex items-center justify-center text-white transition-colors cursor-pointer"
+            title="Tutup Modal"
           >
             <X className="w-5 h-5" />
           </button>

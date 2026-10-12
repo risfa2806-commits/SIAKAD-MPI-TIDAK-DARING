@@ -12,6 +12,7 @@ import {
   GroupProject,
   ExamScheduleSettings,
   MeetingSchedule,
+  ActivityPointLog,
 } from '../types';
 import { INITIAL_DATABASE } from '../data/initialData';
 import { saveToIndexedDb, loadFromIndexedDb, saveIndividualSubmissionToIndexedDb } from '../utils/indexedDb';
@@ -180,24 +181,33 @@ export async function syncPendingSubmissionsToServer(): Promise<void> {
   }
 }
 
-// Fetch database from server, fallback to IndexedDB / Supabase / local cache if offline
+// Fetch database from server with silent retry and smooth fallback to IndexedDB / local cache
 export async function fetchDatabase(): Promise<{ db: SiakadDatabase; isOffline: boolean }> {
-  try {
-    const res = await fetch('/api/db');
-    if (res.ok) {
-      const json = await safeJson(res, null);
-      if (json && json.success && json.data) {
-        saveLocalCache(json.data);
-        // Automatically sync any offline pending submissions to server
-        syncPendingSubmissionsToServer();
-        return { db: json.data, isOffline: false };
+  // Silent retry up to 3 times to gracefully absorb any transient server startup delay
+  for (let attempt = 0; attempt < 3; attempt++) {
+    try {
+      const res = await fetch('/api/db', {
+        headers: { Accept: 'application/json' },
+        cache: 'no-cache',
+      });
+      if (res.ok) {
+        const json = await safeJson(res, null);
+        if (json && json.success && json.data) {
+          saveLocalCache(json.data);
+          // Automatically sync any offline pending submissions to server
+          syncPendingSubmissionsToServer();
+          return { db: json.data, isOffline: false };
+        }
+      }
+    } catch {
+      // Pause briefly before retrying
+      if (attempt < 2) {
+        await new Promise((resolve) => setTimeout(resolve, 350 * (attempt + 1)));
       }
     }
-  } catch (err) {
-    console.warn('Server offline or network error, attempting offline cache recovery:', err);
   }
 
-  // Attempt recovery from Supabase if configured (e.g. hosted on Vercel with Supabase)
+  // Attempt recovery from Supabase if configured
   if (isSupabaseConfigured()) {
     try {
       const sbData = await fetchDatabaseFromSupabase();
@@ -205,8 +215,8 @@ export async function fetchDatabase(): Promise<{ db: SiakadDatabase; isOffline: 
         saveLocalCache(sbData);
         return { db: sbData, isOffline: false };
       }
-    } catch (err) {
-      console.warn('Supabase fetch error, fallback to client storage:', err);
+    } catch {
+      // Ignore Supabase fetch errors silently
     }
   }
 
@@ -411,13 +421,24 @@ export async function submitGroupProject(payload: {
   }
 }
 
-// Grade individual task
-export async function gradeIndividualTask(studentId: string, grade: number, feedback: string): Promise<boolean> {
+// Grade individual task (PPT & Makalah)
+export async function gradeIndividualTask(
+  studentId: string,
+  grade: number,
+  feedback: string,
+  extra?: { submissionId?: string; meetingNumber?: number }
+): Promise<boolean> {
   try {
     const res = await fetch('/api/individual-grade', {
       method: 'POST',
       headers: getDosenAuthHeaders(),
-      body: JSON.stringify({ studentId, grade, feedback }),
+      body: JSON.stringify({
+        studentId,
+        grade,
+        feedback,
+        submissionId: extra?.submissionId,
+        meetingNumber: extra?.meetingNumber,
+      }),
     });
     return res.ok;
   } catch {
@@ -1434,6 +1455,140 @@ export async function updateStudentApi(id: string, data: Partial<Student>): Prom
   return null;
 }
 
+// Add or adjust student activity points (Poin Keaktifan) - Dosen only
+export async function addStudentActivityPointsApi(
+  studentId: string,
+  payload: {
+    points: number;
+    reason: string;
+    category?: 'pertanyaan' | 'jawaban' | 'argumen' | 'presentasi' | 'kehadiran' | 'sikap' | 'manual';
+    meetingNumber?: number;
+  }
+): Promise<{ success: boolean; student?: Student; log?: ActivityPointLog; error?: string }> {
+  const pointDelta = Number(payload.points);
+
+  // Optimistic update on local cache immediately for zero-lag UI
+  try {
+    const currentDb = getLocalCache();
+    if (currentDb.students) {
+      const s = currentDb.students.find(st => st.id === studentId || st.nim === studentId);
+      if (s) {
+        s.activityPoints = Math.max(0, (s.activityPoints || 0) + pointDelta);
+        if (!s.activityPointLogs) s.activityPointLogs = [];
+        const optLog: ActivityPointLog = {
+          id: `act-opt-${Date.now()}`,
+          points: pointDelta,
+          reason: payload.reason || (pointDelta >= 0 ? 'Poin Keaktifan Kelas' : 'Pengurangan Poin Keaktifan'),
+          category: payload.category || 'manual',
+          meetingNumber: payload.meetingNumber,
+          timestamp: new Date().toISOString(),
+          dosenName: currentDb.courseProfile?.name || 'Dosen Pengampu',
+        };
+        s.activityPointLogs.unshift(optLog);
+        saveLocalCache(currentDb);
+        saveToIndexedDb(currentDb).catch(() => {});
+      }
+    }
+  } catch (e) {
+    console.warn('Optimistic activity points cache save notice:', e);
+  }
+
+  try {
+    const res = await fetch(`/api/students/${studentId}/activity-points`, {
+      method: 'POST',
+      headers: getDosenAuthHeaders(),
+      body: JSON.stringify(payload),
+    });
+    if (res.ok) {
+      const data = await safeJson(res, null);
+      if (data?.student) {
+        // Reconcile cache with server student
+        try {
+          const currentDb = getLocalCache();
+          if (currentDb.students) {
+            const idx = currentDb.students.findIndex(st => st.id === data.student.id);
+            if (idx >= 0) {
+              currentDb.students[idx] = { ...currentDb.students[idx], ...data.student };
+              saveLocalCache(currentDb);
+              saveToIndexedDb(currentDb).catch(() => {});
+            }
+          }
+        } catch {}
+      }
+      return { success: true, student: data?.student, log: data?.log };
+    } else {
+      const errJson = await safeJson(res, {});
+      return { success: false, error: errJson?.error || 'Gagal memperbarui poin keaktifan' };
+    }
+  } catch (err: any) {
+    console.warn('Network issue adding activity points:', err);
+    return { success: true, error: 'Tersimpan di cache lokal (Mode Cadangan)' };
+  }
+}
+
+// Delete a specific activity point log entry
+export async function deleteStudentActivityPointLogApi(
+  studentId: string,
+  logId: string
+): Promise<{ success: boolean; student?: Student; error?: string }> {
+  try {
+    const res = await fetch(`/api/students/${studentId}/activity-points/${logId}`, {
+      method: 'DELETE',
+      headers: getDosenAuthHeaders(),
+    });
+    if (res.ok) {
+      const data = await safeJson(res, null);
+      if (data?.student) {
+        try {
+          const currentDb = getLocalCache();
+          if (currentDb.students) {
+            const idx = currentDb.students.findIndex(st => st.id === data.student.id);
+            if (idx >= 0) {
+              currentDb.students[idx] = { ...currentDb.students[idx], ...data.student };
+              saveLocalCache(currentDb);
+              saveToIndexedDb(currentDb).catch(() => {});
+            }
+          }
+        } catch {}
+      }
+      return { success: true, student: data?.student };
+    } else {
+      const errJson = await safeJson(res, {});
+      return { success: false, error: errJson?.error || 'Gagal menghapus log poin' };
+    }
+  } catch (err: any) {
+    return { success: false, error: err?.message || 'Gangguan koneksi' };
+  }
+}
+
+// Bulk add activity points (e.g. to a presentation group)
+export async function bulkAddActivityPointsApi(
+  studentIds: string[],
+  payload: {
+    points: number;
+    reason: string;
+    category?: 'pertanyaan' | 'jawaban' | 'argumen' | 'presentasi' | 'kehadiran' | 'sikap' | 'manual';
+    meetingNumber?: number;
+  }
+): Promise<{ success: boolean; count?: number; error?: string }> {
+  try {
+    const res = await fetch('/api/students/bulk-activity-points', {
+      method: 'POST',
+      headers: getDosenAuthHeaders(),
+      body: JSON.stringify({ studentIds, ...payload }),
+    });
+    if (res.ok) {
+      const data = await safeJson(res, null);
+      return { success: true, count: data?.updatedCount || studentIds.length };
+    } else {
+      const errJson = await safeJson(res, {});
+      return { success: false, error: errJson?.error || 'Gagal memberikan poin masal' };
+    }
+  } catch (err: any) {
+    return { success: false, error: err?.message || 'Gangguan jaringan' };
+  }
+}
+
 // Course / Mata Kuliah Profile APIs
 export async function updateCourseProfileApi(profile: any): Promise<boolean> {
   try {
@@ -1489,6 +1644,7 @@ export async function addCourseApi(courseData: {
   studentOption?: 'use_existing_roster' | 'copy_from_course' | 'empty' | 'generate_cohort' | 'rps_extracted';
   sourceCourseId?: string;
   customStudents?: any[];
+  customStudentNames?: string;
 }): Promise<{ success: boolean; data?: SiakadDatabase; error?: string }> {
   try {
     const res = await fetch('/api/courses', {

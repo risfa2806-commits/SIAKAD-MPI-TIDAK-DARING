@@ -1,5 +1,15 @@
 export type AttendanceStatus = 'H' | 'I' | 'S' | 'A' | 'BELUM'; // H: Hadir, I: Izin, S: Sakit, A: Alfa
 
+export interface ActivityPointLog {
+  id: string;
+  points: number; // e.g. +5, +10, -5
+  reason: string; // e.g. "Aktif bertanya secara kritis", "Menjawab pertanyaan dialektika dosen"
+  category?: 'pertanyaan' | 'jawaban' | 'argumen' | 'presentasi' | 'kehadiran' | 'sikap' | 'manual';
+  meetingNumber?: number; // Pertemuan perkuliahan terkait
+  timestamp: string; // Tanggal ISO
+  dosenName?: string;
+}
+
 export interface Student {
   id: string;
   nim: string;
@@ -13,6 +23,8 @@ export interface Student {
   topic: string;
   meetingNumber: number;
   groupId: number;
+  activityPoints?: number; // Total Akumulasi Poin Keaktifan Mahasiswa
+  activityPointLogs?: ActivityPointLog[]; // Riwayat catatan & log poin keaktifan dari dosen
   isOnline?: boolean;
   lastActive?: string;
   createdAt: string;
@@ -69,6 +81,10 @@ export interface IndividualSubmission {
   partnerName?: string; // Nama teman/rekan kolaborasi presentasi & tugas PPT
   presentationType?: 'individu' | 'kelompok';
   submissionChoice?: 'all' | 'ppt_only' | 'makalah_only';
+  groupId?: number;
+  groupName?: string;
+  groupMembers?: string[];
+  representativeName?: string;
   submittedAt: string;
   grade?: number;
   feedback?: string;
@@ -256,6 +272,7 @@ export interface CourseDataPayload {
   uasExamSettings?: ExamScheduleSettings;
   attendance: Record<number, Record<string, AttendanceStatus>>;
   grades: Record<string, StudentGrade>;
+  activityPointLogs?: Record<string, ActivityPointLog[]>;
 }
 
 export interface ExamScheduleSettings {
@@ -291,6 +308,7 @@ export interface SiakadDatabase {
   uasExamSettings?: ExamScheduleSettings;
   attendance: Record<number, Record<string, AttendanceStatus>>; // meetingNumber -> studentId -> status
   grades: Record<string, StudentGrade>; // studentId -> StudentGrade
+  activityPointLogs?: Record<string, ActivityPointLog[]>; // studentId -> list of point logs
   activeHeartbeats: Record<string, string>; // studentId -> timestamp ISO
   courseProfile?: DosenProfile;
   rpsRawText?: string;

@@ -26,6 +26,9 @@ import {
   Moon,
   Trophy,
   DoorOpen,
+  Minimize2,
+  Maximize2,
+  Zap,
 } from 'lucide-react';
 
 interface HeaderProps {
@@ -45,6 +48,7 @@ interface HeaderProps {
   onOpenNotificationCenter?: () => void;
   onToggleSound: () => void;
   onOpenStudentSelect: () => void;
+  onOpenStudentProfile?: () => void;
   onOpenDosenLogin: () => void;
   onLogoutDosen: () => void;
   onOpenShareModal: () => void;
@@ -74,6 +78,7 @@ export const Header: React.FC<HeaderProps> = ({
   onOpenNotificationCenter,
   onToggleSound,
   onOpenStudentSelect,
+  onOpenStudentProfile,
   onOpenDosenLogin,
   onLogoutDosen,
   onOpenShareModal,
@@ -85,6 +90,24 @@ export const Header: React.FC<HeaderProps> = ({
   activeTab,
   setActiveTab,
 }) => {
+  const [isCompactMenu, setIsCompactMenu] = React.useState<boolean>(() => {
+    try {
+      return localStorage.getItem('siakad_compact_menu') === 'true';
+    } catch {
+      return false;
+    }
+  });
+
+  const toggleCompactMenu = () => {
+    setIsCompactMenu(prev => {
+      const next = !prev;
+      try {
+        localStorage.setItem('siakad_compact_menu', String(next));
+      } catch {}
+      return next;
+    });
+  };
+
   const campus = courseProfile?.campusName || 'STAI Jarinabi';
   const dosenFullName = courseProfile?.name || (courseProfile?.dosenName ? `${courseProfile.dosenName}${courseProfile.dosenTitle ? ', ' + courseProfile.dosenTitle : ''}` : 'Risfa Tri Ulfa, S.Pd., M.Pd., Gr.');
 
@@ -149,17 +172,21 @@ export const Header: React.FC<HeaderProps> = ({
       </div>
 
       {/* Main Header bar */}
-      <div className="max-w-7xl mx-auto px-4 py-3 sm:py-3.5">
+      <div className={`max-w-7xl mx-auto px-4 transition-all duration-200 ${isCompactMenu ? 'py-1.5 sm:py-2' : 'py-3 sm:py-3.5'}`}>
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-3">
           
           {/* Logo & Course Info */}
-          <div className="flex items-center gap-3">
-            <div className="h-11 w-11 rounded-xl bg-emerald-800 text-white flex items-center justify-center shadow-md font-bold text-lg flex-shrink-0">
-              <BookOpen size={22} className="text-emerald-100" />
+          <div className="flex items-center gap-2.5 sm:gap-3">
+            <div className={`rounded-xl bg-emerald-800 text-white flex items-center justify-center shadow-md font-bold flex-shrink-0 transition-all ${
+              isCompactMenu ? 'h-8 w-8 text-sm' : 'h-11 w-11 text-lg'
+            }`}>
+              <BookOpen size={isCompactMenu ? 16 : 22} className="text-emerald-100" />
             </div>
             <div>
               <div className="flex items-center gap-2 flex-wrap">
-                <h1 className="text-base sm:text-lg font-black text-slate-900 tracking-tight leading-none font-serif-title">
+                <h1 className={`font-black text-slate-900 tracking-tight leading-none font-serif-title transition-all ${
+                  isCompactMenu ? 'text-sm sm:text-base' : 'text-base sm:text-lg'
+                }`}>
                   {courseProfile?.courseTitle || 'Filsafat Ilmu'}
                 </h1>
                 <span className="text-[10px] font-bold bg-emerald-100 text-emerald-800 px-2 py-0.5 rounded">
@@ -185,14 +212,16 @@ export const Header: React.FC<HeaderProps> = ({
                 {/* Course & Room Switcher trigger */}
                 <button
                   onClick={onOpenCourseSelect}
-                  className="inline-flex items-center gap-1.5 text-[11px] font-bold px-2.5 py-1 rounded-md bg-slate-800 hover:bg-slate-700 text-white transition-colors shadow-2xs border border-slate-700"
+                  className="inline-flex items-center gap-1.5 text-[11px] font-bold px-2.5 py-1 rounded-md bg-slate-800 hover:bg-slate-700 text-white transition-colors shadow-2xs border border-slate-700 cursor-pointer"
                   title="Pilih, kelola, atau ganti mata kuliah & semester yang diampu"
                 >
                   <Layers size={12} className="text-emerald-400" />
                   <span>{coursesCount > 1 ? `Mata Kuliah & RPS (${coursesCount})` : 'Pilih MK & RPS'}</span>
                 </button>
               </div>
-              <div className="text-xs text-slate-500 mt-1 flex items-center gap-2 flex-wrap">
+              <div className={`text-slate-500 flex items-center gap-2 flex-wrap transition-all ${
+                isCompactMenu ? 'text-[11px] mt-0.5' : 'text-xs mt-1'
+              }`}>
                 <span>{campus}</span>
                 <span>•</span>
                 <span>Prodi: {courseProfile?.studyProgram || 'MPI 1'}</span>
@@ -206,6 +235,23 @@ export const Header: React.FC<HeaderProps> = ({
 
           {/* User Status and Action Controls */}
           <div className="flex items-center flex-wrap gap-2">
+            
+            {/* Toggle Perkecil / Perluas Menu */}
+            <button
+              id="btn-toggle-compact-menu"
+              type="button"
+              onClick={toggleCompactMenu}
+              className={`flex items-center gap-1.5 text-xs font-semibold px-2.5 py-1.5 rounded-lg border transition-all cursor-pointer ${
+                isCompactMenu
+                  ? 'bg-emerald-100 hover:bg-emerald-200 text-emerald-900 border-emerald-400 shadow-2xs'
+                  : 'bg-slate-100 hover:bg-slate-200 text-slate-700 border-slate-200'
+              }`}
+              title={isCompactMenu ? 'Kembalikan menu navigasi ke ukuran standar' : 'Perkecil menu navigasi untuk memperluas ruang kerja layar'}
+            >
+              {isCompactMenu ? <Maximize2 size={13} className="text-emerald-700" /> : <Minimize2 size={13} className="text-slate-600" />}
+              <span className="hidden sm:inline font-bold">{isCompactMenu ? 'Perluas Menu' : 'Perkecil Menu'}</span>
+              <span className="sm:hidden font-bold">{isCompactMenu ? 'Besar' : 'Kecil'}</span>
+            </button>
             
             {/* View RPS Document Modal Button */}
             <button
@@ -334,7 +380,24 @@ export const Header: React.FC<HeaderProps> = ({
                   <span className="absolute -top-0.5 -right-0.5 h-2 w-2 rounded-full bg-emerald-500 ring-2 ring-white"></span>
                 </div>
                 <div className="text-left leading-tight">
-                  <div className="text-[10px] text-slate-500 uppercase font-semibold">Mahasiswa Aktif:</div>
+                  <div className="text-[10px] text-slate-500 uppercase font-semibold flex items-center justify-between gap-1">
+                    <span>Mahasiswa Aktif:</span>
+                    {currentStudent && (
+                      <span
+                        onClick={(e) => {
+                          if (onOpenStudentProfile) {
+                            e.stopPropagation();
+                            onOpenStudentProfile();
+                          }
+                        }}
+                        className="inline-flex items-center gap-0.5 px-1.5 py-0.2 bg-amber-100 hover:bg-amber-200 text-amber-900 rounded font-black text-[9px] border border-amber-300 transition-colors shadow-2xs"
+                        title="Poin Keaktifan Mahasiswa (Klik untuk lihat profil keaktifan)"
+                      >
+                        <Zap size={9} className="fill-amber-500 text-amber-600" />
+                        <span>{currentStudent.activityPoints || 0} Poin</span>
+                      </span>
+                    )}
+                  </div>
                   <div className="font-bold text-slate-900 truncate max-w-[140px] sm:max-w-[180px]">
                     {currentStudent ? currentStudent.name : 'Pilih Nama Anda'}
                   </div>
@@ -372,120 +435,151 @@ export const Header: React.FC<HeaderProps> = ({
         </div>
 
         {/* Navigation Tabs */}
-        <div className="flex items-center gap-1 mt-3 sm:mt-3.5 overflow-x-auto pb-1 scrollbar-none border-t border-slate-100 pt-2.5">
+        <div className={`flex items-center gap-1 overflow-x-auto pb-1 scrollbar-none border-t border-slate-100 transition-all duration-200 ${
+          isCompactMenu ? 'mt-1.5 pt-1.5' : 'mt-3 sm:mt-3.5 pt-2.5'
+        }`}>
           <button
             onClick={() => setActiveTab('jadwal')}
-            className={`flex items-center gap-1.5 text-xs sm:text-sm font-semibold px-3.5 py-1.5 rounded-lg transition-all whitespace-nowrap ${
+            className={`flex items-center gap-1.5 font-semibold rounded-lg transition-all whitespace-nowrap cursor-pointer ${
+              isCompactMenu ? 'px-2.5 py-1 text-xs' : 'px-3.5 py-1.5 text-xs sm:text-sm'
+            } ${
               activeTab === 'jadwal'
                 ? 'bg-emerald-800 text-white shadow-xs'
                 : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
             }`}
           >
-            <Calendar size={15} />
-            <span>RPS & 16 Pertemuan</span>
+            <Calendar size={isCompactMenu ? 13 : 15} />
+            <span>RPS & 16 Temu</span>
           </button>
 
           <button
             onClick={() => setActiveTab('tugas-individu')}
-            className={`flex items-center gap-1.5 text-xs sm:text-sm font-semibold px-3.5 py-1.5 rounded-lg transition-all whitespace-nowrap ${
+            className={`flex items-center gap-1.5 font-semibold rounded-lg transition-all whitespace-nowrap cursor-pointer ${
+              isCompactMenu ? 'px-2.5 py-1 text-xs' : 'px-3.5 py-1.5 text-xs sm:text-sm'
+            } ${
               activeTab === 'tugas-individu'
                 ? 'bg-emerald-800 text-white shadow-xs'
                 : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
             }`}
           >
-            <BookOpen size={15} />
-            <span>Tugas Presentasi (Individu/Kelompok)</span>
+            <BookOpen size={isCompactMenu ? 13 : 15} />
+            <span>Tugas Presentasi</span>
           </button>
 
           <button
             id="nav-tugas-uts"
             onClick={() => setActiveTab('tugas-uts')}
-            className={`flex items-center gap-1.5 text-xs sm:text-sm font-semibold px-3.5 py-1.5 rounded-lg transition-all whitespace-nowrap ${
+            className={`flex items-center gap-1.5 font-semibold rounded-lg transition-all whitespace-nowrap cursor-pointer ${
+              isCompactMenu ? 'px-2.5 py-1 text-xs' : 'px-3.5 py-1.5 text-xs sm:text-sm'
+            } ${
               activeTab === 'tugas-uts'
                 ? 'bg-emerald-800 text-white shadow-xs'
                 : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
             }`}
           >
-            <FileQuestion size={15} />
-            <span>UTS ({utsFormat === 'proyek_video' ? 'Video Kelompok' : 'Soal Essay'})</span>
+            <FileQuestion size={isCompactMenu ? 13 : 15} />
+            <span>UTS ({utsFormat === 'proyek_video' ? 'Video' : 'Essay'})</span>
           </button>
 
           <button
             id="nav-tugas-uas"
             onClick={() => setActiveTab('tugas-kelompok')}
-            className={`flex items-center gap-1.5 text-xs sm:text-sm font-semibold px-3.5 py-1.5 rounded-lg transition-all whitespace-nowrap ${
+            className={`flex items-center gap-1.5 font-semibold rounded-lg transition-all whitespace-nowrap cursor-pointer ${
+              isCompactMenu ? 'px-2.5 py-1 text-xs' : 'px-3.5 py-1.5 text-xs sm:text-sm'
+            } ${
               activeTab === 'tugas-kelompok'
                 ? 'bg-emerald-800 text-white shadow-xs'
                 : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
             }`}
           >
-            <Film size={15} />
-            <span>UAS ({uasFormat === 'esai' ? 'Soal Essay' : 'Video Kelompok'})</span>
+            <Film size={isCompactMenu ? 13 : 15} />
+            <span>UAS ({uasFormat === 'esai' ? 'Essay' : 'Video'})</span>
           </button>
 
           <button
             id="nav-kuis-interaktif"
             onClick={() => setActiveTab('kuis-interaktif')}
-            className={`flex items-center gap-1.5 text-xs sm:text-sm font-semibold px-3.5 py-1.5 rounded-lg transition-all whitespace-nowrap ${
+            className={`flex items-center gap-1.5 font-semibold rounded-lg transition-all whitespace-nowrap cursor-pointer ${
+              isCompactMenu ? 'px-2.5 py-1 text-xs' : 'px-3.5 py-1.5 text-xs sm:text-sm'
+            } ${
               activeTab === 'kuis-interaktif'
                 ? 'bg-amber-600 text-white shadow-xs font-bold'
                 : 'text-amber-900 bg-amber-50 hover:bg-amber-100 hover:text-amber-950 border border-amber-200/60'
             }`}
           >
-            <Gamepad2 size={15} className={activeTab === 'kuis-interaktif' ? 'animate-bounce' : 'text-amber-700'} />
-            <span>Game Kuis RPS (10 Soal + Kamera)</span>
+            <Gamepad2 size={isCompactMenu ? 13 : 15} className={activeTab === 'kuis-interaktif' ? 'animate-bounce' : 'text-amber-700'} />
+            <span>Game Kuis RPS</span>
           </button>
 
           <button
             onClick={() => setActiveTab('absensi')}
-            className={`flex items-center gap-1.5 text-xs sm:text-sm font-semibold px-3.5 py-1.5 rounded-lg transition-all whitespace-nowrap ${
+            className={`flex items-center gap-1.5 font-semibold rounded-lg transition-all whitespace-nowrap cursor-pointer ${
+              isCompactMenu ? 'px-2.5 py-1 text-xs' : 'px-3.5 py-1.5 text-xs sm:text-sm'
+            } ${
               activeTab === 'absensi'
                 ? 'bg-emerald-800 text-white shadow-xs'
                 : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
             }`}
           >
-            <Calendar size={15} />
-            <span>Presensi Tatap Muka (H/I/S/A)</span>
+            <Calendar size={isCompactMenu ? 13 : 15} />
+            <span>Presensi (16 Pertemuan)</span>
           </button>
 
           <button
             id="nav-leaderboard"
             onClick={() => setActiveTab('leaderboard')}
-            className={`flex items-center gap-1.5 text-xs sm:text-sm font-semibold px-3.5 py-1.5 rounded-lg transition-all whitespace-nowrap ${
+            className={`flex items-center gap-1.5 font-semibold rounded-lg transition-all whitespace-nowrap cursor-pointer ${
+              isCompactMenu ? 'px-2.5 py-1 text-xs' : 'px-3.5 py-1.5 text-xs sm:text-sm'
+            } ${
               activeTab === 'leaderboard'
                 ? 'bg-amber-600 text-white shadow-xs font-bold'
                 : 'text-amber-900 bg-amber-50 hover:bg-amber-100 hover:text-amber-950 border border-amber-200/70'
             }`}
           >
-            <Trophy size={15} className={activeTab === 'leaderboard' ? 'animate-bounce text-yellow-300' : 'text-amber-600'} />
-            <span>Papan Peringkat (Leaderboard)</span>
+            <Trophy size={isCompactMenu ? 13 : 15} className={activeTab === 'leaderboard' ? 'animate-bounce text-yellow-300' : 'text-amber-600'} />
+            <span>Leaderboard</span>
           </button>
 
           <button
             onClick={() => setActiveTab('nilai')}
-            className={`flex items-center gap-1.5 text-xs sm:text-sm font-semibold px-3.5 py-1.5 rounded-lg transition-all whitespace-nowrap ${
+            className={`flex items-center gap-1.5 font-semibold rounded-lg transition-all whitespace-nowrap cursor-pointer ${
+              isCompactMenu ? 'px-2.5 py-1 text-xs' : 'px-3.5 py-1.5 text-xs sm:text-sm'
+            } ${
               activeTab === 'nilai'
                 ? 'bg-emerald-800 text-white shadow-xs'
                 : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
             }`}
           >
-            <Award size={15} />
-            <span>Rekap Nilai SIAKAD</span>
+            <Award size={isCompactMenu ? 13 : 15} />
+            <span>Rekap Nilai</span>
           </button>
 
           {isDosen && (
             <button
               onClick={() => setActiveTab('portal-dosen')}
-              className={`flex items-center gap-1.5 text-xs sm:text-sm font-bold px-3.5 py-1.5 rounded-lg transition-all whitespace-nowrap ${
+              className={`flex items-center gap-1.5 font-bold rounded-lg transition-all whitespace-nowrap cursor-pointer ${
+                isCompactMenu ? 'px-2.5 py-1 text-xs' : 'px-3.5 py-1.5 text-xs sm:text-sm'
+              } ${
                 activeTab === 'portal-dosen'
                   ? 'bg-indigo-700 text-white shadow-xs'
                   : 'text-indigo-800 bg-indigo-50 hover:bg-indigo-100'
               }`}
             >
-              <ShieldCheck size={15} />
-              <span>Kelola Portal Dosen</span>
+              <ShieldCheck size={isCompactMenu ? 13 : 15} />
+              <span>Portal Dosen</span>
             </button>
           )}
+
+          {/* Quick Perkecil/Perluas Menu Button at edge */}
+          <button
+            type="button"
+            onClick={toggleCompactMenu}
+            className="ml-auto flex items-center gap-1 text-[11px] font-bold px-2.5 py-1 rounded-lg text-slate-600 hover:text-emerald-900 hover:bg-emerald-50 bg-slate-100 transition-colors shrink-0 border border-slate-300 cursor-pointer shadow-2xs"
+            title={isCompactMenu ? 'Perluas tampilan menu navigasi' : 'Perkecil tampilan menu navigasi'}
+          >
+            {isCompactMenu ? <Maximize2 size={12} className="text-emerald-700" /> : <Minimize2 size={12} className="text-slate-600" />}
+            <span className="hidden md:inline">{isCompactMenu ? 'Perluas Menu' : 'Perkecil Menu'}</span>
+          </button>
         </div>
 
       </div>

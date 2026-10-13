@@ -1364,11 +1364,23 @@ export const GroupProjectView: React.FC<GroupProjectViewProps> = ({
                 </span>
               </div>
 
-              <div className="p-3 bg-amber-50 rounded-xl border border-amber-200 flex items-start gap-2.5">
-                <AlertCircle size={15} className="text-amber-700 shrink-0 mt-0.5" />
-                <p className="text-xs text-amber-900 leading-relaxed">
-                  <strong>Aturan Satu Kali Kirim:</strong> Pastikan tautan video YouTube/Drive dan rincian tugas sudah valid sebelum dikirimkan. Setelah berhasil dikirimkan, formulir akan terkunci secara otomatis demi integritas data akademik permanen.
-                </p>
+              <div className="p-3.5 bg-gradient-to-r from-indigo-950 via-slate-900 to-indigo-950 text-white rounded-xl border border-indigo-400/50 flex items-start gap-3 shadow-xs">
+                <div className="w-8 h-8 rounded-lg bg-amber-400 text-slate-950 flex items-center justify-center font-bold text-xs shrink-0 mt-0.5">
+                  👥
+                </div>
+                <div className="space-y-1">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <span className="text-[10px] font-black uppercase tracking-wider bg-amber-400 text-slate-950 px-2 py-0.5 rounded-full">
+                      ATURAN TUGAS KELOMPOK
+                    </span>
+                    <span className="text-xs font-bold text-indigo-200">
+                      Hanya 1 Perwakilan Pengunggah
+                    </span>
+                  </div>
+                  <p className="text-xs text-slate-200 leading-relaxed">
+                    Sesuai instruksi akademik, <strong>hanya satu perwakilan saja yang mengirimkan tugas kelompok</strong> atas nama seluruh anggota {activeGroup.name}. Anggota lainnya tidak perlu mengirimkan ulang. Setelah dikirim, formulir seluruh anggota kelompok otomatis terkunci (Mode Satu Kali Kirim).
+                  </p>
+                </div>
               </div>
 
               {/* Input 1: Video Link */}

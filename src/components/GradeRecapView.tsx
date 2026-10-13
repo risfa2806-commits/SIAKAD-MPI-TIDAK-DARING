@@ -548,10 +548,10 @@ export const GradeRecapView: React.FC<GradeRecapViewProps> = ({
                 id="btn-unduh-rekap-pdf"
                 onClick={() => handleUnduhRekapPdf()}
                 className="flex items-center gap-1.5 px-4 py-2 bg-gradient-to-r from-rose-600 to-red-600 hover:from-rose-500 hover:to-red-500 text-white rounded-xl text-xs font-bold transition-all shadow-md active:scale-95 ring-2 ring-rose-400/30 cursor-pointer"
-                title="Unduh Rekap PDF: Format rapi siap cetak Nilai dan Daftar Tugas menggunakan window.print() dengan CSS khusus"
+                title="Unduh Rekap PDF: Format resmi Nilai dan Status Pengumpulan Tugas menggunakan browser print dialog"
               >
                 <Printer size={15} />
-                <span>Unduh Rekap PDF</span>
+                <span>Cetak Rekap PDF + Tugas</span>
               </button>
 
               {/* Print / PDF Button */}
@@ -559,11 +559,11 @@ export const GradeRecapView: React.FC<GradeRecapViewProps> = ({
                 type="button"
                 id="btn-print-recap"
                 onClick={() => handlePrint()}
-                className="flex items-center gap-1.5 px-3.5 py-2 bg-slate-700 hover:bg-slate-600 text-white rounded-xl text-xs font-bold transition-all shadow-md active:scale-95"
-                title="Cetak transkrip nilai langsung ke PDF atau printer kertas"
+                className="flex items-center gap-1.5 px-4 py-2 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 text-white rounded-xl text-xs font-bold transition-all shadow-md active:scale-95 ring-2 ring-indigo-400/30 cursor-pointer"
+                title="Cetak transkrip nilai atau rekapitulasi kolektif langsung ke PDF atau kertas fisik via browser print dialog"
               >
                 <Printer size={15} />
-                <span>Cetak Transkrip</span>
+                <span>{exportScope === 'individu' ? 'Cetak Transkrip (PDF / Print)' : 'Cetak Rekap Nilai (PDF / Print)'}</span>
               </button>
             </div>
 
@@ -874,6 +874,14 @@ export const GradeRecapView: React.FC<GradeRecapViewProps> = ({
                           title={`Unduh Transkrip Individu Excel (.xls) untuk ${std.name}`}
                         >
                           <FileSpreadsheet size={14} />
+                        </button>
+
+                        <button
+                          onClick={() => handlePrint(std)}
+                          className="p-1.5 text-purple-700 hover:text-purple-900 hover:bg-purple-50 rounded-lg transition-colors cursor-pointer"
+                          title={`Cetak Transkrip / Simpan PDF Langsung untuk ${std.name}`}
+                        >
+                          <Printer size={14} />
                         </button>
 
                         {isDosen && (

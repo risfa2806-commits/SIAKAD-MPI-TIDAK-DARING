@@ -1119,6 +1119,25 @@ export const UasExamView: React.FC<UasExamViewProps> = ({
                       </span>
                     </div>
 
+                    <div className="p-3.5 bg-gradient-to-r from-indigo-950 via-slate-900 to-indigo-950 text-white rounded-xl border border-indigo-400/50 flex items-start gap-3 shadow-xs">
+                      <div className="w-8 h-8 rounded-lg bg-amber-400 text-slate-950 flex items-center justify-center font-bold text-xs shrink-0 mt-0.5">
+                        👥
+                      </div>
+                      <div className="space-y-1">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <span className="text-[10px] font-black uppercase tracking-wider bg-amber-400 text-slate-950 px-2 py-0.5 rounded-full">
+                            ATURAN TUGAS KELOMPOK
+                          </span>
+                          <span className="text-xs font-bold text-indigo-200">
+                            Cukup 1 Perwakilan Pengunggah
+                          </span>
+                        </div>
+                        <p className="text-xs text-slate-200 leading-relaxed">
+                          Hanya <strong>satu perwakilan saja yang mengirimkan tugas kelompok</strong> atas nama seluruh anggota {activeGroup.name}. Jangan semua anggota mengirimkan ulang. Setelah dikirim, formulir seluruh anggota kelompok otomatis terkunci.
+                        </p>
+                      </div>
+                    </div>
+
                     <div>
                       <label className="block text-xs font-bold text-slate-700 mb-1">
                         Link Video YouTube / Google Drive UAS *

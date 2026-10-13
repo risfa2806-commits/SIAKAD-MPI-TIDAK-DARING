@@ -1690,19 +1690,35 @@ export function printViaHiddenIframe(html: string, title?: string): void {
     return;
   }
 
-  // 1. Prepare printable container in main window for direct, reliable printing
+  // 1. Extract style block to inject into document head so @page and CSS rules apply accurately to native print dialog
+  const styleMatch = html.match(/<style[^>]*>([\s\S]*?)<\/style>/i);
+  const styleContent = styleMatch ? styleMatch[1] : '';
+
+  // Extract body content or use html directly
+  const bodyMatch = html.match(/<body[^>]*>([\s\S]*?)<\/body>/i);
+  const bodyContent = bodyMatch ? bodyMatch[1] : html;
+
+  let dynamicStyle = document.getElementById('siakad-dynamic-print-style') as HTMLStyleElement | null;
+  if (!dynamicStyle) {
+    dynamicStyle = document.createElement('style');
+    dynamicStyle.id = 'siakad-dynamic-print-style';
+    document.head.appendChild(dynamicStyle);
+  }
+  dynamicStyle.textContent = styleContent;
+
+  // 2. Prepare printable container in main window for direct, reliable printing
   let printContainer = document.getElementById('siakad-print-direct-sheet');
   if (!printContainer) {
     printContainer = document.createElement('div');
     printContainer.id = 'siakad-print-direct-sheet';
     document.body.appendChild(printContainer);
   }
-  printContainer.innerHTML = html;
+  printContainer.innerHTML = bodyContent;
 
   // Add printing class to body so only #siakad-print-direct-sheet is visible in @media print
   document.body.classList.add('siakad-printing-active');
   try {
-    document.title = docTitle;
+    document.title = docTitle.replace(/[/\\?%*:|"<>]/g, '_');
   } catch {}
 
   const cleanup = () => {
@@ -1713,10 +1729,13 @@ export function printViaHiddenIframe(html: string, title?: string): void {
     if (printContainer && printContainer.parentNode) {
       printContainer.innerHTML = '';
     }
+    if (dynamicStyle && dynamicStyle.parentNode) {
+      dynamicStyle.textContent = '';
+    }
   };
 
   window.addEventListener('afterprint', cleanup, { once: true });
-  setTimeout(cleanup, 8000);
+  setTimeout(cleanup, 12000);
 
   // Directly trigger browser native print dialog on window
   try {

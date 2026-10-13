@@ -71,6 +71,8 @@ export default defineConfig(() => {
     resolve: {
       alias: {
         '@': path.resolve(__dirname, '.'),
+        'decimal.js-light': path.resolve(__dirname, 'node_modules/decimal.js-light/decimal.js'),
+        'eventemitter3': path.resolve(__dirname, 'node_modules/eventemitter3/dist/eventemitter3.esm.js'),
       },
     },
     server: {

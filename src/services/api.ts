@@ -89,10 +89,33 @@ export function saveLocalCache(db: SiakadDatabase) {
     localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(db));
   } catch (e) {
     try {
-      // If quota exceeded due to base64 files, strip raw binary from offline localStorage cache
+      // If quota exceeded due to base64 files, strip raw binary from offline localStorage cache while preserving course roster
+      const sanitizedAllCourses: Record<string, any> = {};
+      if (db.allCoursesData) {
+        for (const [cId, cData] of Object.entries(db.allCoursesData)) {
+          if (!cData) continue;
+          sanitizedAllCourses[cId] = {
+            ...cData,
+            submissions: (cData.submissions || []).map((s: any) => ({
+              ...s,
+              pptFileData: s.pptFileData?.startsWith('data:') ? undefined : s.pptFileData,
+              makalahFileData: s.makalahFileData?.startsWith('data:') ? undefined : s.makalahFileData,
+            })),
+            utsSubmissions: (cData.utsSubmissions || []).map((u: any) => ({
+              ...u,
+              fileData: u.fileData?.startsWith('data:') ? undefined : u.fileData,
+            })),
+            uasSubmissions: (cData.uasSubmissions || []).map((u: any) => ({
+              ...u,
+              fileData: u.fileData?.startsWith('data:') ? undefined : u.fileData,
+            })),
+          };
+        }
+      }
+
       const sanitized: any = {
         ...db,
-        allCoursesData: undefined,
+        allCoursesData: sanitizedAllCourses,
         submissions: (db.submissions || []).map(s => ({
           ...s,
           pptFileData: s.pptFileData && s.pptFileData.startsWith('data:') ? undefined : s.pptFileData,
@@ -1604,8 +1627,9 @@ export async function updateCourseProfileApi(profile: any): Promise<boolean> {
   }
 }
 
-// Multi-Course API: Switch active course
+// Multi-Course API: Switch active course (with server and local fallback)
 export async function switchCourseApi(courseId: string): Promise<{ success: boolean; data?: SiakadDatabase; error?: string }> {
+  // 1. Attempt server switch first
   try {
     const res = await fetch('/api/courses/switch', {
       method: 'POST',
@@ -1617,10 +1641,71 @@ export async function switchCourseApi(courseId: string): Promise<{ success: bool
       saveLocalCache(json.data);
       return { success: true, data: json.data };
     }
-    return { success: false, error: json.error || 'Gagal beralih mata kuliah' };
   } catch (err) {
-    console.warn('Switch course error:', err);
-    return { success: false, error: 'Koneksi ke server bermasalah' };
+    console.warn('Switch course network/server warning, switching locally:', err);
+  }
+
+  // 2. Client-side local switch fallback (works offline and on serverless seamlessly)
+  try {
+    const local = getLocalCache();
+    const targetCourse = (local.courses || []).find(c => c.id === courseId);
+    if (!targetCourse) {
+      return { success: false, error: 'Mata kuliah tidak ditemukan dalam daftar.' };
+    }
+
+    // Save current active course into allCoursesData
+    if (local.activeCourseId && local.courseProfile) {
+      if (!local.allCoursesData) local.allCoursesData = {};
+      local.allCoursesData[local.activeCourseId] = {
+        id: local.activeCourseId,
+        profile: JSON.parse(JSON.stringify(local.courseProfile)),
+        meetings: JSON.parse(JSON.stringify(local.meetings || [])),
+        rpsRawText: local.rpsRawText,
+        students: JSON.parse(JSON.stringify(local.students || [])),
+        groups: JSON.parse(JSON.stringify(local.groups || [])),
+        submissions: JSON.parse(JSON.stringify(local.submissions || [])),
+        utsQuestions: JSON.parse(JSON.stringify(local.utsQuestions || [])),
+        utsSubmissions: JSON.parse(JSON.stringify(local.utsSubmissions || [])),
+        uasQuestions: JSON.parse(JSON.stringify(local.uasQuestions || [])),
+        uasSubmissions: JSON.parse(JSON.stringify(local.uasSubmissions || [])),
+        quizQuestions: JSON.parse(JSON.stringify(local.quizQuestions || [])),
+        quizSubmissions: JSON.parse(JSON.stringify(local.quizSubmissions || [])),
+        quizSettings: JSON.parse(JSON.stringify(local.quizSettings || {})),
+        utsExamSettings: JSON.parse(JSON.stringify(local.utsExamSettings || {})),
+        uasExamSettings: JSON.parse(JSON.stringify(local.uasExamSettings || {})),
+        attendance: JSON.parse(JSON.stringify(local.attendance || {})),
+        grades: JSON.parse(JSON.stringify(local.grades || {})),
+      };
+    }
+
+    // Load target course from allCoursesData
+    local.activeCourseId = courseId;
+    if (local.allCoursesData && local.allCoursesData[courseId]) {
+      const saved = local.allCoursesData[courseId];
+      local.courseProfile = saved.profile;
+      local.meetings = saved.meetings;
+      local.rpsRawText = saved.rpsRawText || '';
+      local.students = saved.students;
+      local.groups = saved.groups;
+      local.submissions = saved.submissions || [];
+      local.utsQuestions = saved.utsQuestions || [];
+      local.utsSubmissions = saved.utsSubmissions || [];
+      if (saved.uasQuestions && saved.uasQuestions.length > 0) local.uasQuestions = saved.uasQuestions;
+      local.uasSubmissions = saved.uasSubmissions || [];
+      if (saved.quizQuestions && saved.quizQuestions.length > 0) local.quizQuestions = saved.quizQuestions;
+      local.quizSubmissions = saved.quizSubmissions || [];
+      if (saved.quizSettings) local.quizSettings = saved.quizSettings;
+      if (saved.utsExamSettings) local.utsExamSettings = saved.utsExamSettings;
+      if (saved.uasExamSettings) local.uasExamSettings = saved.uasExamSettings;
+      local.attendance = saved.attendance || { 1: {} };
+      local.grades = saved.grades || {};
+    }
+
+    saveLocalCache(local);
+    return { success: true, data: local };
+  } catch (localErr) {
+    console.error('Local switch course error:', localErr);
+    return { success: false, error: 'Gagal beralih mata kuliah' };
   }
 }
 
@@ -2807,19 +2892,48 @@ export async function updateStudentBiodataApi(
       body: JSON.stringify(payload),
     });
     const json = await safeJson(res, null);
-    if (res.ok && json.success) {
+    if (res.ok && json.success && json.student) {
       const local = getLocalCache();
       const idx = (local.students || []).findIndex(s => s.id === id);
       if (idx >= 0) {
         local.students[idx] = json.student;
-        saveLocalCache(local);
       }
+      if (local.activeCourseId && local.allCoursesData?.[local.activeCourseId]?.students) {
+        const roomIdx = local.allCoursesData[local.activeCourseId].students.findIndex((s: Student) => s.id === id);
+        if (roomIdx >= 0) {
+          local.allCoursesData[local.activeCourseId].students[roomIdx] = json.student;
+        }
+      }
+      saveLocalCache(local);
       return { success: true, student: json.student };
     }
-    return { success: false, error: json.error || 'Gagal memperbarui biodata mahasiswa' };
   } catch (err) {
-    console.warn('Update student biodata error:', err);
-    return { success: false, error: 'Koneksi ke server terputus' };
+    console.warn('Update student biodata network error, using local fallback:', err);
+  }
+
+  // Local fallback: update student in localStorage and IndexedDB so changes are never lost
+  try {
+    const local = getLocalCache();
+    const idx = (local.students || []).findIndex(s => s.id === id);
+    if (idx >= 0) {
+      const updatedStudent: Student = {
+        ...local.students[idx],
+        ...payload,
+        name: payload.name ? payload.name.trim().toUpperCase() : local.students[idx].name,
+      };
+      local.students[idx] = updatedStudent;
+      if (local.activeCourseId && local.allCoursesData?.[local.activeCourseId]?.students) {
+        const roomIdx = local.allCoursesData[local.activeCourseId].students.findIndex((s: Student) => s.id === id);
+        if (roomIdx >= 0) {
+          local.allCoursesData[local.activeCourseId].students[roomIdx] = updatedStudent;
+        }
+      }
+      saveLocalCache(local);
+      return { success: true, student: updatedStudent };
+    }
+    return { success: false, error: 'Mahasiswa tidak ditemukan' };
+  } catch (localErr) {
+    return { success: false, error: 'Gagal memperbarui data mahasiswa' };
   }
 }
 
@@ -2835,13 +2949,27 @@ export async function deleteStudentApi(
     if (res.ok && json.success) {
       const local = getLocalCache();
       local.students = (local.students || []).filter(s => s.id !== id);
+      if (local.activeCourseId && local.allCoursesData?.[local.activeCourseId]?.students) {
+        local.allCoursesData[local.activeCourseId].students = local.allCoursesData[local.activeCourseId].students.filter((s: Student) => s.id !== id);
+      }
       saveLocalCache(local);
       return { success: true, message: json.message };
     }
-    return { success: false, error: json.error || 'Gagal menghapus mahasiswa' };
   } catch (err) {
-    console.warn('Delete student error:', err);
-    return { success: false, error: 'Koneksi ke server terputus' };
+    console.warn('Delete student network error, using local fallback:', err);
+  }
+
+  // Local fallback
+  try {
+    const local = getLocalCache();
+    local.students = (local.students || []).filter(s => s.id !== id);
+    if (local.activeCourseId && local.allCoursesData?.[local.activeCourseId]?.students) {
+      local.allCoursesData[local.activeCourseId].students = local.allCoursesData[local.activeCourseId].students.filter((s: Student) => s.id !== id);
+    }
+    saveLocalCache(local);
+    return { success: true, message: 'Mahasiswa berhasil dihapus.' };
+  } catch {
+    return { success: false, error: 'Gagal menghapus mahasiswa' };
   }
 }
 

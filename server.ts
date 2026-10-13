@@ -52,15 +52,20 @@ app.use(express.json({ limit: '150mb' }));
 app.use(express.urlencoded({ extended: true, limit: '150mb' }));
 
 const IS_SERVERLESS = Boolean(process.env.VERCEL || process.env.AWS_LAMBDA_FUNCTION_NAME);
-const DATA_DIR = IS_SERVERLESS ? path.join('/tmp', 'data') : path.join(process.cwd(), 'data');
+const BUNDLE_DATA_DIR = path.join(process.cwd(), 'data');
+const DATA_DIR = IS_SERVERLESS ? path.join('/tmp', 'data') : BUNDLE_DATA_DIR;
 const DATA_FILE = path.join(DATA_DIR, 'siakad-db.json');
 const BACKUP_FILE = path.join(DATA_DIR, 'siakad-db.backup.json');
+const BUNDLE_DATA_FILE = path.join(BUNDLE_DATA_DIR, 'siakad-db.json');
 const SUBMISSIONS_VAULT_FILE = path.join(DATA_DIR, 'siakad-all-time-submissions.json');
 
-// Ensure data directory exists
+// Ensure data directory exists and seed initial database from bundle if serverless
 try {
   if (!fs.existsSync(DATA_DIR)) {
     fs.mkdirSync(DATA_DIR, { recursive: true });
+  }
+  if (IS_SERVERLESS && !fs.existsSync(DATA_FILE) && fs.existsSync(BUNDLE_DATA_FILE)) {
+    fs.copyFileSync(BUNDLE_DATA_FILE, DATA_FILE);
   }
 } catch (e) {
   console.warn('Notice: read-only filesystem or data directory exists:', e);
@@ -1225,6 +1230,10 @@ function loadDatabase(): SiakadDatabase {
         console.warn('Error reading DATA_FILE, attempting backup:', e);
       }
     }
+    if (!content && fs.existsSync(BUNDLE_DATA_FILE)) {
+      console.log('Primary DB empty/missing, reading from BUNDLE_DATA_FILE...');
+      content = fs.readFileSync(BUNDLE_DATA_FILE, 'utf-8');
+    }
     if (!content && fs.existsSync(BACKUP_FILE)) {
       console.log('Primary DB empty/missing, recovering from BACKUP_FILE...');
       content = fs.readFileSync(BACKUP_FILE, 'utf-8');
@@ -1275,11 +1284,11 @@ function loadDatabase(): SiakadDatabase {
         }
       }
 
-      // Ensure mk-konsep-dasar-mpi3 has the 20 students (Heru, Sofyan, ... Zaima) and 12 kelompok
+      // Ensure mk-konsep-dasar-mpi3 has students and kelompok initialized
       if (
         !allCoursesData['mk-konsep-dasar-mpi3'] ||
-        allCoursesData['mk-konsep-dasar-mpi3'].students?.length !== 20 ||
-        allCoursesData['mk-konsep-dasar-mpi3'].students?.[0]?.name !== 'Heru'
+        !allCoursesData['mk-konsep-dasar-mpi3'].students ||
+        allCoursesData['mk-konsep-dasar-mpi3'].students.length === 0
       ) {
         allCoursesData['mk-konsep-dasar-mpi3'] = {
           ...(allCoursesData['mk-konsep-dasar-mpi3'] || {}),
@@ -1298,11 +1307,11 @@ function loadDatabase(): SiakadDatabase {
         allCoursesData['mk-konsep-dasar-mpi3'].profile.classCode = 'MPI 3A';
       }
 
-      // Ensure mk-analisis-kebijakan-mpi3 has the 20 students (Heru, Sofyan, ... Zaima) and 10 kelompok
+      // Ensure mk-analisis-kebijakan-mpi3 has students and kelompok initialized
       if (
         !allCoursesData['mk-analisis-kebijakan-mpi3'] ||
-        allCoursesData['mk-analisis-kebijakan-mpi3'].students?.length !== 20 ||
-        allCoursesData['mk-analisis-kebijakan-mpi3'].students?.[0]?.name !== 'Heru'
+        !allCoursesData['mk-analisis-kebijakan-mpi3'].students ||
+        allCoursesData['mk-analisis-kebijakan-mpi3'].students.length === 0
       ) {
         allCoursesData['mk-analisis-kebijakan-mpi3'] = {
           ...(allCoursesData['mk-analisis-kebijakan-mpi3'] || {}),
@@ -1321,11 +1330,11 @@ function loadDatabase(): SiakadDatabase {
         allCoursesData['mk-analisis-kebijakan-mpi3'].profile.classCode = 'MPI 3B';
       }
 
-      // Ensure mk-filsafat-ilmu has the 13 students (Husna..Nia) and 10 kelompok
+      // Ensure mk-filsafat-ilmu has students and kelompok initialized
       if (
         !allCoursesData['mk-filsafat-ilmu'] ||
-        allCoursesData['mk-filsafat-ilmu'].students?.length !== 13 ||
-        allCoursesData['mk-filsafat-ilmu'].students?.[0]?.name !== 'Husna'
+        !allCoursesData['mk-filsafat-ilmu'].students ||
+        allCoursesData['mk-filsafat-ilmu'].students.length === 0
       ) {
         allCoursesData['mk-filsafat-ilmu'] = {
           ...(allCoursesData['mk-filsafat-ilmu'] || {}),
@@ -1439,7 +1448,7 @@ function loadDatabase(): SiakadDatabase {
         ? activeRoomData.groups
         : (activeCourseId.includes('mpi3') ? INITIAL_GROUPS_SEM3 : INITIAL_GROUPS);
 
-      if (rawStudents.some(isPlaceholder) || rawStudents.length < 13) {
+      if (rawStudents.some(isPlaceholder) || rawStudents.length === 0) {
         const semNum = activeRoomData?.profile?.semesterNumber || (activeCourseId.includes('3') ? 3 : 1);
         const master = getMasterStudentsAndGroups(semNum, activeRoomData?.profile?.courseTitle || '');
         rawStudents = master.students;
@@ -1602,7 +1611,11 @@ function loadDatabase(): SiakadDatabase {
   } catch (err) {
     console.error('Failed to load database file, using fallback initial data:', err);
   }
-  return JSON.parse(JSON.stringify(INITIAL_DATABASE));
+  const fallback: SiakadDatabase = JSON.parse(JSON.stringify(INITIAL_DATABASE));
+  if (!fallback.allCoursesData) {
+    fallback.allCoursesData = JSON.parse(JSON.stringify(INITIAL_ALL_COURSES_DATA));
+  }
+  return fallback;
 }
 
 function saveDatabase(): void {
@@ -4447,14 +4460,19 @@ function generateCohortForSemester(
 }
 
 // Multi-Course API: Switch active course / kamar
-app.post('/api/courses/switch', (req, res) => {
+const handleSwitchCourse = (req: express.Request, res: express.Response) => {
   const { courseId } = req.body;
   if (!courseId) {
     return res.status(400).json({ error: 'courseId is required' });
   }
 
   if (!db.courses || !db.courses.some(c => c.id === courseId)) {
-    return res.status(404).json({ error: 'Mata kuliah tidak ditemukan dalam daftar.' });
+    if (!db.courses || db.courses.length === 0) {
+      db.courses = JSON.parse(JSON.stringify(INITIAL_DATABASE.courses || []));
+    }
+    if (!db.courses.some(c => c.id === courseId)) {
+      return res.status(404).json({ error: 'Mata kuliah tidak ditemukan dalam daftar.' });
+    }
   }
 
   // 1. Save current active course state before switching
@@ -4571,7 +4589,9 @@ app.post('/api/courses/switch', (req, res) => {
     courseProfile: db.courseProfile,
     data: db,
   });
-});
+};
+app.post('/api/courses/switch', handleSwitchCourse);
+app.post('/courses/switch', handleSwitchCourse);
 
 // Multi-Course API: Add new course / kamar / semester (Dosen)
 app.post('/api/courses', async (req, res) => {

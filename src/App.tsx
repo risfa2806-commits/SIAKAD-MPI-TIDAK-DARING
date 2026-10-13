@@ -814,7 +814,10 @@ export default function App() {
         activeCourseId={db.activeCourseId || 'default'}
         courseProfile={db.courseProfile}
         isDosen={isDosen}
-        onCourseSwitched={reloadData}
+        onCourseSwitched={(newDb) => {
+          if (newDb && newDb.activeCourseId) setDb(newDb);
+          else reloadData();
+        }}
       />
 
       {/* View RPS Document Modal */}

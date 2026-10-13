@@ -75,6 +75,19 @@ export default defineConfig(() => {
         'eventemitter3': path.resolve(__dirname, 'node_modules/eventemitter3/dist/eventemitter3.esm.js'),
       },
     },
+    build: {
+      chunkSizeWarningLimit: 5000,
+      rollupOptions: {
+        output: {
+          manualChunks(id) {
+            if (id.includes('node_modules')) {
+              if (id.includes('lucide-react')) return 'vendor-lucide';
+              if (id.includes('react') || id.includes('react-dom')) return 'vendor-react';
+            }
+          },
+        },
+      },
+    },
     server: {
       hmr: false,
       ws: false as const,

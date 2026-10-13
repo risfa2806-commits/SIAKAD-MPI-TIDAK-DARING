@@ -7,6 +7,7 @@ import {
   addStudentApi,
   isStudentOnline,
   saveLocalCache,
+  getLocalCache,
 } from './services/api';
 import { soundAlert } from './utils/soundAlert';
 
@@ -64,7 +65,7 @@ import {
 } from 'lucide-react';
 
 export default function App() {
-  const [db, setDb] = useState<SiakadDatabase>(INITIAL_DATABASE);
+  const [db, setDb] = useState<SiakadDatabase>(() => getLocalCache());
   const [isOffline, setIsOffline] = useState(false);
   const [currentStudentId, setCurrentStudentId] = useState<string | null>(() => {
     return localStorage.getItem('siakad_current_student_id') || 'mhs-1';
@@ -129,6 +130,7 @@ export default function App() {
 
   const handleCourseSwitched = useCallback((updatedDb?: any) => {
     if (updatedDb && updatedDb.activeCourseId) {
+      localStorage.setItem('siakad_active_course_id', updatedDb.activeCourseId);
       setDb(updatedDb);
       saveLocalCache(updatedDb);
       if (updatedDb.students && updatedDb.students.length > 0) {
@@ -137,8 +139,7 @@ export default function App() {
         localStorage.setItem('siakad_current_student_id', nextId);
       }
     }
-    reloadData();
-  }, [reloadData]);
+  }, []);
 
   // Ensure currentStudentId is always valid within active db.students
   useEffect(() => {

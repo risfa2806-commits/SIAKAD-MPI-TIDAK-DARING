@@ -2394,6 +2394,9 @@ export const INITIAL_ALL_COURSES_DATA: Record<string, any> = {
   },
 };
 
+// Ensure INITIAL_DATABASE is bundled with full cross-semester rooms
+INITIAL_DATABASE.allCoursesData = INITIAL_ALL_COURSES_DATA;
+
 /**
  * Helper to generate official RPS text for any of the active courses
  */

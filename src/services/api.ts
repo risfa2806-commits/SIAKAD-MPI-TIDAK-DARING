@@ -68,12 +68,16 @@ export function getLocalCache(): SiakadDatabase {
     const saved = localStorage.getItem(LOCAL_STORAGE_KEY);
     const parsed = safeParseJson<Partial<SiakadDatabase> | null>(saved, null);
     if (parsed && typeof parsed === 'object') {
-      return { ...INITIAL_DATABASE, ...parsed };
+      const merged = { ...INITIAL_DATABASE, ...parsed };
+      if (!merged.allCoursesData || Object.keys(merged.allCoursesData).length === 0) {
+        merged.allCoursesData = JSON.parse(JSON.stringify(INITIAL_ALL_COURSES_DATA));
+      }
+      return merged;
     }
   } catch (e) {
     console.warn('LocalStorage error:', e);
   }
-  return INITIAL_DATABASE;
+  return { ...INITIAL_DATABASE, allCoursesData: JSON.parse(JSON.stringify(INITIAL_ALL_COURSES_DATA)) };
 }
 
 export function saveLocalCache(db: SiakadDatabase) {
@@ -89,10 +93,22 @@ export function saveLocalCache(db: SiakadDatabase) {
     localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(db));
   } catch (e) {
     try {
-      // If quota exceeded due to base64 files, strip raw binary from offline localStorage cache
+      // If quota exceeded due to base64 files, strip raw binary from offline localStorage cache but PRESERVE courses
+      const sanitizedAllCourses: Record<string, any> = {};
+      if (db.allCoursesData) {
+        for (const [k, v] of Object.entries(db.allCoursesData)) {
+          sanitizedAllCourses[k] = {
+            ...v,
+            submissions: (v.submissions || []).map((s: any) => ({ ...s, pptFileData: undefined, makalahFileData: undefined })),
+            utsSubmissions: (v.utsSubmissions || []).map((u: any) => ({ ...u, fileData: undefined })),
+            uasSubmissions: (v.uasSubmissions || []).map((u: any) => ({ ...u, fileData: undefined })),
+          };
+        }
+      }
+
       const sanitized: any = {
         ...db,
-        allCoursesData: undefined,
+        allCoursesData: sanitizedAllCourses,
         submissions: (db.submissions || []).map(s => ({
           ...s,
           pptFileData: s.pptFileData && s.pptFileData.startsWith('data:') ? undefined : s.pptFileData,
@@ -181,6 +197,34 @@ export async function syncPendingSubmissionsToServer(): Promise<void> {
   }
 }
 
+// Helper to align active course room with user selection
+function alignCourseRoom(targetDb: SiakadDatabase): SiakadDatabase {
+  const userActiveCourseId = typeof window !== 'undefined' ? localStorage.getItem('siakad_active_course_id') : null;
+  if (!targetDb.allCoursesData || Object.keys(targetDb.allCoursesData).length === 0) {
+    targetDb.allCoursesData = JSON.parse(JSON.stringify(INITIAL_ALL_COURSES_DATA || {}));
+  }
+  const cId = userActiveCourseId || targetDb.activeCourseId || 'mk-filsafat-ilmu';
+  const room = targetDb.allCoursesData[cId] || INITIAL_ALL_COURSES_DATA[cId];
+  if (room) {
+    targetDb.activeCourseId = cId;
+    if (room.profile) targetDb.courseProfile = room.profile;
+    if (room.students) targetDb.students = room.students;
+    if (room.groups) targetDb.groups = room.groups;
+    if (room.meetings) targetDb.meetings = room.meetings;
+    if (room.submissions) targetDb.submissions = room.submissions;
+    if (room.utsQuestions) targetDb.utsQuestions = room.utsQuestions;
+    if (room.utsSubmissions) targetDb.utsSubmissions = room.utsSubmissions;
+    if (room.uasQuestions) targetDb.uasQuestions = room.uasQuestions;
+    if (room.uasSubmissions) targetDb.uasSubmissions = room.uasSubmissions;
+    if (room.quizQuestions) targetDb.quizQuestions = room.quizQuestions;
+    if (room.quizSubmissions) targetDb.quizSubmissions = room.quizSubmissions;
+    if (room.quizSettings) targetDb.quizSettings = room.quizSettings;
+    if (room.attendance) targetDb.attendance = room.attendance;
+    if (room.grades) targetDb.grades = room.grades;
+  }
+  return targetDb;
+}
+
 // Fetch database from server with silent retry and smooth fallback to IndexedDB / local cache
 export async function fetchDatabase(): Promise<{ db: SiakadDatabase; isOffline: boolean }> {
   // Silent retry up to 3 times to gracefully absorb any transient server startup delay
@@ -193,10 +237,10 @@ export async function fetchDatabase(): Promise<{ db: SiakadDatabase; isOffline: 
       if (res.ok) {
         const json = await safeJson(res, null);
         if (json && json.success && json.data) {
-          saveLocalCache(json.data);
-          // Automatically sync any offline pending submissions to server
+          const finalDb = alignCourseRoom(json.data);
+          saveLocalCache(finalDb);
           syncPendingSubmissionsToServer();
-          return { db: json.data, isOffline: false };
+          return { db: finalDb, isOffline: false };
         }
       }
     } catch {
@@ -212,8 +256,9 @@ export async function fetchDatabase(): Promise<{ db: SiakadDatabase; isOffline: 
     try {
       const sbData = await fetchDatabaseFromSupabase();
       if (sbData && sbData.students && sbData.students.length > 0) {
-        saveLocalCache(sbData);
-        return { db: sbData, isOffline: false };
+        const finalDb = alignCourseRoom(sbData);
+        saveLocalCache(finalDb);
+        return { db: finalDb, isOffline: false };
       }
     } catch {
       // Ignore Supabase fetch errors silently
@@ -224,13 +269,16 @@ export async function fetchDatabase(): Promise<{ db: SiakadDatabase; isOffline: 
   try {
     const idbData = await loadFromIndexedDb();
     if (idbData && idbData.students && idbData.students.length > 0) {
-      return { db: idbData, isOffline: true };
+      const finalDb = alignCourseRoom(idbData);
+      return { db: finalDb, isOffline: true };
     }
   } catch {
     // Continue to localStorage fallback
   }
 
-  return { db: getLocalCache(), isOffline: true };
+  const local = getLocalCache();
+  const finalDb = alignCourseRoom(local);
+  return { db: finalDb, isOffline: true };
 }
 
 // Peer Review API: Submit rating and comments on peer presentations
@@ -1655,27 +1703,18 @@ export async function updateCourseProfileApi(profile: any): Promise<boolean> {
 
 // Multi-Course API: Switch active course
 export async function switchCourseApi(courseId: string): Promise<{ success: boolean; data?: SiakadDatabase; error?: string }> {
-  try {
-    const res = await fetch('/api/courses/switch', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ courseId }),
-    });
-    const json = await safeJson(res, null);
-    if (res.ok && json.success && json.data) {
-      saveLocalCache(json.data);
-      return { success: true, data: json.data };
-    }
-  } catch (err) {
-    console.warn('Switch course network error, using local fallback:', err);
+  // 1. Immediately persist active course ID in client's storage
+  if (typeof window !== 'undefined') {
+    localStorage.setItem('siakad_active_course_id', courseId);
   }
 
-  // Robust offline/serverless fallback: switch course locally so switching NEVER fails
+  // 2. Perform optimistic local course switch so the user switches INSTANTLY
+  let targetDb: SiakadDatabase | null = null;
   try {
     const local = getLocalCache();
     if (!local.allCoursesData) local.allCoursesData = JSON.parse(JSON.stringify(INITIAL_ALL_COURSES_DATA || {}));
 
-    // 1. Save current active course state before switching
+    // Save previous active course state into allCoursesData
     if (local.activeCourseId && local.courseProfile) {
       local.allCoursesData[local.activeCourseId] = {
         id: local.activeCourseId,
@@ -1696,7 +1735,7 @@ export async function switchCourseApi(courseId: string): Promise<{ success: bool
       };
     }
 
-    // 2. Load target course state
+    // Load target course state
     if (!local.courses) local.courses = JSON.parse(JSON.stringify(INITIAL_DATABASE.courses || []));
     let targetCourse = local.courses.find(c => c.id === courseId);
     if (!targetCourse && INITIAL_ALL_COURSES_DATA[courseId]) {
@@ -1739,11 +1778,32 @@ export async function switchCourseApi(courseId: string): Promise<{ success: bool
     }
 
     saveLocalCache(local);
-    return { success: true, data: local };
+    targetDb = local;
   } catch (localErr) {
-    console.warn('Switch course fallback error:', localErr);
-    return { success: false, error: 'Gagal beralih mata kuliah' };
+    console.warn('Optimistic switch local notice:', localErr);
   }
+
+  // 3. Sync to server in background
+  try {
+    const res = await fetch('/api/courses/switch', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ courseId }),
+    });
+    const json = await safeJson(res, null);
+    if (res.ok && json.success && json.data) {
+      json.data.activeCourseId = courseId;
+      saveLocalCache(json.data);
+      return { success: true, data: json.data };
+    }
+  } catch (err) {
+    console.warn('Switch course network sync notice:', err);
+  }
+
+  if (targetDb) {
+    return { success: true, data: targetDb };
+  }
+  return { success: false, error: 'Gagal beralih mata kuliah' };
 }
 
 // Multi-Course API: Add new course (Dosen only)

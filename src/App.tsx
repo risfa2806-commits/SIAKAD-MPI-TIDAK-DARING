@@ -6,6 +6,7 @@ import {
   sendHeartbeat,
   addStudentApi,
   isStudentOnline,
+  saveLocalCache,
 } from './services/api';
 import { soundAlert } from './utils/soundAlert';
 
@@ -125,6 +126,31 @@ export default function App() {
     setDb(res.db);
     setIsOffline(res.isOffline);
   }, []);
+
+  const handleCourseSwitched = useCallback((updatedDb?: any) => {
+    if (updatedDb && updatedDb.activeCourseId) {
+      setDb(updatedDb);
+      saveLocalCache(updatedDb);
+      if (updatedDb.students && updatedDb.students.length > 0) {
+        const nextId = updatedDb.students[0].id;
+        setCurrentStudentId(nextId);
+        localStorage.setItem('siakad_current_student_id', nextId);
+      }
+    }
+    reloadData();
+  }, [reloadData]);
+
+  // Ensure currentStudentId is always valid within active db.students
+  useEffect(() => {
+    if (db?.students && db.students.length > 0) {
+      const exists = db.students.some(s => s.id === currentStudentId);
+      if (!exists) {
+        const firstId = db.students[0].id;
+        setCurrentStudentId(firstId);
+        localStorage.setItem('siakad_current_student_id', firstId);
+      }
+    }
+  }, [db?.students, currentStudentId]);
 
   // Initial load
   useEffect(() => {
@@ -814,10 +840,7 @@ export default function App() {
         activeCourseId={db.activeCourseId || 'default'}
         courseProfile={db.courseProfile}
         isDosen={isDosen}
-        onCourseSwitched={(newDb) => {
-          if (newDb && newDb.activeCourseId) setDb(newDb);
-          else reloadData();
-        }}
+        onCourseSwitched={handleCourseSwitched}
       />
 
       {/* View RPS Document Modal */}

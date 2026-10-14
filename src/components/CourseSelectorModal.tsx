@@ -420,14 +420,13 @@ export const CourseSelectorModal: React.FC<CourseSelectorModalProps> = ({
     setErrorMsg('');
     try {
       const res = await switchCourseApi(courseId);
-      if (res.success && res.data) {
+      if (res && res.data) {
         onCourseSwitched(res.data);
         onClose();
-      } else {
-        setErrorMsg(res.error || 'Gagal berpindah mata kuliah');
+        return;
       }
-    } catch {
-      setErrorMsg('Kesalahan jaringan');
+    } catch (e) {
+      console.warn('Switch course notice:', e);
     } finally {
       setIsLoading(false);
     }

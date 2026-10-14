@@ -1702,108 +1702,121 @@ export async function updateCourseProfileApi(profile: any): Promise<boolean> {
 }
 
 // Multi-Course API: Switch active course
-export async function switchCourseApi(courseId: string): Promise<{ success: boolean; data?: SiakadDatabase; error?: string }> {
+export async function switchCourseApi(courseId: string): Promise<{ success: boolean; data: SiakadDatabase }> {
   // 1. Immediately persist active course ID in client's storage
   if (typeof window !== 'undefined') {
-    localStorage.setItem('siakad_active_course_id', courseId);
+    try {
+      localStorage.setItem('siakad_active_course_id', courseId);
+    } catch {}
   }
 
   // 2. Perform optimistic local course switch so the user switches INSTANTLY
-  let targetDb: SiakadDatabase | null = null;
+  let local = getLocalCache();
+  if (!local.allCoursesData) {
+    local.allCoursesData = JSON.parse(JSON.stringify(INITIAL_ALL_COURSES_DATA || {}));
+  }
+
+  // Ensure all preconfigured course rooms exist in allCoursesData
+  if (INITIAL_ALL_COURSES_DATA) {
+    for (const [cKey, cVal] of Object.entries(INITIAL_ALL_COURSES_DATA)) {
+      if (!local.allCoursesData[cKey]) {
+        local.allCoursesData[cKey] = JSON.parse(JSON.stringify(cVal));
+      }
+    }
+  }
+
+  // Save current active room before switching
+  if (local.activeCourseId && local.courseProfile) {
+    local.allCoursesData[local.activeCourseId] = {
+      id: local.activeCourseId,
+      profile: local.courseProfile,
+      meetings: local.meetings || [],
+      students: local.students || [],
+      groups: local.groups || [],
+      submissions: local.submissions || [],
+      utsQuestions: local.utsQuestions || [],
+      utsSubmissions: local.utsSubmissions || [],
+      uasQuestions: local.uasQuestions || [],
+      uasSubmissions: local.uasSubmissions || [],
+      quizQuestions: local.quizQuestions || [],
+      quizSubmissions: local.quizSubmissions || [],
+      quizSettings: local.quizSettings || INITIAL_DATABASE.quizSettings,
+      attendance: local.attendance || {},
+      grades: local.grades || {},
+    };
+  }
+
+  // Ensure courses list has the target course
+  if (!local.courses || local.courses.length === 0) {
+    local.courses = JSON.parse(JSON.stringify(INITIAL_DATABASE.courses || []));
+  }
+  let targetCourse = local.courses.find(c => c.id === courseId);
+  if (!targetCourse && INITIAL_ALL_COURSES_DATA[courseId]) {
+    const initC = INITIAL_ALL_COURSES_DATA[courseId];
+    targetCourse = {
+      id: courseId,
+      title: initC.profile?.courseTitle || courseId,
+      code: initC.profile?.courseCode || 'MPI',
+      sks: initC.profile?.sks || 3,
+      semesterNumber: initC.profile?.semesterNumber || 3,
+      semester: initC.profile?.semester || 'Semester III',
+      roomName: initC.profile?.roomName || 'Kamar MPI',
+      campusName: initC.profile?.campusName || 'STAI Jarinabi',
+      dosenName: initC.profile?.dosenName || 'Risfa Tri Ulfa',
+      dosenTitle: initC.profile?.dosenTitle || 'S.Pd., M.Pd.',
+      studyProgram: initC.profile?.studyProgram || 'Manajemen Pendidikan Islam (MPI)',
+      totalStudents: initC.students?.length || 20,
+      description: initC.profile?.description || '',
+    };
+    local.courses.push(targetCourse);
+  }
+
+  // Load target course room
+  local.activeCourseId = courseId;
+  const saved = local.allCoursesData[courseId] || INITIAL_ALL_COURSES_DATA[courseId];
+  if (saved) {
+    if (saved.profile) local.courseProfile = saved.profile;
+    if (saved.meetings) local.meetings = saved.meetings;
+    if (saved.students) local.students = saved.students;
+    if (saved.groups) local.groups = saved.groups;
+    if (saved.submissions) local.submissions = saved.submissions;
+    if (saved.utsQuestions) local.utsQuestions = saved.utsQuestions;
+    if (saved.utsSubmissions) local.utsSubmissions = saved.utsSubmissions;
+    if (saved.uasQuestions) local.uasQuestions = saved.uasQuestions;
+    if (saved.uasSubmissions) local.uasSubmissions = saved.uasSubmissions;
+    if (saved.quizQuestions) local.quizQuestions = saved.quizQuestions;
+    if (saved.quizSubmissions) local.quizSubmissions = saved.quizSubmissions;
+    if (saved.quizSettings) local.quizSettings = saved.quizSettings;
+    if (saved.attendance) local.attendance = saved.attendance;
+    if (saved.grades) local.grades = saved.grades;
+  }
+
   try {
-    const local = getLocalCache();
-    if (!local.allCoursesData) local.allCoursesData = JSON.parse(JSON.stringify(INITIAL_ALL_COURSES_DATA || {}));
-
-    // Save previous active course state into allCoursesData
-    if (local.activeCourseId && local.courseProfile) {
-      local.allCoursesData[local.activeCourseId] = {
-        id: local.activeCourseId,
-        profile: JSON.parse(JSON.stringify(local.courseProfile)),
-        meetings: JSON.parse(JSON.stringify(local.meetings || [])),
-        students: JSON.parse(JSON.stringify(local.students || [])),
-        groups: JSON.parse(JSON.stringify(local.groups || [])),
-        submissions: JSON.parse(JSON.stringify(local.submissions || [])),
-        utsQuestions: JSON.parse(JSON.stringify(local.utsQuestions || [])),
-        utsSubmissions: JSON.parse(JSON.stringify(local.utsSubmissions || [])),
-        uasQuestions: JSON.parse(JSON.stringify(local.uasQuestions || [])),
-        uasSubmissions: JSON.parse(JSON.stringify(local.uasSubmissions || [])),
-        quizQuestions: JSON.parse(JSON.stringify(local.quizQuestions || [])),
-        quizSubmissions: JSON.parse(JSON.stringify(local.quizSubmissions || [])),
-        quizSettings: JSON.parse(JSON.stringify(local.quizSettings || {})),
-        attendance: JSON.parse(JSON.stringify(local.attendance || {})),
-        grades: JSON.parse(JSON.stringify(local.grades || {})),
-      };
-    }
-
-    // Load target course state
-    if (!local.courses) local.courses = JSON.parse(JSON.stringify(INITIAL_DATABASE.courses || []));
-    let targetCourse = local.courses.find(c => c.id === courseId);
-    if (!targetCourse && INITIAL_ALL_COURSES_DATA[courseId]) {
-      const initC = INITIAL_ALL_COURSES_DATA[courseId];
-      targetCourse = {
-        id: courseId,
-        title: initC.profile?.courseTitle || courseId,
-        code: initC.profile?.courseCode || 'MPI',
-        sks: initC.profile?.sks || 3,
-        semesterNumber: initC.profile?.semesterNumber || 3,
-        semester: initC.profile?.semester || 'Semester III',
-        roomName: initC.profile?.roomName || 'Kamar MPI',
-        campusName: initC.profile?.campusName || 'STAI Jarinabi',
-        dosenName: initC.profile?.dosenName || 'Risfa Tri Ulfa',
-        dosenTitle: initC.profile?.dosenTitle || 'S.Pd., M.Pd.',
-        studyProgram: initC.profile?.studyProgram || 'Manajemen Pendidikan Islam (MPI)',
-        totalStudents: initC.students?.length || 20,
-        description: initC.profile?.description || '',
-      };
-      local.courses.push(targetCourse);
-    }
-
-    local.activeCourseId = courseId;
-    const saved = local.allCoursesData[courseId] || INITIAL_ALL_COURSES_DATA[courseId];
-    if (saved) {
-      if (saved.profile) local.courseProfile = saved.profile;
-      if (saved.meetings) local.meetings = saved.meetings;
-      if (saved.students) local.students = saved.students;
-      if (saved.groups) local.groups = saved.groups;
-      if (saved.submissions) local.submissions = saved.submissions;
-      if (saved.utsQuestions) local.utsQuestions = saved.utsQuestions;
-      if (saved.utsSubmissions) local.utsSubmissions = saved.utsSubmissions;
-      if (saved.uasQuestions) local.uasQuestions = saved.uasQuestions;
-      if (saved.uasSubmissions) local.uasSubmissions = saved.uasSubmissions;
-      if (saved.quizQuestions) local.quizQuestions = saved.quizQuestions;
-      if (saved.quizSubmissions) local.quizSubmissions = saved.quizSubmissions;
-      if (saved.quizSettings) local.quizSettings = saved.quizSettings;
-      if (saved.attendance) local.attendance = saved.attendance;
-      if (saved.grades) local.grades = saved.grades;
-    }
-
     saveLocalCache(local);
-    targetDb = local;
-  } catch (localErr) {
-    console.warn('Optimistic switch local notice:', localErr);
+  } catch (cacheErr) {
+    console.warn('saveLocalCache error in switchCourseApi:', cacheErr);
   }
 
   // 3. Sync to server in background
-  try {
-    const res = await fetch('/api/courses/switch', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ courseId }),
+  fetch('/api/courses/switch', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ courseId }),
+  })
+    .then(async (res) => {
+      const json = await safeJson(res, null);
+      if (res.ok && json?.success && json?.data) {
+        json.data.activeCourseId = courseId;
+        try {
+          saveLocalCache(json.data);
+        } catch {}
+      }
+    })
+    .catch((err) => {
+      console.warn('Switch course network sync notice:', err);
     });
-    const json = await safeJson(res, null);
-    if (res.ok && json.success && json.data) {
-      json.data.activeCourseId = courseId;
-      saveLocalCache(json.data);
-      return { success: true, data: json.data };
-    }
-  } catch (err) {
-    console.warn('Switch course network sync notice:', err);
-  }
 
-  if (targetDb) {
-    return { success: true, data: targetDb };
-  }
-  return { success: false, error: 'Gagal beralih mata kuliah' };
+  return { success: true, data: local };
 }
 
 // Multi-Course API: Add new course (Dosen only)

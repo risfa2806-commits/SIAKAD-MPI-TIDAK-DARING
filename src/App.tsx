@@ -300,7 +300,7 @@ export default function App() {
   const studentGradedInfo = useMemo(() => {
     if (!currentStudent || isDosen) return null;
     const stdId = currentStudent.id;
-    const stdName = currentStudent.name.toLowerCase().trim();
+    const stdName = (currentStudent.name || '').toLowerCase().trim();
 
     // 1. Presentation submission
     const indSub = (db.submissions || []).find(

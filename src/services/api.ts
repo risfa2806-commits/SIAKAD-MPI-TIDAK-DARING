@@ -68,7 +68,15 @@ export function getLocalCache(): SiakadDatabase {
     const saved = localStorage.getItem(LOCAL_STORAGE_KEY);
     const parsed = safeParseJson<Partial<SiakadDatabase> | null>(saved, null);
     if (parsed && typeof parsed === 'object') {
-      const merged = { ...INITIAL_DATABASE, ...parsed };
+      const merged: SiakadDatabase = {
+        ...INITIAL_DATABASE,
+        ...parsed,
+        students: Array.isArray(parsed.students) && parsed.students.length > 0 ? parsed.students : INITIAL_DATABASE.students,
+        meetings: Array.isArray(parsed.meetings) && parsed.meetings.length > 0 ? parsed.meetings : INITIAL_DATABASE.meetings,
+        groups: Array.isArray(parsed.groups) && parsed.groups.length > 0 ? parsed.groups : INITIAL_DATABASE.groups,
+        courses: Array.isArray(parsed.courses) && parsed.courses.length > 0 ? parsed.courses : INITIAL_DATABASE.courses,
+        courseProfile: parsed.courseProfile || INITIAL_DATABASE.courseProfile,
+      };
       if (!merged.allCoursesData || Object.keys(merged.allCoursesData).length === 0) {
         merged.allCoursesData = JSON.parse(JSON.stringify(INITIAL_ALL_COURSES_DATA));
       }
@@ -204,6 +212,31 @@ function alignCourseRoom(targetDb: SiakadDatabase): SiakadDatabase {
     targetDb.allCoursesData = JSON.parse(JSON.stringify(INITIAL_ALL_COURSES_DATA || {}));
   }
   const cId = userActiveCourseId || targetDb.activeCourseId || 'mk-filsafat-ilmu';
+
+  // If targetDb is already set to the requested course, keep its live data intact
+  if (targetDb.activeCourseId === cId && targetDb.courseProfile) {
+    if (!targetDb.allCoursesData[cId]) {
+      targetDb.allCoursesData[cId] = {
+        id: cId,
+        profile: targetDb.courseProfile,
+        students: targetDb.students,
+        groups: targetDb.groups,
+        meetings: targetDb.meetings,
+        submissions: targetDb.submissions,
+        utsQuestions: targetDb.utsQuestions,
+        utsSubmissions: targetDb.utsSubmissions,
+        uasQuestions: targetDb.uasQuestions,
+        uasSubmissions: targetDb.uasSubmissions,
+        quizQuestions: targetDb.quizQuestions,
+        quizSubmissions: targetDb.quizSubmissions,
+        quizSettings: targetDb.quizSettings,
+        attendance: targetDb.attendance,
+        grades: targetDb.grades,
+      };
+    }
+    return targetDb;
+  }
+
   const room = targetDb.allCoursesData[cId] || INITIAL_ALL_COURSES_DATA[cId];
   if (room) {
     targetDb.activeCourseId = cId;
@@ -227,11 +260,18 @@ function alignCourseRoom(targetDb: SiakadDatabase): SiakadDatabase {
 
 // Fetch database from server with silent retry and smooth fallback to IndexedDB / local cache
 export async function fetchDatabase(): Promise<{ db: SiakadDatabase; isOffline: boolean }> {
+  const activeCourseId = typeof window !== 'undefined' ? localStorage.getItem('siakad_active_course_id') : null;
+  const dbUrl = activeCourseId ? `/api/db?courseId=${encodeURIComponent(activeCourseId)}` : '/api/db';
+  const headers: Record<string, string> = { Accept: 'application/json' };
+  if (activeCourseId) {
+    headers['x-active-course-id'] = activeCourseId;
+  }
+
   // Silent retry up to 3 times to gracefully absorb any transient server startup delay
   for (let attempt = 0; attempt < 3; attempt++) {
     try {
-      const res = await fetch('/api/db', {
-        headers: { Accept: 'application/json' },
+      const res = await fetch(dbUrl, {
+        headers,
         cache: 'no-cache',
       });
       if (res.ok) {
@@ -1797,24 +1837,28 @@ export async function switchCourseApi(courseId: string): Promise<{ success: bool
     console.warn('saveLocalCache error in switchCourseApi:', cacheErr);
   }
 
-  // 3. Sync to server in background
-  fetch('/api/courses/switch', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ courseId }),
-  })
-    .then(async (res) => {
-      const json = await safeJson(res, null);
-      if (res.ok && json?.success && json?.data) {
-        json.data.activeCourseId = courseId;
-        try {
-          saveLocalCache(json.data);
-        } catch {}
-      }
-    })
-    .catch((err) => {
-      console.warn('Switch course network sync notice:', err);
+  // 3. Sync to server and wait for authoritative response
+  try {
+    const res = await fetch('/api/courses/switch', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-active-course-id': courseId,
+      },
+      body: JSON.stringify({ courseId }),
     });
+    if (res.ok) {
+      const json = await safeJson(res, null);
+      if (json?.success && json?.data) {
+        json.data.activeCourseId = courseId;
+        const aligned = alignCourseRoom(json.data);
+        saveLocalCache(aligned);
+        return { success: true, data: aligned };
+      }
+    }
+  } catch (err) {
+    console.warn('Switch course network sync notice, using local cache:', err);
+  }
 
   return { success: true, data: local };
 }

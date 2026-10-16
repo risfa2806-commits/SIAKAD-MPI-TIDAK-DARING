@@ -47,17 +47,50 @@ import {
 const app = express();
 const PORT = 3000;
 
-// Increase payload limit for uploaded presentation slides/files
-app.use(express.json({ limit: '150mb' }));
-app.use(express.urlencoded({ extended: true, limit: '150mb' }));
-
-// Normalize URL in case serverless platforms (like Vercel) strip /api prefix
+// Handle pre-parsed body and normalize URL for serverless platforms (like Vercel)
 app.use((req, res, next) => {
-  if (req.url && !req.url.startsWith('/api') && req.url !== '/' && !req.url.startsWith('/assets') && !req.url.startsWith('/vite')) {
-    req.url = '/api' + (req.url.startsWith('/') ? req.url : '/' + req.url);
+  if (req.body) {
+    if (typeof req.body === 'string') {
+      try {
+        req.body = JSON.parse(req.body);
+      } catch {}
+    } else if (Buffer.isBuffer(req.body)) {
+      try {
+        req.body = JSON.parse(req.body.toString('utf-8'));
+      } catch {}
+    }
+    (req as any)._body = true;
+  }
+  if (IS_SERVERLESS) {
+    if (req.url && req.url.includes('[...all]')) {
+      const allQuery = (req.query as any)?.all;
+      if (allQuery) {
+        const segs = Array.isArray(allQuery) ? allQuery.join('/') : String(allQuery);
+        req.url = req.url.replace('/api/[...all]', '/api/' + segs.replace(/^\/+/, ''))
+                         .replace('/[...all]', '/api/' + segs.replace(/^\/+/, ''))
+                         .replace('[...all]', segs.replace(/^\/+/, ''));
+      }
+    }
+    if (
+      req.url &&
+      !req.url.startsWith('/api') &&
+      req.url !== '/' &&
+      !req.url.startsWith('/assets') &&
+      !req.url.startsWith('/vite') &&
+      !req.url.startsWith('/src') &&
+      !req.url.startsWith('/@') &&
+      !req.url.startsWith('/node_modules') &&
+      !req.url.includes('.')
+    ) {
+      req.url = '/api' + (req.url.startsWith('/') ? req.url : '/' + req.url);
+    }
   }
   next();
 });
+
+// Increase payload limit for uploaded presentation slides/files
+app.use(express.json({ limit: '150mb' }));
+app.use(express.urlencoded({ extended: true, limit: '150mb' }));
 
 const IS_SERVERLESS = Boolean(process.env.VERCEL || process.env.AWS_LAMBDA_FUNCTION_NAME);
 const DATA_DIR = IS_SERVERLESS ? path.join('/tmp', 'data') : path.join(process.cwd(), 'data');
@@ -1284,8 +1317,9 @@ function loadDatabase(): SiakadDatabase {
         if (!c || !c.id) return false;
         if (officialCourseIds.has(c.id)) return true;
         if (legacyTestCourseIds.has(c.id)) return false;
-        // Keep only if explicitly created by lecturer (e.g. mk-custom-*)
-        return String(c.id).startsWith('mk-custom-');
+        // Keep if in parsed.courses or created by lecturer
+        if (Array.isArray(parsed.courses) && parsed.courses.some((pc: any) => pc.id === c.id)) return true;
+        return String(c.id).startsWith('mk-');
       };
 
       for (const key of Object.keys(allCoursesData)) {
@@ -1752,8 +1786,17 @@ setInterval(() => {
 
 // ================= API ROUTES =================
 
-// 1. Get entire database state
-app.get('/api/db', (req, res) => {
+// 1. Get entire database state (auto-aligns with client's active course if requested)
+app.get(['/api/db', '/db'], (req, res) => {
+  const reqCourseId = (req.query.courseId as string) || (req.headers['x-active-course-id'] as string);
+  if (reqCourseId && reqCourseId !== db.activeCourseId) {
+    try {
+      switchActiveCourseInternal(reqCourseId);
+    } catch (e) {
+      console.warn('Auto-align active course notice in /api/db:', e);
+    }
+  }
+
   const { dosenPassword, ...safeDb } = db;
   res.json({
     success: true,
@@ -4387,7 +4430,7 @@ app.put('/api/course', (req, res) => {
 });
 
 // Multi-Course API: Get all courses
-app.get('/api/courses', (req, res) => {
+app.get(['/api/courses', '/courses'], (req, res) => {
   res.json({
     success: true,
     courses: db.courses || [],
@@ -4459,12 +4502,9 @@ function generateCohortForSemester(
   return getMasterStudentsAndGroups(semesterNum, courseTitle);
 }
 
-// Multi-Course API: Switch active course / kamar
-app.post('/api/courses/switch', (req, res) => {
-  const { courseId } = req.body;
-  if (!courseId) {
-    return res.status(400).json({ error: 'courseId is required' });
-  }
+// Internal helper to switch active course room
+function switchActiveCourseInternal(courseId: string): boolean {
+  if (!courseId) return false;
 
   if (!db.courses) db.courses = JSON.parse(JSON.stringify(INITIAL_DATABASE.courses || []));
   let targetCourse = db.courses.find(c => c.id === courseId);
@@ -4487,8 +4527,26 @@ app.post('/api/courses/switch', (req, res) => {
         description: initC.profile?.description || '',
       };
       db.courses.push(targetCourse);
+    } else if (db.allCoursesData && db.allCoursesData[courseId]) {
+      const initC = db.allCoursesData[courseId];
+      targetCourse = {
+        id: courseId,
+        title: initC.profile?.courseTitle || courseId,
+        code: initC.profile?.courseCode || 'MPI',
+        sks: initC.profile?.sks || 3,
+        semesterNumber: initC.profile?.semesterNumber || 3,
+        semester: initC.profile?.semester || 'Semester III',
+        roomName: initC.profile?.roomName || 'Kamar MPI',
+        campusName: initC.profile?.campusName || 'STAI Jarinabi',
+        dosenName: initC.profile?.dosenName || 'Risfa Tri Ulfa',
+        dosenTitle: initC.profile?.dosenTitle || 'S.Pd., M.Pd.',
+        studyProgram: initC.profile?.studyProgram || 'Manajemen Pendidikan Islam (MPI)',
+        totalStudents: initC.students?.length || 20,
+        description: initC.profile?.description || '',
+      };
+      db.courses.push(targetCourse);
     } else {
-      return res.status(404).json({ error: 'Mata kuliah tidak ditemukan dalam daftar.' });
+      return false;
     }
   }
 
@@ -4539,6 +4597,25 @@ app.post('/api/courses/switch', (req, res) => {
     if (saved.uasExamSettings) db.uasExamSettings = saved.uasExamSettings;
     db.attendance = saved.attendance || { 1: {} };
     db.grades = saved.grades || {};
+  } else if (INITIAL_ALL_COURSES_DATA[courseId]) {
+    const initC = INITIAL_ALL_COURSES_DATA[courseId];
+    db.courseProfile = initC.profile;
+    db.meetings = initC.meetings;
+    db.rpsRawText = '';
+    db.students = initC.students;
+    db.groups = initC.groups;
+    db.submissions = initC.submissions || [];
+    db.utsQuestions = initC.utsQuestions || [];
+    db.utsSubmissions = initC.utsSubmissions || [];
+    db.uasQuestions = initC.uasQuestions || [];
+    db.uasSubmissions = initC.uasSubmissions || [];
+    db.quizQuestions = initC.quizQuestions || [];
+    db.quizSubmissions = initC.quizSubmissions || [];
+    db.quizSettings = initC.quizSettings || INITIAL_DATABASE.quizSettings;
+    db.utsExamSettings = initC.utsExamSettings || INITIAL_DATABASE.utsExamSettings;
+    db.uasExamSettings = initC.uasExamSettings || INITIAL_DATABASE.uasExamSettings;
+    db.attendance = initC.attendance || { 1: {} };
+    db.grades = initC.grades || {};
   } else {
     // Initialize new course room with its own isolated students
     const dosenName = targetCourse.dosenName || db.courseProfile?.dosenName || 'Risfa Tri Ulfa';
@@ -4599,11 +4676,27 @@ app.post('/api/courses/switch', (req, res) => {
   }
 
   saveDatabase();
+  return true;
+}
+
+// Multi-Course API: Switch active course / kamar
+app.post(['/api/courses/switch', '/courses/switch'], (req, res) => {
+  const courseId = (req.body?.courseId || req.query?.courseId || req.headers['x-active-course-id']) as string;
+  if (!courseId) {
+    return res.status(400).json({ error: 'courseId is required' });
+  }
+
+  const ok = switchActiveCourseInternal(courseId);
+  if (!ok) {
+    return res.status(404).json({ error: 'Mata kuliah tidak ditemukan dalam daftar.' });
+  }
+
+  const { dosenPassword, ...safeDb } = db;
   res.json({
     success: true,
     activeCourseId: db.activeCourseId,
     courseProfile: db.courseProfile,
-    data: db,
+    data: safeDb,
   });
 });
 

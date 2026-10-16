@@ -48,220 +48,365 @@
       "classCode": "MPI 3B"
     }
   ],
-  "activeCourseId": "mk-filsafat-ilmu",
+  "activeCourseId": "mk-konsep-dasar-mpi3",
   "courseProfile": {
     "name": "Risfa Tri Ulfa, S.Pd., M.Pd.",
     "dosenName": "Risfa Tri Ulfa",
     "dosenTitle": "S.Pd., M.Pd.",
     "campusName": "STAI Jarinabi",
     "nip": "198806282015032001",
-    "courseTitle": "Filsafat Ilmu",
-    "courseCode": "STI 105",
-    "sks": 2,
-    "semester": "Semester I (Ganjil 2026/2027)",
-    "semesterNumber": 1,
-    "roomName": "Kamar MPI 1 (Ruang Al-Farabi)",
+    "courseTitle": "Konsep Dasar Manajemen Pendidikan Islam (MPI)",
+    "courseCode": "MPI 301",
+    "sks": 3,
+    "semester": "Semester III (Ganjil 2026/2027)",
+    "semesterNumber": 3,
+    "roomName": "Kamar MPI 3A (Ruang Ibnu Khaldun)",
     "studyProgram": "Manajemen Pendidikan Islam (MPI)",
-    "classCode": "MPI 1",
+    "classCode": "MPI 3A",
     "academicYear": "2026/2027",
     "totalMeetings": 16,
-    "description": "Mata kuliah Filsafat Ilmu memberikan landasan filosofis, metodologis, dan etis bagi mahasiswa tingkat awal (Semester 1 / MPI 1) Program Studi Manajemen Pendidikan Islam (MPI). Pembelajaran difokuskan pada penguasaan konsep dasar pemikiran logis, kritis, dan filosofis tanpa kalkulasi matematis rumit. Mahasiswa diajak memahami pilar utama filsafat ilmu (Ontologi, Epistemologi, dan Aksiologi), sejarah perkembangan pemikiran keilmuan, metodologi pencarian kebenaran ilmiah, serta integrasi nilai-nilai etika Keislaman (amanah, maslahah) dan kearifan lokal (local wisdom) dalam tata kelola pendidikan Islam."
+    "description": "Mata kuliah Semester 3 (RPS OBE): Konsep dasar, fungsi POAC, tata kelola kelembagaan, kepemimpinan Islami, dan manajemen madrasah/pesantren (12 Kelompok RPS)."
   },
   "students": [
     {
-      "id": "mhs-1",
-      "nim": "20260101",
-      "name": "Husna",
+      "id": "mhs-sem3-1",
+      "nim": "20250301",
+      "name": "Heru",
       "birthPlace": "Tanjung Jabung Timur",
       "birthDate": "2004-03-15",
-      "address": "Kel. Rano, Kec. Muara Sabak Barat, Kab. Tanjung Jabung Timur, Jambi",
-      "gender": "Perempuan",
-      "phone": "082386010001",
-      "rpsPart": "Pertemuan 3",
-      "topic": "Hakikat Pengetahuan dan Ilmu: Perbedaan Pengetahuan Biasa, Ilmu, dan Filsafat",
-      "meetingNumber": 3,
-      "groupId": 1,
-      "createdAt": "2026-08-10T00:00:00Z"
-    },
-    {
-      "id": "mhs-2",
-      "nim": "20260102",
-      "name": "Ikha",
-      "birthPlace": "Jambi",
-      "birthDate": "2004-06-22",
-      "address": "Muara Sabak Barat, Kab. Tanjung Jabung Timur, Jambi",
-      "gender": "Perempuan",
-      "phone": "082386010002",
-      "rpsPart": "Pertemuan 3",
-      "topic": "Hakikat Pengetahuan dan Ilmu: Perbedaan Pengetahuan Biasa, Ilmu, dan Filsafat",
-      "meetingNumber": 3,
-      "groupId": 1,
-      "createdAt": "2026-08-10T00:00:00Z"
-    },
-    {
-      "id": "mhs-3",
-      "nim": "20260103",
-      "name": "Indah",
-      "birthPlace": "Muara Sabak",
-      "birthDate": "2004-09-10",
-      "address": "Komplek Bukit Qur'an Sabak, Muara Sabak Barat, Jambi",
-      "gender": "Perempuan",
-      "phone": "082386010003",
-      "rpsPart": "Pertemuan 3",
-      "topic": "Hakikat Pengetahuan dan Ilmu: Perbedaan Pengetahuan Biasa, Ilmu, dan Filsafat",
-      "meetingNumber": 3,
-      "groupId": 1,
-      "createdAt": "2026-08-10T00:00:00Z"
-    },
-    {
-      "id": "mhs-4",
-      "nim": "20260104",
-      "name": "Kirana",
-      "birthPlace": "Tanjung Jabung Timur",
-      "birthDate": "2004-01-18",
-      "address": "Kec. Dendang, Kab. Tanjung Jabung Timur, Jambi",
-      "gender": "Perempuan",
-      "phone": "082386010004",
-      "rpsPart": "Pertemuan 4",
-      "topic": "Pilar Ontologi Ilmu: Hakikat Ada (Being), Realitas Objek Kajian, dan Aliran-aliran Ontologi",
-      "meetingNumber": 4,
-      "groupId": 2,
-      "createdAt": "2026-08-10T00:00:00Z"
-    },
-    {
-      "id": "mhs-5",
-      "nim": "20260105",
-      "name": "Khoir",
-      "birthPlace": "Jambi",
-      "birthDate": "2003-11-25",
-      "address": "Kec. Geragai, Kab. Tanjung Jabung Timur, Jambi",
+      "address": "Kec. Muara Sabak Barat, Kab. Tanjung Jabung Timur, Jambi",
       "gender": "Laki-laki",
-      "phone": "082386010005",
-      "rpsPart": "Pertemuan 4",
-      "topic": "Pilar Ontologi Ilmu: Hakikat Ada (Being), Realitas Objek Kajian, dan Aliran-aliran Ontologi",
-      "meetingNumber": 4,
-      "groupId": 2,
-      "createdAt": "2026-08-10T00:00:00Z"
+      "phone": "082386030001",
+      "rpsPart": "Pertemuan 2 & 9",
+      "topic": "Hakikat dan Ruang Lingkup Manajemen Pendidikan Islam / Kurikulum Madrasah & Pesantren",
+      "meetingNumber": 2,
+      "groupId": 1,
+      "createdAt": "2026-08-10T00:00:00Z",
+      "activityPoints": 25,
+      "activityPointLogs": []
     },
     {
-      "id": "mhs-6",
-      "nim": "20260106",
-      "name": "Nurazizah",
-      "birthPlace": "Muara Sabak",
-      "birthDate": "2004-04-05",
-      "address": "Kel. Rano, Muara Sabak Barat, Tanjung Jabung Timur, Jambi",
-      "gender": "Perempuan",
-      "phone": "082386010006",
-      "rpsPart": "Pertemuan 5",
-      "topic": "Pilar Epistemologi Ilmu: Sumber Pengetahuan, Metode Ilmiah, dan Sarana Berpikir Ilmiah",
-      "meetingNumber": 5,
-      "groupId": 3,
-      "createdAt": "2026-08-10T00:00:00Z"
-    },
-    {
-      "id": "mhs-7",
-      "nim": "20260107",
-      "name": "Haza",
-      "birthPlace": "Tanjung Jabung Timur",
-      "birthDate": "2003-08-14",
-      "address": "Kec. Mendahara, Kab. Tanjung Jabung Timur, Jambi",
-      "gender": "Laki-laki",
-      "phone": "082386010007",
-      "rpsPart": "Pertemuan 5",
-      "topic": "Pilar Epistemologi Ilmu: Sumber Pengetahuan, Metode Ilmiah, dan Sarana Berpikir Ilmiah",
-      "meetingNumber": 5,
-      "groupId": 3,
-      "createdAt": "2026-08-10T00:00:00Z"
-    },
-    {
-      "id": "mhs-8",
-      "nim": "20260108",
-      "name": "Tomi",
+      "id": "mhs-sem3-2",
+      "nim": "20250302",
+      "name": "Sofyan",
       "birthPlace": "Jambi",
-      "birthDate": "2003-05-30",
+      "birthDate": "2004-05-20",
       "address": "Kec. Kuala Jambi, Kab. Tanjung Jabung Timur, Jambi",
       "gender": "Laki-laki",
-      "phone": "082386010008",
-      "rpsPart": "Pertemuan 5",
-      "topic": "Pilar Epistemologi Ilmu: Sumber Pengetahuan, Metode Ilmiah, dan Sarana Berpikir Ilmiah",
-      "meetingNumber": 5,
-      "groupId": 3,
-      "createdAt": "2026-08-10T00:00:00Z"
+      "phone": "082386030002",
+      "rpsPart": "Pertemuan 2 & 9",
+      "topic": "Hakikat dan Ruang Lingkup Manajemen Pendidikan Islam / Kurikulum Madrasah & Pesantren",
+      "meetingNumber": 2,
+      "groupId": 1,
+      "createdAt": "2026-08-10T00:00:00Z",
+      "activityPoints": 25,
+      "activityPointLogs": []
     },
     {
-      "id": "mhs-9",
-      "nim": "20260109",
-      "name": "Estiyani",
+      "id": "mhs-sem3-3",
+      "nim": "20250303",
+      "name": "Isma",
+      "birthPlace": "Muara Sabak",
+      "birthDate": "2004-07-12",
+      "address": "Kel. Rano, Kec. Muara Sabak Barat, Kab. Tanjung Jabung Timur, Jambi",
+      "gender": "Perempuan",
+      "phone": "082386030003",
+      "rpsPart": "Pertemuan 3 & 10",
+      "topic": "Landasan Syar’i, Yuridis, dan Filosofis MPI / Manajemen Pendidik & Tenaga Kependidikan",
+      "meetingNumber": 3,
+      "groupId": 2,
+      "createdAt": "2026-08-10T00:00:00Z",
+      "activityPoints": 25,
+      "activityPointLogs": []
+    },
+    {
+      "id": "mhs-sem3-4",
+      "nim": "20250304",
+      "name": "Zaza",
+      "birthPlace": "Tanjung Jabung Timur",
+      "birthDate": "2004-09-18",
+      "address": "Kec. Geragai, Kab. Tanjung Jabung Timur, Jambi",
+      "gender": "Perempuan",
+      "phone": "082386030004",
+      "rpsPart": "Pertemuan 3 & 10",
+      "topic": "Landasan Syar’i, Yuridis, dan Filosofis MPI / Manajemen Pendidik & Tenaga Kependidikan",
+      "meetingNumber": 3,
+      "groupId": 2,
+      "createdAt": "2026-08-10T00:00:00Z",
+      "activityPoints": 25,
+      "activityPointLogs": []
+    },
+    {
+      "id": "mhs-sem3-5",
+      "nim": "20250305",
+      "name": "Puput",
       "birthPlace": "Muara Sabak Timur",
-      "birthDate": "2004-02-12",
+      "birthDate": "2004-11-25",
       "address": "Kec. Muara Sabak Timur, Kab. Tanjung Jabung Timur, Jambi",
       "gender": "Perempuan",
-      "phone": "082386010009",
-      "rpsPart": "Pertemuan 6",
-      "topic": "Pilar Aksiologi Ilmu: Nilai, Etika Keilmuan, Tanggung Jawab Moral, dan Kemanfaatan Sains",
-      "meetingNumber": 6,
-      "groupId": 4,
-      "createdAt": "2026-08-10T00:00:00Z"
+      "phone": "082386030005",
+      "rpsPart": "Pertemuan 3 & 10",
+      "topic": "Landasan Syar’i, Yuridis, dan Filosofis MPI / Manajemen Pendidik & Tenaga Kependidikan",
+      "meetingNumber": 3,
+      "groupId": 2,
+      "createdAt": "2026-08-10T00:00:00Z",
+      "activityPoints": 25,
+      "activityPointLogs": []
     },
     {
-      "id": "mhs-10",
-      "nim": "20260110",
-      "name": "Munailatul",
+      "id": "mhs-sem3-6",
+      "nim": "20250306",
+      "name": "Zainul",
+      "birthPlace": "Jambi",
+      "birthDate": "2003-12-10",
+      "address": "Kec. Mendahara, Kab. Tanjung Jabung Timur, Jambi",
+      "gender": "Laki-laki",
+      "phone": "082386030006",
+      "rpsPart": "Pertemuan 4 & 11",
+      "topic": "Perencanaan Strategis dalam Pendidikan Islam / Manajemen Kesiswaan & Karakter Islami",
+      "meetingNumber": 4,
+      "groupId": 3,
+      "createdAt": "2026-08-10T00:00:00Z",
+      "activityPoints": 25,
+      "activityPointLogs": []
+    },
+    {
+      "id": "mhs-sem3-7",
+      "nim": "20250307",
+      "name": "Hanif",
       "birthPlace": "Tanjung Jabung Timur",
-      "birthDate": "2004-07-08",
+      "birthDate": "2004-02-14",
+      "address": "Kec. Nipah Panjang, Kab. Tanjung Jabung Timur, Jambi",
+      "gender": "Laki-laki",
+      "phone": "082386030007",
+      "rpsPart": "Pertemuan 4 & 11",
+      "topic": "Perencanaan Strategis dalam Pendidikan Islam / Manajemen Kesiswaan & Karakter Islami",
+      "meetingNumber": 4,
+      "groupId": 3,
+      "createdAt": "2026-08-10T00:00:00Z",
+      "activityPoints": 25,
+      "activityPointLogs": []
+    },
+    {
+      "id": "mhs-sem3-8",
+      "nim": "20250308",
+      "name": "Anita",
+      "birthPlace": "Muara Sabak Barat",
+      "birthDate": "2004-06-30",
+      "address": "Kel. Nibung Putih, Kec. Muara Sabak Barat, Kab. Tanjung Jabung Timur, Jambi",
+      "gender": "Perempuan",
+      "phone": "082386030008",
+      "rpsPart": "Pertemuan 4 & 11",
+      "topic": "Perencanaan Strategis dalam Pendidikan Islam / Manajemen Kesiswaan & Karakter Islami",
+      "meetingNumber": 4,
+      "groupId": 3,
+      "createdAt": "2026-08-10T00:00:00Z",
+      "activityPoints": 25,
+      "activityPointLogs": []
+    },
+    {
+      "id": "mhs-sem3-9",
+      "nim": "20250309",
+      "name": "Irma",
+      "birthPlace": "Jambi",
+      "birthDate": "2004-08-22",
+      "address": "Kec. Dendang, Kab. Tanjung Jabung Timur, Jambi",
+      "gender": "Perempuan",
+      "phone": "082386030009",
+      "rpsPart": "Pertemuan 4 & 7",
+      "topic": "Perencanaan Strategis dalam Pendidikan Islam / Sistem Pengawasan Lembaga Pendidikan Islam",
+      "meetingNumber": 4,
+      "groupId": 3,
+      "createdAt": "2026-08-10T00:00:00Z",
+      "activityPoints": 25,
+      "activityPointLogs": []
+    },
+    {
+      "id": "mhs-sem3-10",
+      "nim": "20250310",
+      "name": "Tina",
+      "birthPlace": "Tanjung Jabung Timur",
+      "birthDate": "2004-01-19",
       "address": "Kec. Rantau Rasau, Kab. Tanjung Jabung Timur, Jambi",
       "gender": "Perempuan",
-      "phone": "082386010010",
-      "rpsPart": "Pertemuan 6",
-      "topic": "Pilar Aksiologi Ilmu: Nilai, Etika Keilmuan, Tanggung Jawab Moral, dan Kemanfaatan Sains",
-      "meetingNumber": 6,
+      "phone": "082386030010",
+      "rpsPart": "Pertemuan 5 & 12",
+      "topic": "Pengorganisasian dan Struktur Lembaga Pendidikan Islam / Tata Kelola Pembiayaan & Dana BOSP",
+      "meetingNumber": 5,
       "groupId": 4,
-      "createdAt": "2026-08-10T00:00:00Z"
+      "createdAt": "2026-08-10T00:00:00Z",
+      "activityPoints": 25,
+      "activityPointLogs": []
     },
     {
-      "id": "mhs-11",
-      "nim": "20260111",
-      "name": "Anggun",
-      "birthPlace": "Jambi",
-      "birthDate": "2004-10-19",
-      "address": "Kec. Nipah Panjang, Kab. Tanjung Jabung Timur, Jambi",
+      "id": "mhs-sem3-11",
+      "nim": "20250311",
+      "name": "Ardila",
+      "birthPlace": "Muara Sabak",
+      "birthDate": "2004-04-16",
+      "address": "Komplek Perkantoran Bukit Menderang, Muara Sabak Barat, Jambi",
       "gender": "Perempuan",
-      "phone": "082386010011",
-      "rpsPart": "Pertemuan 7",
-      "topic": "Sejarah Perkembangan Filsafat dan Ilmu (Era Yunani Klasik & Abad Pertengahan)",
-      "meetingNumber": 7,
-      "groupId": 5,
-      "createdAt": "2026-08-10T00:00:00Z"
+      "phone": "082386030011",
+      "rpsPart": "Pertemuan 5 & 12",
+      "topic": "Pengorganisasian dan Struktur Lembaga Pendidikan Islam / Tata Kelola Pembiayaan & Dana BOSP",
+      "meetingNumber": 5,
+      "groupId": 4,
+      "createdAt": "2026-08-10T00:00:00Z",
+      "activityPoints": 25,
+      "activityPointLogs": []
     },
     {
-      "id": "mhs-12",
-      "nim": "20260112",
-      "name": "Ridho",
-      "birthPlace": "Muara Sabak Barat",
-      "birthDate": "2003-12-03",
-      "address": "Kel. Nibung Putih, Kec. Muara Sabak Barat, Tanjung Jabung Timur, Jambi",
-      "gender": "Laki-laki",
-      "phone": "082386010012",
-      "rpsPart": "Pertemuan 7",
-      "topic": "Sejarah Perkembangan Filsafat dan Ilmu (Era Yunani Klasik & Abad Pertengahan)",
-      "meetingNumber": 7,
-      "groupId": 5,
-      "createdAt": "2026-08-10T00:00:00Z"
-    },
-    {
-      "id": "mhs-13",
-      "nim": "20260113",
-      "name": "Nia",
+      "id": "mhs-sem3-12",
+      "nim": "20250312",
+      "name": "Dedi",
       "birthPlace": "Tanjung Jabung Timur",
-      "birthDate": "2004-05-17",
+      "birthDate": "2003-10-05",
       "address": "Kec. Berbak, Kab. Tanjung Jabung Timur, Jambi",
+      "gender": "Laki-laki",
+      "phone": "082386030012",
+      "rpsPart": "Pertemuan 5 & 12",
+      "topic": "Pengorganisasian dan Struktur Lembaga Pendidikan Islam / Tata Kelola Pembiayaan & Dana BOSP",
+      "meetingNumber": 5,
+      "groupId": 4,
+      "createdAt": "2026-08-10T00:00:00Z",
+      "activityPoints": 25,
+      "activityPointLogs": []
+    },
+    {
+      "id": "mhs-sem3-13",
+      "nim": "20250313",
+      "name": "Nawawi",
+      "birthPlace": "Jambi",
+      "birthDate": "2003-07-28",
+      "address": "Kec. Kuala Jambi, Kab. Tanjung Jabung Timur, Jambi",
+      "gender": "Laki-laki",
+      "phone": "082386030013",
+      "rpsPart": "Pertemuan 5 & 12",
+      "topic": "Pengorganisasian dan Struktur Lembaga Pendidikan Islam / Tata Kelola Pembiayaan & Dana BOSP",
+      "meetingNumber": 5,
+      "groupId": 4,
+      "createdAt": "2026-08-10T00:00:00Z",
+      "activityPoints": 25,
+      "activityPointLogs": []
+    },
+    {
+      "id": "mhs-sem3-14",
+      "nim": "20250314",
+      "name": "Era",
+      "birthPlace": "Muara Sabak Barat",
+      "birthDate": "2004-12-08",
+      "address": "Kel. Parit Culum, Kec. Muara Sabak Barat, Kab. Tanjung Jabung Timur, Jambi",
       "gender": "Perempuan",
-      "phone": "082386010013",
-      "rpsPart": "Pertemuan 7",
-      "topic": "Sejarah Perkembangan Filsafat dan Ilmu (Era Yunani Klasik & Abad Pertengahan)",
-      "meetingNumber": 7,
+      "phone": "082386030014",
+      "rpsPart": "Pertemuan 6 & 13",
+      "topic": "Kepemimpinan Profetik dalam Penggerakan Organisasi / Manajemen Sarana dan Prasarana MPI",
+      "meetingNumber": 6,
       "groupId": 5,
-      "createdAt": "2026-08-10T00:00:00Z"
+      "createdAt": "2026-08-10T00:00:00Z",
+      "activityPoints": 25,
+      "activityPointLogs": []
+    },
+    {
+      "id": "mhs-sem3-15",
+      "nim": "20250315",
+      "name": "Rina",
+      "birthPlace": "Tanjung Jabung Timur",
+      "birthDate": "2004-03-24",
+      "address": "Kec. Mendahara Ulu, Kab. Tanjung Jabung Timur, Jambi",
+      "gender": "Perempuan",
+      "phone": "082386030015",
+      "rpsPart": "Pertemuan 6 & 13",
+      "topic": "Kepemimpinan Profetik dalam Penggerakan Organisasi / Manajemen Sarana dan Prasarana MPI",
+      "meetingNumber": 6,
+      "groupId": 5,
+      "createdAt": "2026-08-10T00:00:00Z",
+      "activityPoints": 25,
+      "activityPointLogs": []
+    },
+    {
+      "id": "mhs-sem3-16",
+      "nim": "20250316",
+      "name": "Dea",
+      "birthPlace": "Jambi",
+      "birthDate": "2004-05-11",
+      "address": "Kec. Geragai, Kab. Tanjung Jabung Timur, Jambi",
+      "gender": "Perempuan",
+      "phone": "082386030016",
+      "rpsPart": "Pertemuan 6 & 13",
+      "topic": "Kepemimpinan Profetik dalam Penggerakan Organisasi / Manajemen Sarana dan Prasarana MPI",
+      "meetingNumber": 6,
+      "groupId": 5,
+      "createdAt": "2026-08-10T00:00:00Z",
+      "activityPoints": 25,
+      "activityPointLogs": []
+    },
+    {
+      "id": "mhs-sem3-17",
+      "nim": "20250317",
+      "name": "Milda",
+      "birthPlace": "Muara Sabak Timur",
+      "birthDate": "2004-10-15",
+      "address": "Kec. Muara Sabak Timur, Kab. Tanjung Jabung Timur, Jambi",
+      "gender": "Perempuan",
+      "phone": "082386030017",
+      "rpsPart": "Pertemuan 6 & 13",
+      "topic": "Kepemimpinan Profetik dalam Penggerakan Organisasi / Manajemen Sarana dan Prasarana MPI",
+      "meetingNumber": 6,
+      "groupId": 5,
+      "createdAt": "2026-08-10T00:00:00Z",
+      "activityPoints": 25,
+      "activityPointLogs": []
+    },
+    {
+      "id": "mhs-sem3-18",
+      "nim": "20250318",
+      "name": "Sholeh",
+      "birthPlace": "Tanjung Jabung Timur",
+      "birthDate": "2003-09-02",
+      "address": "Kec. Sadu, Kab. Tanjung Jabung Timur, Jambi",
+      "gender": "Laki-laki",
+      "phone": "082386030018",
+      "rpsPart": "Pertemuan 7 & 14",
+      "topic": "Sistem Pengawasan dan Supervisi Lembaga Pendidikan Islam / Humas & Pemasaran Pendidikan",
+      "meetingNumber": 7,
+      "groupId": 6,
+      "createdAt": "2026-08-10T00:00:00Z",
+      "activityPoints": 25,
+      "activityPointLogs": []
+    },
+    {
+      "id": "mhs-sem3-19",
+      "nim": "20250319",
+      "name": "Hafidz",
+      "birthPlace": "Jambi",
+      "birthDate": "2003-11-19",
+      "address": "Kec. Nipah Panjang, Kab. Tanjung Jabung Timur, Jambi",
+      "gender": "Laki-laki",
+      "phone": "082386030019",
+      "rpsPart": "Pertemuan 7 & 14",
+      "topic": "Sistem Pengawasan dan Supervisi Lembaga Pendidikan Islam / Humas & Pemasaran Pendidikan",
+      "meetingNumber": 7,
+      "groupId": 6,
+      "createdAt": "2026-08-10T00:00:00Z",
+      "activityPoints": 25,
+      "activityPointLogs": []
+    },
+    {
+      "id": "mhs-sem3-20",
+      "nim": "20250320",
+      "name": "Zaima",
+      "birthPlace": "Muara Sabak",
+      "birthDate": "2004-08-04",
+      "address": "Kel. Teluk Dawan, Kec. Muara Sabak Barat, Kab. Tanjung Jabung Timur, Jambi",
+      "gender": "Perempuan",
+      "phone": "082386030020",
+      "rpsPart": "Pertemuan 7 & 14",
+      "topic": "Sistem Pengawasan dan Supervisi Lembaga Pendidikan Islam / Humas & Pemasaran Pendidikan",
+      "meetingNumber": 7,
+      "groupId": 6,
+      "createdAt": "2026-08-10T00:00:00Z",
+      "activityPoints": 25,
+      "activityPointLogs": []
     }
   ],
   "groups": [
@@ -269,447 +414,496 @@
       "id": 1,
       "name": "KELOMPOK 1",
       "members": [
-        "Husna",
-        "Ikha",
-        "Indah"
+        "Heru",
+        "Sofyan"
       ],
-      "title": "Hakikat Pengetahuan dan Ilmu: Perbedaan Pengetahuan Biasa, Ilmu, dan Filsafat",
-      "description": "Penyusunan ringkasan makalah dan presentasi materi tingkatan pengetahuan manusia (ordinary knowledge, science, filsafat). Dipresentasikan pada Pertemuan 3. Rujukan: OJS Journal UHAMKA (2024).",
-      "toolsSuggested": "ChatGPT / Claude (Naskah Riset), Canva / CapCut (Visual Sinematik), ElevenLabs (Voiceover)"
+      "title": "Hakikat dan Ruang Lingkup Manajemen Pendidikan Islam",
+      "description": "Analisis definisi, ruang lingkup keilmuan, prinsip dasar pengelolaan lembaga pendidikan Islam kontemporer, dan urgensinya dalam tata kelola madrasah/pesantren (Pertemuan 2).",
+      "toolsSuggested": "ChatGPT / Claude (Naskah Riset), Canva / PowerPoint (Visualisasi Konsep), CapCut"
     },
     {
       "id": 2,
       "name": "KELOMPOK 2",
       "members": [
-        "Kirana",
-        "Khoir"
+        "Isma",
+        "Zaza",
+        "Puput"
       ],
-      "title": "Pilar Ontologi Ilmu: Hakikat Ada (Being), Realitas Objek Kajian, dan Aliran-aliran Ontologi",
-      "description": "Kajian mendalam objek material dan formal keilmuan serta aliran ontologi dalam realitas objek kajian pendidikan Islam. Dipresentasikan pada Pertemuan 4. Rujukan: OJS JIPPI (2026).",
-      "toolsSuggested": "Claude / Gemini (Kajian Teoretis), Canva AI / CapCut (Desain Grafis & Motion)"
+      "title": "Landasan Syar’i, Yuridis, dan Filosofis MPI",
+      "description": "Fondasi teologis (Al-Qur’an & Hadis), regulasi yuridis UU Sisdiknas & KMA, serta pilar filosofis ontologi-epistemologi dalam manajemen pendidikan Islam (Pertemuan 3).",
+      "toolsSuggested": "Claude / Gemini (Kajian Teoretis), Canva AI (Desain Grafis)"
     },
     {
       "id": 3,
       "name": "KELOMPOK 3",
       "members": [
-        "Nurazizah",
-        "Haza",
-        "Tomi"
+        "Zainul",
+        "Hanif",
+        "Anita",
+        "Irma"
       ],
-      "title": "Pilar Epistemologi Ilmu: Sumber Pengetahuan, Metode Ilmiah, dan Sarana Berpikir Ilmiah",
-      "description": "Menelaah pilar epistemologi, cara memperoleh pengetahuan ilmiah yang akuntabel, dan fungsi 4 sarana berpikir ilmiah. Dipresentasikan pada Pertemuan 5. Rujukan: OJS Pendas UNPAS (2024).",
-      "toolsSuggested": "ChatGPT (Penyusunan Alur Logika), CapCut / Canva (Editing Video Edukasi), D-ID / HeyGen"
+      "title": "Perencanaan Strategis dalam Pendidikan Islam",
+      "description": "Formulasi visi, misi, analisis SWOT, dan penyusunan Renstra (Rencana Strategis) serta RKAM madrasah yang adaptif dan akuntabel (Pertemuan 4).",
+      "toolsSuggested": "ChatGPT (Penyusunan Logika Renstra), Canva (Penyusunan Bagan)"
     },
     {
       "id": 4,
       "name": "KELOMPOK 4",
       "members": [
-        "Estiyani",
-        "Munailatul"
+        "Tina",
+        "Ardila",
+        "Dedi",
+        "Nawawi"
       ],
-      "title": "Pilar Aksiologi Ilmu: Nilai, Etika Keilmuan, Tanggung Jawab Moral, dan Kemanfaatan Sains",
-      "description": "Menguraikan guna ilmu dan etika ilmuwan dalam konteks keorganisasian Islam serta tanggung jawab moral akademisi. Dipresentasikan pada Pertemuan 6. Rujukan: OJS UIN Sunan Kalijaga (2014).",
-      "toolsSuggested": "Gemini (Analisis Kontekstual), Canva AI / CapCut (Dokumentasi Budaya & Voiceover)"
+      "title": "Pengorganisasian dan Struktur Lembaga Pendidikan Islam",
+      "description": "Struktur organisasi fungsional dan lini, pembagian tugas (job description), delegasi wewenang, dan koordinasi kelembagaan pesantren/madrasah (Pertemuan 5).",
+      "toolsSuggested": "Gemini (Analisis Struktur Organisasi), PowerPoint / Canva"
     },
     {
       "id": 5,
       "name": "KELOMPOK 5",
       "members": [
-        "Anggun",
-        "Ridho",
-        "Nia"
+        "Era",
+        "Rina",
+        "Dea",
+        "Milda"
       ],
-      "title": "Sejarah Perkembangan Filsafat dan Ilmu (Era Yunani Klasik & Abad Pertengahan)",
-      "description": "Menjelaskan kontribusi pemikir klasik dan dinamika abad pertengahan terhadap dasar pemikiran ilmiah. Dipresentasikan pada Pertemuan 7. Rujukan: OJS JAP UPI (2019).",
-      "toolsSuggested": "ChatGPT / Claude (Kajian Sejarah Filsafat), Canva / CapCut (Sinematik Edukasi), HeyGen"
+      "title": "Kepemimpinan Profetik dalam Penggerakan Organisasi",
+      "description": "Penerapan sifat kenabian (Siddiq, Amanah, Tabligh, Fathonah) dalam memimpin, memotivasi tenaga pendidik, dan menggerakkan iklim kerja Islami (Pertemuan 6).",
+      "toolsSuggested": "ChatGPT / Claude, Canva / CapCut (Video Edukasi)"
     },
     {
       "id": 6,
       "name": "KELOMPOK 6",
       "members": [
-        "Husna",
-        "Ikha",
-        "Indah"
+        "Sholeh",
+        "Hafidz",
+        "Irma",
+        "Zaima"
       ],
-      "title": "Masa Kejayaan Keilmuan Islam dan Kontribusi Ilmuwan Muslim terhadap Sains Modern",
-      "description": "Analisis integrasi pemikiran ulama-ilmuwan Muslim abad pertengahan dan kontribusi nyata bagi sains modern serta inovasi MPI. Dipresentasikan pada Pertemuan 9. Rujukan: OJS Manageria UIN Suka (2016).",
-      "toolsSuggested": "ChatGPT / Claude (Riset Tokoh Muslim), Canva / CapCut (Desain Presentasi), ElevenLabs"
+      "title": "Sistem Pengawasan dan Supervisi Lembaga Pendidikan Islam",
+      "description": "Teknik supervisi akademik, evaluasi kinerja guru (PKG), audit mutu internal (AMI), dan pengawasan berbasis transparansi serta integritas (Pertemuan 7).",
+      "toolsSuggested": "ChatGPT / Claude, Canva / PowerPoint"
     },
     {
       "id": 7,
       "name": "KELOMPOK 7",
       "members": [
-        "Kirana",
-        "Khoir"
+        "Heru",
+        "Sofyan"
       ],
-      "title": "Perkembangan Filsafat Ilmu Era Modern (Positivisme, Rasionalisme, Empirisme) dan Kontemporer",
-      "description": "Membandingkan karakteristik paradigma keilmuan modern dan kontemporer dalam telaah kritis filsafat ilmu. Dipresentasikan pada Pertemuan 10. Rujukan: Buku Sastraatmadja (2023).",
-      "toolsSuggested": "Claude / Gemini (Kajian Paradigma Sains), Canva AI / CapCut (Visualisasi Konsep)"
+      "title": "Manajemen Kurikulum Madrasah dan Pesantren",
+      "description": "Integrasi kurikulum nasional (Kemendikbud/Kemenag) dengan kurikulum khas pesantren/madrasah diniyah, inovasi pembelajaran, dan modul ajar (Pertemuan 9).",
+      "toolsSuggested": "ChatGPT / Claude, Canva AI / CapCut"
     },
     {
       "id": 8,
       "name": "KELOMPOK 8",
       "members": [
-        "Nurazizah",
-        "Haza",
-        "Tomi"
+        "Isma",
+        "Zaza",
+        "Puput"
       ],
-      "title": "Metodologi Penelitian dan Logika Penalaran Ilmiah (Induktif, Deduktif, Abduktif)",
-      "description": "Kemampuan menyusun alur penalaran logis (induktif, deduktif, abduktif) dalam penulisan akademis manajemen pendidikan Islam. Dipresentasikan pada Pertemuan 12. Rujukan: OJS Pendas UNPAS (2024).",
-      "toolsSuggested": "ChatGPT (Alur Metodologi Riset), CapCut / Canva (Desain Presentasi), HeyGen"
+      "title": "Manajemen Pendidik dan Tenaga Kependidikan Islam",
+      "description": "Sistem rekrutmen berbasis kompetensi, pelatihan berkelanjutan, pembinaan karir, sertifikasi guru madrasah, dan kesejahteraan tenaga kependidikan (Pertemuan 10).",
+      "toolsSuggested": "Gemini / Claude, Canva / PowerPoint"
     },
     {
       "id": 9,
       "name": "KELOMPOK 9",
       "members": [
-        "Estiyani",
-        "Munailatul"
+        "Zainul",
+        "Hanif",
+        "Anita",
+        "Irma"
       ],
-      "title": "Integrasi Ilmu, Agama, dan Kearifan Lokal (Local Wisdom) dalam Pengelolaan Pendidikan Islam",
-      "description": "Menyusun gagasan integrasi ilmu pendidikan Islam berbasis kearifan lokal (local wisdom) dan nilai spiritualitas modern. Dipresentasikan pada Pertemuan 13. Rujukan: OJS JEMR UPI (2026).",
-      "toolsSuggested": "Gemini (Analisis Kearifan Lokal), Canva AI / CapCut (Dokumentasi Budaya)"
+      "title": "Manajemen Kesiswaan dan Pembinaan Karakter Islami",
+      "description": "Layanan penerimaan peserta didik baru (PPDB), pembinaan OSIS/IPNU/IPPNU, ekstrakurikuler kepemimpinan, dan konseling karakter religius (Pertemuan 11).",
+      "toolsSuggested": "ChatGPT, Canva / CapCut"
     },
     {
       "id": 10,
       "name": "KELOMPOK 10",
       "members": [
-        "Anggun",
-        "Ridho",
-        "Nia"
+        "Tina",
+        "Ardila",
+        "Dedi",
+        "Nawawi"
       ],
-      "title": "Etika Akademik, Bebas Plagiarisme, dan Akuntabilitas Digitalisasi Berbasis Nilai Amanah",
-      "description": "Prinsip etika akademik, penanggulangan plagiarisme digital, dan akuntabilitas sarana prasarana berbasis amanah di era AI. Dipresentasikan pada Pertemuan 14. Rujukan: OJS Jurnal Kariman (2025).",
-      "toolsSuggested": "ChatGPT / Claude (Etika AI & Anti-Plagiasi), Canva / CapCut (Video Edukasi), HeyGen"
+      "title": "Tata Kelola Pembiayaan dan Akuntabilitas Dana BOSP",
+      "description": "Pengelolaan anggaran belanja madrasah, pengadministrasian dana BOSP/BOS Kemenag, audit keuangan, dan pelaporan akuntabel berbasis digital (Pertemuan 12).",
+      "toolsSuggested": "Gemini (Analisis Tata Kelola Finansial), Canva / PowerPoint"
+    },
+    {
+      "id": 11,
+      "name": "KELOMPOK 11",
+      "members": [
+        "Era",
+        "Rina",
+        "Dea",
+        "Milda"
+      ],
+      "title": "Manajemen Sarana dan Prasarana Pendidikan Islam",
+      "description": "Inventarisasi aset lembaga, pengadaan sarana IT laboratorium, pemeliharaan gedung asrama pesantren, dan optimalisasi lingkungan belajar Islami (Pertemuan 13).",
+      "toolsSuggested": "ChatGPT / Claude, Canva / CapCut"
+    },
+    {
+      "id": 12,
+      "name": "KELOMPOK 12",
+      "members": [
+        "Sholeh",
+        "Hafidz",
+        "Irma",
+        "Zaima"
+      ],
+      "title": "Humas dan Pemasaran Pendidikan Berbasis Kearifan Lokal",
+      "description": "Branding madrasah, hubungan sinergis dengan komite & alumni, promosi digital media sosial, dan kemitraan masyarakat berbasis kearifan lokal (Pertemuan 14).",
+      "toolsSuggested": "Canva / CapCut (Desain Poster & Video), ChatGPT (Copywriting Promosi)"
     }
   ],
   "meetings": [
     {
       "meetingNumber": 1,
-      "dateStr": "Sabtu, 15 Agustus 2026",
-      "isoDate": "2026-08-15",
-      "title": "Kontrak Belajar, Silabus, dan Orientasi Analisis Kebijakan Pendidikan",
+      "dateStr": "Senin, 1 September 2026",
+      "isoDate": "2026-09-01",
+      "title": "Orientasi Perkuliahan, Kontrak Belajar, dan Pengantar Konsep Dasar MPI",
       "presenters": [
-        "Risfa Tri Ulfa, S.Pd, M.Pd"
+        "Risfa Tri Ulfa, S.Pd., M.Pd."
       ],
       "partCodes": [
         "Pertemuan 1"
       ],
       "type": "kuliah",
-      "description": "Pemaparan silabus RPS, kontrak perkuliahan, pembagian 10 materi makalah kelompok & 5 proyek video edukasi, serta orientasi umum perkuliahan Filsafat Ilmu.",
-      "assignmentDescription": "Orientasi silabus perkuliahan dan penandatanganan kontrak belajar."
+      "presentationFormat": "individu",
+      "description": "Penjelasan silabus RPS Semester 3, urgensi tata kelola kelembagaan pendidikan Islam, dan kontrak belajar perkuliahan."
     },
     {
       "meetingNumber": 2,
-      "dateStr": "Sabtu, 22 Agustus 2026",
-      "isoDate": "2026-08-22",
-      "title": "Pengertian, Ruang Lingkup, dan Urgensi Filsafat Ilmu dalam Manajemen Pendidikan Islam",
+      "dateStr": "Senin, 8 September 2026",
+      "isoDate": "2026-09-08",
+      "title": "Hakikat dan Ruang Lingkup Manajemen Pendidikan Islam",
       "presenters": [
-        "Risfa Tri Ulfa, S.Pd, M.Pd"
+        "Heru",
+        "Sofyan"
       ],
       "partCodes": [
         "Pertemuan 2"
       ],
       "type": "kuliah",
-      "description": "Kuliah mimbar & brainstorming: kelancaran menjelaskan batas filsafat ilmu dan bedanya dengan ilmu pengetahuan murni serta urgensinya dalam tata kelola kelembagaan MPI (Buku Saifullah, 2018)."
+      "presentationFormat": "kelompok",
+      "groupName": "KELOMPOK 1",
+      "groupId": 1,
+      "description": "Analisis hakikat, definisi, dan ruang lingkup keilmuan Manajemen Pendidikan Islam dibandingkan manajemen umum."
     },
     {
       "meetingNumber": 3,
-      "dateStr": "Sabtu, 29 Agustus 2026",
-      "isoDate": "2026-08-29",
-      "title": "Hakikat Pengetahuan dan Ilmu: Perbedaan Pengetahuan Biasa, Ilmu, dan Filsafat",
+      "dateStr": "Senin, 15 September 2026",
+      "isoDate": "2026-09-15",
+      "title": "Landasan Syar’i, Yuridis, dan Filosofis MPI",
       "presenters": [
-        "Husna",
-        "Ikha",
-        "Indah"
+        "Isma",
+        "Zaza",
+        "Puput"
       ],
       "partCodes": [
         "Pertemuan 3"
       ],
       "type": "kuliah",
       "presentationFormat": "kelompok",
-      "groupName": "Kelompok 1",
-      "groupId": 1,
-      "description": "Ketepatan mengklasifikasikan tingkatan pengetahuan manusia secara faktual. Ringkasan Makalah Kelompok 1 (OJS Journal UHAMKA, 2024)."
+      "groupName": "KELOMPOK 2",
+      "groupId": 2,
+      "description": "Kajian dalil syar’i (Al-Qur’an/Hadis), landasan hukum kelembagaan (UU Sisdiknas), dan filsafat keilmuan MPI."
     },
     {
       "meetingNumber": 4,
-      "dateStr": "Sabtu, 5 September 2026",
-      "isoDate": "2026-09-05",
-      "title": "Pilar Ontologi Ilmu: Hakikat Ada (Being), Realitas Objek Kajian, dan Aliran-aliran Ontologi",
+      "dateStr": "Senin, 22 September 2026",
+      "isoDate": "2026-09-22",
+      "title": "Perencanaan Strategis dalam Pendidikan Islam",
       "presenters": [
-        "Kirana",
-        "Khoir"
+        "Zainul",
+        "Hanif",
+        "Anita",
+        "Irma"
       ],
       "partCodes": [
         "Pertemuan 4"
       ],
       "type": "kuliah",
       "presentationFormat": "kelompok",
-      "groupName": "Kelompok 2",
-      "groupId": 2,
-      "description": "Ketepatan merinci objek material & formal keilmuan serta aliran ontologi dalam realitas objek kajian pendidikan Islam (Jurnal JIPPI, 2026)."
+      "groupName": "KELOMPOK 3",
+      "groupId": 3,
+      "description": "Formulasi visi, misi, analisis SWOT, dan penyusunan rencana strategis (Renstra) serta RKAM madrasah adaptif."
     },
     {
       "meetingNumber": 5,
-      "dateStr": "Sabtu, 12 September 2026",
-      "isoDate": "2026-09-12",
-      "title": "Pilar Epistemologi Ilmu: Sumber Pengetahuan, Metode Ilmiah, dan Sarana Berpikir Ilmiah",
+      "dateStr": "Senin, 29 September 2026",
+      "isoDate": "2026-09-29",
+      "title": "Pengorganisasian dan Struktur Lembaga Pendidikan Islam",
       "presenters": [
-        "Nurazizah",
-        "Haza",
-        "Tomi"
+        "Tina",
+        "Ardila",
+        "Dedi",
+        "Nawawi"
       ],
       "partCodes": [
         "Pertemuan 5"
       ],
       "type": "kuliah",
       "presentationFormat": "kelompok",
-      "groupName": "Kelompok 3",
-      "groupId": 3,
-      "description": "Kemampuan merinci cara memperoleh pengetahuan ilmiah yang akuntabel melalui sarana berpikir ilmiah (Jurnal UNPAS, 2024)."
+      "groupName": "KELOMPOK 4",
+      "groupId": 4,
+      "description": "Penyusunan bagan struktur organisasi madrasah, job description, koordinasi wewenang, dan tata kerja lembaga."
     },
     {
       "meetingNumber": 6,
-      "dateStr": "Sabtu, 19 September 2026",
-      "isoDate": "2026-09-19",
-      "title": "Pilar Aksiologi Ilmu: Nilai, Etika Keilmuan, Tanggung Jawab Moral, dan Kemanfaatan Sains",
+      "dateStr": "Senin, 6 Oktober 2026",
+      "isoDate": "2026-10-06",
+      "title": "Kepemimpinan Profetik dalam Penggerakan Organisasi",
       "presenters": [
-        "Estiyani",
-        "Munailatul"
+        "Era",
+        "Rina",
+        "Dea",
+        "Milda"
       ],
       "partCodes": [
         "Pertemuan 6"
       ],
       "type": "kuliah",
       "presentationFormat": "kelompok",
-      "groupName": "Kelompok 4",
-      "groupId": 4,
-      "description": "Mampu menguraikan guna ilmu dan etika ilmuwan dalam konteks keorganisasian Islam serta tanggung jawab moral (Jurnal UIN Sunan Kalijaga, 2014)."
+      "groupName": "KELOMPOK 5",
+      "groupId": 5,
+      "description": "Penerapan sifat kenabian (Siddiq, Amanah, Tabligh, Fathonah) dalam menggerakkan SDM dan iklim kerja madrasah."
     },
     {
       "meetingNumber": 7,
-      "dateStr": "Sabtu, 26 September 2026",
-      "isoDate": "2026-09-26",
-      "title": "Sejarah Perkembangan Filsafat dan Ilmu (Era Yunani Klasik & Abad Pertengahan)",
+      "dateStr": "Senin, 13 Oktober 2026",
+      "isoDate": "2026-10-13",
+      "title": "Sistem Pengawasan dan Supervisi Lembaga Pendidikan Islam",
       "presenters": [
-        "Anggun",
-        "Ridho",
-        "Nia"
+        "Sholeh",
+        "Hafidz",
+        "Irma",
+        "Zaima"
       ],
       "partCodes": [
         "Pertemuan 7"
       ],
       "type": "kuliah",
       "presentationFormat": "kelompok",
-      "groupName": "Kelompok 5",
-      "groupId": 5,
-      "description": "Kemampuan menjelaskan kontribusi pemikir klasik terhadap dasar pemikiran ilmiah (Jurnal UPI, 2019)."
+      "groupName": "KELOMPOK 6",
+      "groupId": 6,
+      "description": "Supervisi akademik pengawas, evaluasi kinerja guru, penjaminan mutu internal (SPMI), dan audit kelembagaan."
     },
     {
       "meetingNumber": 8,
-      "dateStr": "Sabtu, 3 Oktober 2026",
-      "isoDate": "2026-10-03",
-      "title": "Evaluasi Tengah Semester (UTS) - Ujian Mandiri Tertulis Tanpa Perhitungan Matematis",
+      "dateStr": "Senin, 20 Oktober 2026",
+      "isoDate": "2026-10-20",
+      "title": "Evaluasi Tengah Semester (UTS) - Ujian Tertulis Mandiri Konsep Dasar MPI",
       "presenters": [
-        "Seluruh Mahasiswa"
+        "Seluruh Mahasiswa Semester 3"
       ],
       "partCodes": [
         "Evaluasi UTS"
       ],
       "type": "uts",
-      "description": "Validasi hasil belajar paruh pertama semester (Materi Pertemuan 2 s.d. 7). 90 Menit, bobot penilaian 20%."
+      "description": "Validasi pemahaman konseptual, analitis, dan filosofis mahasiswa (Materi Pertemuan 2 s.d. 7). 90 Menit."
     },
     {
       "meetingNumber": 9,
-      "dateStr": "Sabtu, 10 Oktober 2026",
-      "isoDate": "2026-10-10",
-      "title": "Masa Kejayaan Keilmuan Islam dan Kontribusi Ilmuwan Muslim terhadap Sains Modern",
+      "dateStr": "Senin, 27 Oktober 2026",
+      "isoDate": "2026-10-27",
+      "title": "Manajemen Kurikulum Madrasah dan Pesantren",
       "presenters": [
-        "Husna",
-        "Ikha",
-        "Indah"
+        "Heru",
+        "Sofyan"
       ],
       "partCodes": [
         "Pertemuan 9"
       ],
       "type": "kuliah",
       "presentationFormat": "kelompok",
-      "groupName": "Kelompok 6",
-      "groupId": 6,
-      "description": "Integrasi pemikiran ulama-ilmuwan Muslim abad pertengahan dan kontribusi terhadap sains modern (Jurnal Manageria UIN Suka, 2016)."
+      "groupName": "KELOMPOK 7",
+      "groupId": 7,
+      "description": "Integrasi kurikulum nasional dan nilai kekhasan pesantren, perencanaan pembelajaran, dan modul ajar Islami."
     },
     {
       "meetingNumber": 10,
-      "dateStr": "Sabtu, 17 Oktober 2026",
-      "isoDate": "2026-10-17",
-      "title": "Perkembangan Filsafat Ilmu Era Modern (Positivisme, Rasionalisme, Empirisme) dan Kontemporer",
+      "dateStr": "Senin, 3 November 2026",
+      "isoDate": "2026-11-03",
+      "title": "Manajemen Pendidik dan Tenaga Kependidikan Islam",
       "presenters": [
-        "Kirana",
-        "Khoir"
+        "Isma",
+        "Zaza",
+        "Puput"
       ],
       "partCodes": [
         "Pertemuan 10"
       ],
       "type": "kuliah",
       "presentationFormat": "kelompok",
-      "groupName": "Kelompok 7",
-      "groupId": 7,
-      "description": "Mampu membandingkan karakteristik paradigma keilmuan modern dan kontemporer (Buku Sastraatmadja, 2023)."
+      "groupName": "KELOMPOK 8",
+      "groupId": 8,
+      "description": "Rekrutmen berbasis kompetensi, pelatihan berkelanjutan, sertifikasi guru madrasah, dan pembinaan karir."
     },
     {
       "meetingNumber": 11,
-      "dateStr": "Sabtu, 24 Oktober 2026",
-      "isoDate": "2026-10-24",
-      "title": "Teori-teori Kebenaran Ilmiah (Koherensi, Korespondensi, Pragmatis) & Presentasi Draf Projek Video",
+      "dateStr": "Senin, 10 November 2026",
+      "isoDate": "2026-11-10",
+      "title": "Manajemen Kesiswaan dan Pembinaan Karakter Islami",
       "presenters": [
-        "Seluruh Kelompok (1-10)",
-        "Risfa Tri Ulfa, S.Pd, M.Pd"
+        "Zainul",
+        "Hanif",
+        "Anita",
+        "Irma"
       ],
       "partCodes": [
         "Pertemuan 11"
       ],
       "type": "kuliah",
-      "description": "Pengujian klaim kebenaran ilmiah menggunakan kriteria kebenaran serta presentasi draf rancangan projek video edukasi PBL (Jurnal UNY, 2021)."
+      "presentationFormat": "kelompok",
+      "groupName": "KELOMPOK 9",
+      "groupId": 9,
+      "description": "Layanan penerimaan siswa baru (PPDB), pembinaan minat bakat santri, OSIS/IPNU, dan bimbingan konseling Islami."
     },
     {
       "meetingNumber": 12,
-      "dateStr": "Sabtu, 31 Oktober 2026",
-      "isoDate": "2026-10-31",
-      "title": "Metodologi Penelitian dan Logika Penalaran Ilmiah (Induktif, Deduktif, Abduktif)",
+      "dateStr": "Senin, 17 November 2026",
+      "isoDate": "2026-11-17",
+      "title": "Tata Kelola Pembiayaan dan Akuntabilitas Dana BOSP",
       "presenters": [
-        "Nurazizah",
-        "Haza",
-        "Tomi"
+        "Tina",
+        "Ardila",
+        "Dedi",
+        "Nawawi"
       ],
       "partCodes": [
         "Pertemuan 12"
       ],
       "type": "kuliah",
       "presentationFormat": "kelompok",
-      "groupName": "Kelompok 8",
-      "groupId": 8,
-      "description": "Kemampuan menyusun alur penalaran logis (induktif, deduktif, abduktif) dalam penulisan akademis manajemen pendidikan Islam (Jurnal UNPAS, 2024)."
+      "groupName": "KELOMPOK 10",
+      "groupId": 10,
+      "description": "Perencanaan anggaran RKAM, optimalisasi dana BOSP/BOS Kemenag, audit keuangan, dan transparansi berbasis digital."
     },
     {
       "meetingNumber": 13,
-      "dateStr": "Sabtu, 7 November 2026",
-      "isoDate": "2026-11-07",
-      "title": "Integrasi Ilmu, Agama, dan Kearifan Lokal (Local Wisdom) dalam Pengelolaan Pendidikan Islam",
+      "dateStr": "Senin, 24 November 2026",
+      "isoDate": "2026-11-24",
+      "title": "Manajemen Sarana dan Prasarana Pendidikan Islam",
       "presenters": [
-        "Estiyani",
-        "Munailatul"
+        "Era",
+        "Rina",
+        "Dea",
+        "Milda"
       ],
       "partCodes": [
         "Pertemuan 13"
       ],
       "type": "kuliah",
       "presentationFormat": "kelompok",
-      "groupName": "Kelompok 9",
-      "groupId": 9,
-      "description": "Kemampuan menyusun gagasan integrasi ilmu pendidikan Islam berbasis budaya dan kearifan lokal (Jurnal JEMR UPI, 2026)."
+      "groupName": "KELOMPOK 11",
+      "groupId": 11,
+      "description": "Inventarisasi aset lembaga, pengadaan laboratorium digital, pemeliharaan gedung asrama, dan tata ruang Islami."
     },
     {
       "meetingNumber": 14,
-      "dateStr": "Sabtu, 14 November 2026",
-      "isoDate": "2026-11-14",
-      "title": "Etika Akademik, Bebas Plagiarisme, dan Akuntabilitas Digitalisasi Berbasis Nilai Amanah",
+      "dateStr": "Senin, 1 Desember 2026",
+      "isoDate": "2026-12-01",
+      "title": "Humas dan Pemasaran Pendidikan Berbasis Kearifan Lokal",
       "presenters": [
-        "Anggun",
-        "Ridho",
-        "Nia"
+        "Sholeh",
+        "Hafidz",
+        "Irma",
+        "Zaima"
       ],
       "partCodes": [
         "Pertemuan 14"
       ],
       "type": "kuliah",
       "presentationFormat": "kelompok",
-      "groupName": "Kelompok 10",
-      "groupId": 10,
-      "description": "Prinsip etika akademik, penanggulangan plagiarisme digital, dan akuntabilitas sarana prasarana berbasis amanah (Jurnal Kariman, 2025)."
+      "groupName": "KELOMPOK 12",
+      "groupId": 12,
+      "description": "Branding lembaga, komunikasi publik, sinergi komite & alumni, dan kemitraan masyarakat berbasis kearifan lokal."
     },
     {
       "meetingNumber": 15,
-      "dateStr": "Sabtu, 21 November 2026",
-      "isoDate": "2026-11-21",
-      "title": "Display & Skrining Projek Video Edukasi / Analisis Isu Filsafat Ilmu Kontemporer",
+      "dateStr": "Senin, 8 Desember 2026",
+      "isoDate": "2026-12-08",
+      "title": "Review Holistik & Evaluasi Integratif Model Tata Kelola MPI",
       "presenters": [
-        "Kelompok 1",
-        "Kelompok 2",
-        "Kelompok 3",
-        "Kelompok 4",
-        "Kelompok 5",
-        "Kelompok 6",
-        "Kelompok 7",
-        "Kelompok 8",
-        "Kelompok 9",
-        "Kelompok 10"
+        "Seluruh Kelompok Semester 3"
       ],
       "partCodes": [
         "Pertemuan 15"
       ],
       "type": "kuliah",
-      "description": "Penyajian refleksi filsafati atas masalah keilmuan melalui media video interaktif 5-10 menit serta evaluasi akhir (Qanun Journal, 2025)."
+      "description": "Sintesis keseluruhan 12 pilar tata kelola lembaga pendidikan Islam dan evaluasi kesiapan proyek video edukasi AI."
     },
     {
       "meetingNumber": 16,
-      "dateStr": "Sabtu, 28 November 2026",
-      "isoDate": "2026-11-28",
-      "title": "Evaluasi Akhir Semester (UAS) - Ujian Mandiri Tertulis Konseptual-Analitis",
+      "dateStr": "Senin, 15 Desember 2026",
+      "isoDate": "2026-12-15",
+      "title": "Evaluasi Akhir Semester (UAS) - Ujian Komprehensif & Tayang Proyek Video Edukasi AI",
       "presenters": [
-        "Seluruh Mahasiswa"
+        "Seluruh Mahasiswa Semester 3"
       ],
       "partCodes": [
         "Evaluasi UAS"
       ],
       "type": "uas",
-      "description": "Validasi akhir kelulusan dan penguasaan kompetensi kognitif mahasiswa (Materi Pertemuan 9 s.d. 15). 90 Menit, bobot penilaian 25%."
+      "description": "Validasi akhir kelulusan kompetensi manajerial, pemahaman regulasi, dan penayangan proyek video edukasi AI kelompok."
     }
   ],
   "submissions": [],
   "utsQuestions": [
     {
-      "id": 1,
+      "id": 301,
       "number": 1,
-      "title": "Pilar Ontologi & Urgensi Filsafat Ilmu dalam Manajemen Pendidikan Islam (MPI)",
-      "topic": "Ontologi Ilmu, Objek Material & Objek Formal (Pertemuan 1, 2, & 4)",
-      "question": "Jelaskan hakikat landasan Ontologi dalam filsafat ilmu, serta bedakan secara fundamental dan sistematis antara pengetahuan biasa (common sense/ordinary knowledge) dengan ilmu pengetahuan ilmiah (science)! Berdasarkan telaah tersebut, analisislah mengapa pemahaman ontologis ini sangat urgen bagi seorang magister/calon manajer pendidikan Islam dalam memetakan realitas serta memecahkan problematika mutu lembaga pendidikan Islam kontemporer!",
-      "rubric": "Ketepatan definisi ontologi (5 poin), diferensiasi pengetahuan biasa vs sains ilmiah (5 poin), ketajaman analisis kritis urgensi ontologis dalam manajerial kelembagaan MPI (10 poin).",
+      "title": "Filosofi Mutu dan Integrasi Nilai Keislaman dalam TQM",
+      "topic": "Konsep Dasar Mutu & Nilai Keislaman (Pertemuan 1 & 2)",
+      "question": "Jelaskan perbedaan mendasar antara konsep Total Quality Management (TQM) dalam industri manufaktur dengan implementasinya pada lembaga pendidikan Islam! Bagaimana konsep \"Itqan\" dan \"Ihsan\" dalam ajaran Islam memperkuat fondasi budaya mutu di madrasah atau pesantren?",
+      "guide": "Bahas esensi mutu pendidikan (proses & output), karakteristik pelanggan pendidikan, serta dalil/filosofi itqan dan ihsan.",
+      "rubric": "Ketajaman analisis filosofis (7 poin), integrasi nilai Islam (7 poin), relevansi contoh lembaga (6 poin).",
       "maxScore": 20
     },
     {
-      "id": 2,
+      "id": 302,
       "number": 2,
-      "title": "Pilar Epistemologi: Rasionalisme, Empirisme, & Metode Ilmiah",
-      "topic": "Epistemologi, Sumber Pengetahuan, & Validitas Ilmiah (Pertemuan 3 & 5)",
-      "question": "Epistemologi mempersoalkan bagaimana ilmu pengetahuan diperoleh, disusun, dan diuji keabsahannya. Uraikan sintesis antara aliran Rasionalisme dan Empirisme yang melahirkan metode ilmiah modern (scientific method)! Jelaskan pula bagaimana pola penalaran deduktif dan induktif bekerja secara terpadu dalam proses perumusan hipotesis dan verifikasi data penelitian di bidang Manajemen Pendidikan Islam!",
-      "rubric": "Uraian pemikiran rasionalisme & empirisme (6 poin), sintesis metode ilmiah (6 poin), penerapan dialektika deduktif-induktif dalam metodologi riset MPI (8 poin).",
+      "title": "Komparasi Paradigma Tokoh Mutu (Deming vs Juran vs Crosby)",
+      "topic": "Pilar Pemikiran Tokoh Mutu Dunia (Pertemuan 3)",
+      "question": "Bandingkan 14 Prinsip Mutu Edwards Deming dengan Trilogi Juran (Quality Planning, Quality Control, Quality Improvement)! Manakah di antara kedua pendekatan tersebut yang paling tepat diterapkan untuk membenahi madrasah swasta yang sedang mengalami penurunan animo pendaftar siswa baru? Berikan alasannya!",
+      "guide": "Uraikan 14 prinsip Deming, 3 pilar Juran, dan analisis kecocokan penerapannya pada madrasah swasta.",
+      "rubric": "Kedalaman perbandingan teori (8 poin), ketepatan pemilihan strategi (6 poin), kelayakan argumen (6 poin).",
       "maxScore": 20
     },
     {
-      "id": 3,
+      "id": 303,
       "number": 3,
-      "title": "Empat Sarana Berpikir Ilmiah dalam Pengambilan Keputusan Manajerial",
-      "topic": "Sarana Berpikir Ilmiah: Bahasa, Logika, Matematika, Statistika (Pertemuan 6)",
-      "question": "Pengembangan sains mutlak memerlukan 4 (empat) sarana berpikir ilmiah, yaitu Bahasa, Logika, Matematika, dan Statistika. Analisislah fungsi serta keterkaitan sinergis keempat sarana berpikir ilmiah tersebut dalam membantu seorang ilmuwan atau pimpinan lembaga pendidikan merumuskan konsep teoritis, mengolah fakta empiris, dan mengambil keputusan manajerial yang objektif, rasional, dan akuntabel!",
-      "rubric": "Penjelasan fungsi Bahasa dan Logika ilmiah (6 poin), fungsi Matematika dan Statistika (6 poin), implementasi aplikatif dalam analisis data dan keputusan manajerial MPI (8 poin).",
+      "title": "Manajemen Kepuasan Pelanggan dan Penanganan Komplain",
+      "topic": "Dimensi Mutu dan Kepuasan Stakeholder (Pertemuan 4)",
+      "question": "Lembaga pendidikan Islam memiliki pelanggan primer (siswa), sekunder (orang tua), dan tersier (masyarakat & dunia kerja). Bagaimana manajer madrasah mengelola ekspektasi yang berbeda dari ketiga pihak tersebut agar tercipta kepuasan stakeholder yang harmonis? Rancanglah alur sederhana penanganan komplain mutu!",
+      "guide": "Klasifikasikan kebutuhan tiap segmen pelanggan dan buat bagan/tahapan standar penanganan keluhan (handling complaint).",
+      "rubric": "Analisis segmentasi pelanggan (7 poin), rancangan alur penanganan komplain (7 poin), orisinalitas ide (6 poin).",
       "maxScore": 20
     },
     {
-      "id": 4,
+      "id": 304,
       "number": 4,
-      "title": "Pilar Aksiologi, Tanggung Jawab Moral Ilmuwan, & Era Artificial Intelligence (AI)",
-      "topic": "Aksiologi, Etika Keilmuan, & Disrupsi Generative AI (Pertemuan 7 & 15)",
-      "question": "Dalam ranah Aksiologi, terdapat dialektika klasik mengenai apakah ilmu pengetahuan itu bebas nilai (value-free) ataukah terikat nilai (value-bound). Jelaskan posisi ilmuwan muslim dan akademisi MPI mengenai dialektika ini! Bagaimana landasan aksiologi membimbing etika akademik mahasiswa (integritas riset, larangan plagiarisme, nilai amanah) di tengah masifnya penggunaan teknologi kecerdasan buatan (Generative AI seperti ChatGPT, Canva AI, Deep Learning)?",
-      "rubric": "Analisis filosofis bebas nilai vs terikat nilai dari perspektif Islam (8 poin), ketajaman pembumian etika akademik, amanah ilmiah, dan regulasi adopsi Generative AI dalam perkuliahan (12 poin).",
+      "title": "Implementasi Siklus PDCA dan Budaya Kaizen Berkelanjutan",
+      "topic": "Siklus PDCA dan Perbaikan Berkelanjutan (Pertemuan 5)",
+      "question": "Banyak madrasah menyusun rencana program (Plan) yang bagus, namun gagal pada tahap evaluasi (Check) dan tindak lanjut perbaikan (Act). Analisis faktor-faktor penyebab kegagalan siklus PDCA tersebut dan bagaimana pimpinan madrasah membangun mentalitas Kaizen (perbaikan kecil tiada henti secara istiqomah) di kalangan guru!",
+      "guide": "Identifikasi bottleneck siklus PDCA, faktor budaya kerja dan kepemimpinan, serta langkah konkret pembiasaan Kaizen.",
+      "rubric": "Diagnosis masalah evaluasi (7 poin), strategi kepemimpinan Kaizen (7 poin), logika penalaran solutif (6 poin).",
       "maxScore": 20
     },
     {
-      "id": 5,
+      "id": 305,
       "number": 5,
-      "title": "Model Integrasi Ilmu, Wahyu, & Tata Kelola Lembaga Pendidikan Islam",
-      "topic": "Integrasi Keilmuan, Harmonisasi Ayat Qauliyah & Kauniyah (Pertemuan 1, 4, 15)",
-      "question": "Salah satu tantangan epistemologis terbesar pendidikan Islam adalah adanya dikotomi keilmuan antara ilmu agama (revelation/ayat qauliyah) dan ilmu umum/sains modern (ayat kauniyah). Berdasarkan perspektif filsafat ilmu, rumuskan gagasan atau model integrasi keilmuan yang aplikatif untuk diterapkan dalam tata kelola kurikulum, kultur riset, dan kepemimpinan strategis lembaga pendidikan Islam modern!",
-      "rubric": "Kritik filosofis atas dikotomi keilmuan (6 poin), rumusan konseptual integrasi ayat qauliyah dan kauniyah (7 poin), strategi implementasi konkret pada kurikulum atau tata kelola sekolah/madrasah/pesantren (7 poin).",
+      "title": "Perancangan Sistem Penjaminan Mutu Internal (SPMI) Madrasah",
+      "topic": "Struktur SPMI dan Standar Nasional Pendidikan (Pertemuan 6 & 7)",
+      "question": "Sebagai calon kepala madrasah atau konsultan mutu, rancanglah sebuah draf kerangka Sistem Penjaminan Mutu Internal (SPMI) yang memuat: Kebijakan Mutu, Manual Mutu (PPEPP: Penetapan, Pelaksanaan, Evaluasi, Pengendalian, Peningkatan), serta indikator mutu untuk Standar Pendidik dan Tenaga Kependidikan!",
+      "guide": "Sertakan rumusan visi kebijakan mutu, langkah konkret siklus PPEPP, dan minimal 3 indikator terukur kompetensi pendidik.",
+      "rubric": "Kelengkapan komponen dokumen SPMI (8 poin), keselarasan PPEPP dengan SNP (6 poin), keterukuran indikator (6 poin).",
       "maxScore": 20
     }
   ],
@@ -947,10 +1141,10 @@
   "quizSubmissions": [],
   "quizSettings": {
     "isQuizActive": true,
-    "targetMeeting": "Semua Pertemuan (Review RPS & Materi Komprehensif)",
-    "quizTitle": "Game Cerdas Cermat Kartun RPS MPI 1 STAI Jarinabi",
+    "targetMeeting": "Semua Pertemuan (Review RPS Konsep Dasar MPI)",
+    "quizTitle": "Game Cerdas Cermat Konsep Dasar MPI 3 STAI Jarinabi",
     "timeLimitMinutes": 15,
-    "description": "Kuis animasi kartun interaktif: Pilihan Ganda, Tembak Balon Jawaban, dan Lompat Kodok Teratai.",
+    "description": "Kuis interaktif Konsep Dasar Manajemen Pendidikan Islam (Semester 3).",
     "gameMode": "bebas_pilih",
     "soundEffectsEnabled": true,
     "musicEnabled": false,
@@ -962,13 +1156,13 @@
   "uasFormat": "proyek_video",
   "utsExamSettings": {
     "isOpen": true,
-    "instructions": "Ujian Tengah Semester (UTS) dibuka oleh Dosen Pengampu. Kerjakan 5 butir soal essay reflektif dengan cermat dan kumpulkan sebelum batas waktu berakhir.",
+    "instructions": "Ujian Tengah Semester (UTS) mata kuliah Konsep Dasar Manajemen Pendidikan Islam dibuka oleh Dosen Pengampu.",
     "openedAt": "2026-08-10T08:00:00.000Z",
     "openedBy": "Risfa Tri Ulfa, S.Pd., M.Pd."
   },
   "uasExamSettings": {
     "isOpen": true,
-    "instructions": "Ujian Akhir Semester (UAS) dibuka oleh Dosen Pengampu. Silakan kumpulkan tautan video presentasi kelompok atau naskah tugas akhir.",
+    "instructions": "Ujian Akhir Semester (UAS) Konsep Dasar Manajemen Pendidikan Islam dibuka oleh Dosen Pengampu.",
     "openedAt": "2026-08-10T08:00:00.000Z",
     "openedBy": "Risfa Tri Ulfa, S.Pd., M.Pd."
   },
@@ -1124,7 +1318,7 @@
   "activeHeartbeats": {},
   "dosenPassword": "filsafat2026",
   "messages": [],
-  "lastUpdated": "2026-10-05T02:12:30.913Z",
+  "lastUpdated": "2026-10-16T05:24:02.477Z",
   "allCoursesData": {
     "mk-filsafat-ilmu": {
       "id": "mk-filsafat-ilmu",
@@ -1444,7 +1638,37 @@
           "topic": "Hakikat Pengetahuan dan Ilmu: Perbedaan Pengetahuan Biasa, Ilmu, dan Filsafat",
           "meetingNumber": 3,
           "groupId": 1,
-          "createdAt": "2026-08-10T00:00:00Z"
+          "createdAt": "2026-08-10T00:00:00Z",
+          "activityPoints": 45,
+          "activityPointLogs": [
+            {
+              "id": "act-1-1",
+              "points": 15,
+              "reason": "Aktif bertanya kritis mengenai dialektika dan hakikat ilmu",
+              "category": "pertanyaan",
+              "meetingNumber": 3,
+              "timestamp": "2026-09-08T09:30:00Z",
+              "dosenName": "Risfa Tri Ulfa, S.Pd., M.Pd."
+            },
+            {
+              "id": "act-1-2",
+              "points": 15,
+              "reason": "Pemaparan presentasi materi ontologi sangat komprehensif",
+              "category": "presentasi",
+              "meetingNumber": 3,
+              "timestamp": "2026-09-08T10:15:00Z",
+              "dosenName": "Risfa Tri Ulfa, S.Pd., M.Pd."
+            },
+            {
+              "id": "act-1-3",
+              "points": 15,
+              "reason": "Menjawab pertanyaan sanggahan audiens dengan dalil logis",
+              "category": "jawaban",
+              "meetingNumber": 3,
+              "timestamp": "2026-09-08T10:45:00Z",
+              "dosenName": "Risfa Tri Ulfa, S.Pd., M.Pd."
+            }
+          ]
         },
         {
           "id": "mhs-2",
@@ -1459,7 +1683,37 @@
           "topic": "Hakikat Pengetahuan dan Ilmu: Perbedaan Pengetahuan Biasa, Ilmu, dan Filsafat",
           "meetingNumber": 3,
           "groupId": 1,
-          "createdAt": "2026-08-10T00:00:00Z"
+          "createdAt": "2026-08-10T00:00:00Z",
+          "activityPoints": 35,
+          "activityPointLogs": [
+            {
+              "id": "act-2-1",
+              "points": 15,
+              "reason": "Kolaborasi aktif dan slide presentasi sangat kreatif",
+              "category": "presentasi",
+              "meetingNumber": 3,
+              "timestamp": "2026-09-08T10:00:00Z",
+              "dosenName": "Risfa Tri Ulfa, S.Pd., M.Pd."
+            },
+            {
+              "id": "act-2-2",
+              "points": 10,
+              "reason": "Memberikan argumentasi komparatif antara ilmu dan mitos",
+              "category": "argumen",
+              "meetingNumber": 3,
+              "timestamp": "2026-09-08T10:30:00Z",
+              "dosenName": "Risfa Tri Ulfa, S.Pd., M.Pd."
+            },
+            {
+              "id": "act-2-3",
+              "points": 10,
+              "reason": "Menjawab pertanyaan diskusi kelompok dengan runtut",
+              "category": "jawaban",
+              "meetingNumber": 3,
+              "timestamp": "2026-09-08T10:50:00Z",
+              "dosenName": "Risfa Tri Ulfa, S.Pd., M.Pd."
+            }
+          ]
         },
         {
           "id": "mhs-3",
@@ -1474,7 +1728,28 @@
           "topic": "Hakikat Pengetahuan dan Ilmu: Perbedaan Pengetahuan Biasa, Ilmu, dan Filsafat",
           "meetingNumber": 3,
           "groupId": 1,
-          "createdAt": "2026-08-10T00:00:00Z"
+          "createdAt": "2026-08-10T00:00:00Z",
+          "activityPoints": 30,
+          "activityPointLogs": [
+            {
+              "id": "act-3-1",
+              "points": 15,
+              "reason": "Pemaparan definisi ilmu secara ontologis sangat jelas",
+              "category": "presentasi",
+              "meetingNumber": 3,
+              "timestamp": "2026-09-08T10:10:00Z",
+              "dosenName": "Risfa Tri Ulfa, S.Pd., M.Pd."
+            },
+            {
+              "id": "act-3-2",
+              "points": 15,
+              "reason": "Aktif merespon pertanyaan rekan mahasiswa di forum kelas",
+              "category": "jawaban",
+              "meetingNumber": 3,
+              "timestamp": "2026-09-08T10:40:00Z",
+              "dosenName": "Risfa Tri Ulfa, S.Pd., M.Pd."
+            }
+          ]
         },
         {
           "id": "mhs-4",
@@ -1489,7 +1764,37 @@
           "topic": "Pilar Ontologi Ilmu: Hakikat Ada (Being), Realitas Objek Kajian, dan Aliran-aliran Ontologi",
           "meetingNumber": 4,
           "groupId": 2,
-          "createdAt": "2026-08-10T00:00:00Z"
+          "createdAt": "2026-08-10T00:00:00Z",
+          "activityPoints": 40,
+          "activityPointLogs": [
+            {
+              "id": "act-4-1",
+              "points": 15,
+              "reason": "Sangat menguasai aliran-aliran ontologi (idealisme vs realisme)",
+              "category": "presentasi",
+              "meetingNumber": 4,
+              "timestamp": "2026-09-15T09:40:00Z",
+              "dosenName": "Risfa Tri Ulfa, S.Pd., M.Pd."
+            },
+            {
+              "id": "act-4-2",
+              "points": 15,
+              "reason": "Pertanyaan tajam mengenai batas wilayah kajian metafisika",
+              "category": "pertanyaan",
+              "meetingNumber": 4,
+              "timestamp": "2026-09-15T10:20:00Z",
+              "dosenName": "Risfa Tri Ulfa, S.Pd., M.Pd."
+            },
+            {
+              "id": "act-4-3",
+              "points": 10,
+              "reason": "Kontribusi aktif dalam sintesis diskusi pleno",
+              "category": "argumen",
+              "meetingNumber": 4,
+              "timestamp": "2026-09-15T10:55:00Z",
+              "dosenName": "Risfa Tri Ulfa, S.Pd., M.Pd."
+            }
+          ]
         },
         {
           "id": "mhs-5",
@@ -1504,7 +1809,28 @@
           "topic": "Pilar Ontologi Ilmu: Hakikat Ada (Being), Realitas Objek Kajian, dan Aliran-aliran Ontologi",
           "meetingNumber": 4,
           "groupId": 2,
-          "createdAt": "2026-08-10T00:00:00Z"
+          "createdAt": "2026-08-10T00:00:00Z",
+          "activityPoints": 25,
+          "activityPointLogs": [
+            {
+              "id": "act-5-1",
+              "points": 15,
+              "reason": "Penyampaian studi kasus ontologi pada manajemen madrasah",
+              "category": "presentasi",
+              "meetingNumber": 4,
+              "timestamp": "2026-09-15T10:00:00Z",
+              "dosenName": "Risfa Tri Ulfa, S.Pd., M.Pd."
+            },
+            {
+              "id": "act-5-2",
+              "points": 10,
+              "reason": "Menjawab pertanyaan tentang hakikat objek formal ilmu",
+              "category": "jawaban",
+              "meetingNumber": 4,
+              "timestamp": "2026-09-15T10:35:00Z",
+              "dosenName": "Risfa Tri Ulfa, S.Pd., M.Pd."
+            }
+          ]
         },
         {
           "id": "mhs-6",
@@ -1519,7 +1845,37 @@
           "topic": "Pilar Epistemologi Ilmu: Sumber Pengetahuan, Metode Ilmiah, dan Sarana Berpikir Ilmiah",
           "meetingNumber": 5,
           "groupId": 3,
-          "createdAt": "2026-08-10T00:00:00Z"
+          "createdAt": "2026-08-10T00:00:00Z",
+          "activityPoints": 35,
+          "activityPointLogs": [
+            {
+              "id": "act-6-1",
+              "points": 15,
+              "reason": "Presentasi metode ilmiah induktif dan deduktif sangat apik",
+              "category": "presentasi",
+              "meetingNumber": 5,
+              "timestamp": "2026-09-22T09:45:00Z",
+              "dosenName": "Risfa Tri Ulfa, S.Pd., M.Pd."
+            },
+            {
+              "id": "act-6-2",
+              "points": 10,
+              "reason": "Aktif mengajukan contoh verifikasi empiris dalam riset",
+              "category": "pertanyaan",
+              "meetingNumber": 5,
+              "timestamp": "2026-09-22T10:15:00Z",
+              "dosenName": "Risfa Tri Ulfa, S.Pd., M.Pd."
+            },
+            {
+              "id": "act-6-3",
+              "points": 10,
+              "reason": "Mempertahankan argumen epistemologi keilmuan Islam",
+              "category": "argumen",
+              "meetingNumber": 5,
+              "timestamp": "2026-09-22T10:45:00Z",
+              "dosenName": "Risfa Tri Ulfa, S.Pd., M.Pd."
+            }
+          ]
         },
         {
           "id": "mhs-7",
@@ -1534,7 +1890,28 @@
           "topic": "Pilar Epistemologi Ilmu: Sumber Pengetahuan, Metode Ilmiah, dan Sarana Berpikir Ilmiah",
           "meetingNumber": 5,
           "groupId": 3,
-          "createdAt": "2026-08-10T00:00:00Z"
+          "createdAt": "2026-08-10T00:00:00Z",
+          "activityPoints": 30,
+          "activityPointLogs": [
+            {
+              "id": "act-7-1",
+              "points": 15,
+              "reason": "Pemaparan teori kebenaran korespondensi vs koherensi",
+              "category": "presentasi",
+              "meetingNumber": 5,
+              "timestamp": "2026-09-22T10:00:00Z",
+              "dosenName": "Risfa Tri Ulfa, S.Pd., M.Pd."
+            },
+            {
+              "id": "act-7-2",
+              "points": 15,
+              "reason": "Menjawab pertanyaan diskusi dengan referensi buku rujukan",
+              "category": "jawaban",
+              "meetingNumber": 5,
+              "timestamp": "2026-09-22T10:30:00Z",
+              "dosenName": "Risfa Tri Ulfa, S.Pd., M.Pd."
+            }
+          ]
         },
         {
           "id": "mhs-8",
@@ -1549,7 +1926,28 @@
           "topic": "Pilar Epistemologi Ilmu: Sumber Pengetahuan, Metode Ilmiah, dan Sarana Berpikir Ilmiah",
           "meetingNumber": 5,
           "groupId": 3,
-          "createdAt": "2026-08-10T00:00:00Z"
+          "createdAt": "2026-08-10T00:00:00Z",
+          "activityPoints": 25,
+          "activityPointLogs": [
+            {
+              "id": "act-8-1",
+              "points": 15,
+              "reason": "Membawakan materi metode ilmiah dengan visualisasi bagan",
+              "category": "presentasi",
+              "meetingNumber": 5,
+              "timestamp": "2026-09-22T10:10:00Z",
+              "dosenName": "Risfa Tri Ulfa, S.Pd., M.Pd."
+            },
+            {
+              "id": "act-8-2",
+              "points": 10,
+              "reason": "Menanggapi pertanyaan rekan terkait validitas riset",
+              "category": "jawaban",
+              "meetingNumber": 5,
+              "timestamp": "2026-09-22T10:40:00Z",
+              "dosenName": "Risfa Tri Ulfa, S.Pd., M.Pd."
+            }
+          ]
         },
         {
           "id": "mhs-9",
@@ -1564,7 +1962,37 @@
           "topic": "Pilar Aksiologi Ilmu: Nilai, Etika Keilmuan, Tanggung Jawab Moral, dan Kemanfaatan Sains",
           "meetingNumber": 6,
           "groupId": 4,
-          "createdAt": "2026-08-10T00:00:00Z"
+          "createdAt": "2026-08-10T00:00:00Z",
+          "activityPoints": 35,
+          "activityPointLogs": [
+            {
+              "id": "act-9-1",
+              "points": 15,
+              "reason": "Pemaparan landasan aksiologi dan etika keilmuan sangat mendalam",
+              "category": "presentasi",
+              "meetingNumber": 6,
+              "timestamp": "2026-09-29T09:35:00Z",
+              "dosenName": "Risfa Tri Ulfa, S.Pd., M.Pd."
+            },
+            {
+              "id": "act-9-2",
+              "points": 10,
+              "reason": "Pertanyaan kritis tentang tanggung jawab moral ilmuwan",
+              "category": "pertanyaan",
+              "meetingNumber": 6,
+              "timestamp": "2026-09-29T10:10:00Z",
+              "dosenName": "Risfa Tri Ulfa, S.Pd., M.Pd."
+            },
+            {
+              "id": "act-9-3",
+              "points": 10,
+              "reason": "Mengaitkan aksiologi dengan integritas pemimpin pendidikan",
+              "category": "argumen",
+              "meetingNumber": 6,
+              "timestamp": "2026-09-29T10:40:00Z",
+              "dosenName": "Risfa Tri Ulfa, S.Pd., M.Pd."
+            }
+          ]
         },
         {
           "id": "mhs-10",
@@ -1579,7 +2007,28 @@
           "topic": "Pilar Aksiologi Ilmu: Nilai, Etika Keilmuan, Tanggung Jawab Moral, dan Kemanfaatan Sains",
           "meetingNumber": 6,
           "groupId": 4,
-          "createdAt": "2026-08-10T00:00:00Z"
+          "createdAt": "2026-08-10T00:00:00Z",
+          "activityPoints": 25,
+          "activityPointLogs": [
+            {
+              "id": "act-10-1",
+              "points": 15,
+              "reason": "Presentasi nilai estetika dan etika dalam filsafat ilmu",
+              "category": "presentasi",
+              "meetingNumber": 6,
+              "timestamp": "2026-09-29T09:50:00Z",
+              "dosenName": "Risfa Tri Ulfa, S.Pd., M.Pd."
+            },
+            {
+              "id": "act-10-2",
+              "points": 10,
+              "reason": "Aktif berdiskusi menjawab sanggahan rekan sekelas",
+              "category": "jawaban",
+              "meetingNumber": 6,
+              "timestamp": "2026-09-29T10:25:00Z",
+              "dosenName": "Risfa Tri Ulfa, S.Pd., M.Pd."
+            }
+          ]
         },
         {
           "id": "mhs-11",
@@ -1594,7 +2043,28 @@
           "topic": "Sejarah Perkembangan Filsafat dan Ilmu (Era Yunani Klasik & Abad Pertengahan)",
           "meetingNumber": 7,
           "groupId": 5,
-          "createdAt": "2026-08-10T00:00:00Z"
+          "createdAt": "2026-08-10T00:00:00Z",
+          "activityPoints": 30,
+          "activityPointLogs": [
+            {
+              "id": "act-11-1",
+              "points": 15,
+              "reason": "Ulasan sejarah filsafat era Yunani Klasik sangat runtut",
+              "category": "presentasi",
+              "meetingNumber": 7,
+              "timestamp": "2026-10-06T09:30:00Z",
+              "dosenName": "Risfa Tri Ulfa, S.Pd., M.Pd."
+            },
+            {
+              "id": "act-11-2",
+              "points": 15,
+              "reason": "Memberikan komparasi pemikiran Socrates, Plato, dan Aristoteles",
+              "category": "argumen",
+              "meetingNumber": 7,
+              "timestamp": "2026-10-06T10:15:00Z",
+              "dosenName": "Risfa Tri Ulfa, S.Pd., M.Pd."
+            }
+          ]
         },
         {
           "id": "mhs-12",
@@ -1609,7 +2079,28 @@
           "topic": "Sejarah Perkembangan Filsafat dan Ilmu (Era Yunani Klasik & Abad Pertengahan)",
           "meetingNumber": 7,
           "groupId": 5,
-          "createdAt": "2026-08-10T00:00:00Z"
+          "createdAt": "2026-08-10T00:00:00Z",
+          "activityPoints": 25,
+          "activityPointLogs": [
+            {
+              "id": "act-12-1",
+              "points": 15,
+              "reason": "Penyampaian transisi era Skolastik ke era Modern",
+              "category": "presentasi",
+              "meetingNumber": 7,
+              "timestamp": "2026-10-06T09:50:00Z",
+              "dosenName": "Risfa Tri Ulfa, S.Pd., M.Pd."
+            },
+            {
+              "id": "act-12-2",
+              "points": 10,
+              "reason": "Menjawab pertanyaan forum mengenai pengaruh filsafat Islam di Eropa",
+              "category": "jawaban",
+              "meetingNumber": 7,
+              "timestamp": "2026-10-06T10:30:00Z",
+              "dosenName": "Risfa Tri Ulfa, S.Pd., M.Pd."
+            }
+          ]
         },
         {
           "id": "mhs-13",
@@ -1624,7 +2115,28 @@
           "topic": "Sejarah Perkembangan Filsafat dan Ilmu (Era Yunani Klasik & Abad Pertengahan)",
           "meetingNumber": 7,
           "groupId": 5,
-          "createdAt": "2026-08-10T00:00:00Z"
+          "createdAt": "2026-08-10T00:00:00Z",
+          "activityPoints": 25,
+          "activityPointLogs": [
+            {
+              "id": "act-13-1",
+              "points": 15,
+              "reason": "Slide presentasi sejarah filsafat sangat estetik dan jelas",
+              "category": "presentasi",
+              "meetingNumber": 7,
+              "timestamp": "2026-10-06T10:05:00Z",
+              "dosenName": "Risfa Tri Ulfa, S.Pd., M.Pd."
+            },
+            {
+              "id": "act-13-2",
+              "points": 10,
+              "reason": "Aktif menanggapi pertanyaan seputar zaman kegelapan Eropa",
+              "category": "jawaban",
+              "meetingNumber": 7,
+              "timestamp": "2026-10-06T10:45:00Z",
+              "dosenName": "Risfa Tri Ulfa, S.Pd., M.Pd."
+            }
+          ]
         }
       ],
       "groups": [
@@ -2528,7 +3040,9 @@
           "topic": "Hakikat dan Ruang Lingkup Manajemen Pendidikan Islam / Kurikulum Madrasah & Pesantren",
           "meetingNumber": 2,
           "groupId": 1,
-          "createdAt": "2026-08-10T00:00:00Z"
+          "createdAt": "2026-08-10T00:00:00Z",
+          "activityPoints": 25,
+          "activityPointLogs": []
         },
         {
           "id": "mhs-sem3-2",
@@ -2543,7 +3057,9 @@
           "topic": "Hakikat dan Ruang Lingkup Manajemen Pendidikan Islam / Kurikulum Madrasah & Pesantren",
           "meetingNumber": 2,
           "groupId": 1,
-          "createdAt": "2026-08-10T00:00:00Z"
+          "createdAt": "2026-08-10T00:00:00Z",
+          "activityPoints": 25,
+          "activityPointLogs": []
         },
         {
           "id": "mhs-sem3-3",
@@ -2558,7 +3074,9 @@
           "topic": "Landasan Syar’i, Yuridis, dan Filosofis MPI / Manajemen Pendidik & Tenaga Kependidikan",
           "meetingNumber": 3,
           "groupId": 2,
-          "createdAt": "2026-08-10T00:00:00Z"
+          "createdAt": "2026-08-10T00:00:00Z",
+          "activityPoints": 25,
+          "activityPointLogs": []
         },
         {
           "id": "mhs-sem3-4",
@@ -2573,7 +3091,9 @@
           "topic": "Landasan Syar’i, Yuridis, dan Filosofis MPI / Manajemen Pendidik & Tenaga Kependidikan",
           "meetingNumber": 3,
           "groupId": 2,
-          "createdAt": "2026-08-10T00:00:00Z"
+          "createdAt": "2026-08-10T00:00:00Z",
+          "activityPoints": 25,
+          "activityPointLogs": []
         },
         {
           "id": "mhs-sem3-5",
@@ -2588,7 +3108,9 @@
           "topic": "Landasan Syar’i, Yuridis, dan Filosofis MPI / Manajemen Pendidik & Tenaga Kependidikan",
           "meetingNumber": 3,
           "groupId": 2,
-          "createdAt": "2026-08-10T00:00:00Z"
+          "createdAt": "2026-08-10T00:00:00Z",
+          "activityPoints": 25,
+          "activityPointLogs": []
         },
         {
           "id": "mhs-sem3-6",
@@ -2603,7 +3125,9 @@
           "topic": "Perencanaan Strategis dalam Pendidikan Islam / Manajemen Kesiswaan & Karakter Islami",
           "meetingNumber": 4,
           "groupId": 3,
-          "createdAt": "2026-08-10T00:00:00Z"
+          "createdAt": "2026-08-10T00:00:00Z",
+          "activityPoints": 25,
+          "activityPointLogs": []
         },
         {
           "id": "mhs-sem3-7",
@@ -2618,7 +3142,9 @@
           "topic": "Perencanaan Strategis dalam Pendidikan Islam / Manajemen Kesiswaan & Karakter Islami",
           "meetingNumber": 4,
           "groupId": 3,
-          "createdAt": "2026-08-10T00:00:00Z"
+          "createdAt": "2026-08-10T00:00:00Z",
+          "activityPoints": 25,
+          "activityPointLogs": []
         },
         {
           "id": "mhs-sem3-8",
@@ -2633,7 +3159,9 @@
           "topic": "Perencanaan Strategis dalam Pendidikan Islam / Manajemen Kesiswaan & Karakter Islami",
           "meetingNumber": 4,
           "groupId": 3,
-          "createdAt": "2026-08-10T00:00:00Z"
+          "createdAt": "2026-08-10T00:00:00Z",
+          "activityPoints": 25,
+          "activityPointLogs": []
         },
         {
           "id": "mhs-sem3-9",
@@ -2648,7 +3176,9 @@
           "topic": "Perencanaan Strategis dalam Pendidikan Islam / Sistem Pengawasan Lembaga Pendidikan Islam",
           "meetingNumber": 4,
           "groupId": 3,
-          "createdAt": "2026-08-10T00:00:00Z"
+          "createdAt": "2026-08-10T00:00:00Z",
+          "activityPoints": 25,
+          "activityPointLogs": []
         },
         {
           "id": "mhs-sem3-10",
@@ -2663,7 +3193,9 @@
           "topic": "Pengorganisasian dan Struktur Lembaga Pendidikan Islam / Tata Kelola Pembiayaan & Dana BOSP",
           "meetingNumber": 5,
           "groupId": 4,
-          "createdAt": "2026-08-10T00:00:00Z"
+          "createdAt": "2026-08-10T00:00:00Z",
+          "activityPoints": 25,
+          "activityPointLogs": []
         },
         {
           "id": "mhs-sem3-11",
@@ -2678,7 +3210,9 @@
           "topic": "Pengorganisasian dan Struktur Lembaga Pendidikan Islam / Tata Kelola Pembiayaan & Dana BOSP",
           "meetingNumber": 5,
           "groupId": 4,
-          "createdAt": "2026-08-10T00:00:00Z"
+          "createdAt": "2026-08-10T00:00:00Z",
+          "activityPoints": 25,
+          "activityPointLogs": []
         },
         {
           "id": "mhs-sem3-12",
@@ -2693,7 +3227,9 @@
           "topic": "Pengorganisasian dan Struktur Lembaga Pendidikan Islam / Tata Kelola Pembiayaan & Dana BOSP",
           "meetingNumber": 5,
           "groupId": 4,
-          "createdAt": "2026-08-10T00:00:00Z"
+          "createdAt": "2026-08-10T00:00:00Z",
+          "activityPoints": 25,
+          "activityPointLogs": []
         },
         {
           "id": "mhs-sem3-13",
@@ -2708,7 +3244,9 @@
           "topic": "Pengorganisasian dan Struktur Lembaga Pendidikan Islam / Tata Kelola Pembiayaan & Dana BOSP",
           "meetingNumber": 5,
           "groupId": 4,
-          "createdAt": "2026-08-10T00:00:00Z"
+          "createdAt": "2026-08-10T00:00:00Z",
+          "activityPoints": 25,
+          "activityPointLogs": []
         },
         {
           "id": "mhs-sem3-14",
@@ -2723,7 +3261,9 @@
           "topic": "Kepemimpinan Profetik dalam Penggerakan Organisasi / Manajemen Sarana dan Prasarana MPI",
           "meetingNumber": 6,
           "groupId": 5,
-          "createdAt": "2026-08-10T00:00:00Z"
+          "createdAt": "2026-08-10T00:00:00Z",
+          "activityPoints": 25,
+          "activityPointLogs": []
         },
         {
           "id": "mhs-sem3-15",
@@ -2738,7 +3278,9 @@
           "topic": "Kepemimpinan Profetik dalam Penggerakan Organisasi / Manajemen Sarana dan Prasarana MPI",
           "meetingNumber": 6,
           "groupId": 5,
-          "createdAt": "2026-08-10T00:00:00Z"
+          "createdAt": "2026-08-10T00:00:00Z",
+          "activityPoints": 25,
+          "activityPointLogs": []
         },
         {
           "id": "mhs-sem3-16",
@@ -2753,7 +3295,9 @@
           "topic": "Kepemimpinan Profetik dalam Penggerakan Organisasi / Manajemen Sarana dan Prasarana MPI",
           "meetingNumber": 6,
           "groupId": 5,
-          "createdAt": "2026-08-10T00:00:00Z"
+          "createdAt": "2026-08-10T00:00:00Z",
+          "activityPoints": 25,
+          "activityPointLogs": []
         },
         {
           "id": "mhs-sem3-17",
@@ -2768,7 +3312,9 @@
           "topic": "Kepemimpinan Profetik dalam Penggerakan Organisasi / Manajemen Sarana dan Prasarana MPI",
           "meetingNumber": 6,
           "groupId": 5,
-          "createdAt": "2026-08-10T00:00:00Z"
+          "createdAt": "2026-08-10T00:00:00Z",
+          "activityPoints": 25,
+          "activityPointLogs": []
         },
         {
           "id": "mhs-sem3-18",
@@ -2783,7 +3329,9 @@
           "topic": "Sistem Pengawasan dan Supervisi Lembaga Pendidikan Islam / Humas & Pemasaran Pendidikan",
           "meetingNumber": 7,
           "groupId": 6,
-          "createdAt": "2026-08-10T00:00:00Z"
+          "createdAt": "2026-08-10T00:00:00Z",
+          "activityPoints": 25,
+          "activityPointLogs": []
         },
         {
           "id": "mhs-sem3-19",
@@ -2798,7 +3346,9 @@
           "topic": "Sistem Pengawasan dan Supervisi Lembaga Pendidikan Islam / Humas & Pemasaran Pendidikan",
           "meetingNumber": 7,
           "groupId": 6,
-          "createdAt": "2026-08-10T00:00:00Z"
+          "createdAt": "2026-08-10T00:00:00Z",
+          "activityPoints": 25,
+          "activityPointLogs": []
         },
         {
           "id": "mhs-sem3-20",
@@ -2813,7 +3363,9 @@
           "topic": "Sistem Pengawasan dan Supervisi Lembaga Pendidikan Islam / Humas & Pemasaran Pendidikan",
           "meetingNumber": 7,
           "groupId": 6,
-          "createdAt": "2026-08-10T00:00:00Z"
+          "createdAt": "2026-08-10T00:00:00Z",
+          "activityPoints": 25,
+          "activityPointLogs": []
         }
       ],
       "groups": [
@@ -4595,5 +5147,6 @@
   },
   "archivedSemesters": [],
   "allTimeSubmissions": [],
-  "rpsRawText": ""
+  "rpsRawText": "",
+  "activityPointLogs": {}
 }

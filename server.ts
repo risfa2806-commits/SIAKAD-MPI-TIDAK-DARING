@@ -3398,6 +3398,7 @@ app.post('/api/backup/restore', (req, res) => {
     saveDatabase();
     res.json({
       success: true,
+      durable: !IS_SERVERLESS,
       message: 'Data tugas, ujian, kuis, dan nilai berhasil dipulihkan secara permanen ke server!',
       totalStudents: db.students.length,
       totalSubmissions: db.submissions?.length || 0,

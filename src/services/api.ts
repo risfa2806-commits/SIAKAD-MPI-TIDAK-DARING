@@ -492,36 +492,41 @@ export async function confirmHardcopySubmissionApi(payload: {
     });
 
     const json = await safeJson(res, null);
-    if (res.ok && json?.success) {
-      let updatedDb: SiakadDatabase | null = json.data || null;
-      if (!updatedDb && json.submission) {
-        updatedDb = getLocalCache();
-        if (!updatedDb.submissions) updatedDb.submissions = [];
-        const idx = updatedDb.submissions.findIndex(s =>
-          s.id === json.submission.id ||
-          (s.studentId === payload.studentId && Number(s.meetingNumber) === Number(json.submission.meetingNumber))
-        );
-        if (idx >= 0) updatedDb.submissions[idx] = json.submission;
-        else updatedDb.submissions.push(json.submission);
-      }
-
-      if (updatedDb) {
-        saveLocalCache(updatedDb, false);
-        if (isSupabaseConfigured()) {
-          if (!await saveDatabaseToSupabase(updatedDb)) {
-            return { success: false, error: 'Status printout gagal disimpan ke Supabase.' };
-          }
-        } else if (json.durable === false) {
-          return { success: false, error: 'Penyimpanan permanen Vercel belum dikonfigurasi. Hubungkan Supabase terlebih dahulu.' };
-        }
-      }
-
-      if (typeof window !== 'undefined') {
-        window.dispatchEvent(new CustomEvent('siakad_course_updated'));
-      }
-      return { success: true, submission: json.submission, message: json.message };
+    if (!res.ok || !json?.success) {
+      const statusMessage = res.ok ? '' : ` (HTTP ${res.status})`;
+      return {
+        success: false,
+        error: json?.error || `Gagal mengonfirmasi pengumpulan makalah cetak${statusMessage}`,
+      };
     }
-    return { success: false, error: json?.error || 'Gagal mengonfirmasi pengumpulan makalah cetak' };
+
+    let updatedDb: SiakadDatabase | null = json.data || null;
+    if (!updatedDb && json.submission) {
+      updatedDb = getLocalCache();
+      if (!updatedDb.submissions) updatedDb.submissions = [];
+      const idx = updatedDb.submissions.findIndex(s =>
+        s.id === json.submission.id ||
+        (s.studentId === payload.studentId && Number(s.meetingNumber) === Number(json.submission.meetingNumber))
+      );
+      if (idx >= 0) updatedDb.submissions[idx] = json.submission;
+      else updatedDb.submissions.push(json.submission);
+    }
+
+    if (updatedDb) {
+      saveLocalCache(updatedDb, false);
+      if (isSupabaseConfigured()) {
+        if (!await saveDatabaseToSupabase(updatedDb)) {
+          return { success: false, error: 'Status printout gagal disimpan ke Supabase.' };
+        }
+      } else if (json.durable === false) {
+        return { success: false, error: 'Penyimpanan permanen Vercel belum dikonfigurasi. Hubungkan Supabase terlebih dahulu.' };
+      }
+    }
+
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('siakad_course_updated'));
+    }
+    return { success: true, submission: json.submission, message: json.message };
   } catch (err: any) {
     console.warn('Network error confirming hardcopy submission, saving locally:', err);
     // Optimistic fallback for offline
@@ -629,7 +634,7 @@ export async function gradeIndividualTask(
   grade: number,
   feedback: string,
   extra?: { submissionId?: string; meetingNumber?: number }
-): Promise<boolean> {
+): Promise<{ success: boolean; error?: string }> {
   try {
     const res = await fetch('/api/individual-grade', {
       method: 'POST',
@@ -643,7 +648,12 @@ export async function gradeIndividualTask(
       }),
     });
     const json = await safeJson(res, null);
-    if (!res.ok || !json?.success) return false;
+    if (!res.ok || !json?.success) {
+      return {
+        success: false,
+        error: json?.error || `Gagal menyimpan nilai presentasi (HTTP ${res.status}).`,
+      };
+    }
 
     const currentDb = getLocalCache();
     if (!currentDb.submissions) currentDb.submissions = [];
@@ -661,16 +671,21 @@ export async function gradeIndividualTask(
 
     saveLocalCache(currentDb, false);
     if (isSupabaseConfigured()) {
-      if (!await saveDatabaseToSupabase(currentDb)) return false;
+      if (!await saveDatabaseToSupabase(currentDb)) {
+        return { success: false, error: 'Nilai gagal disimpan ke Supabase. Periksa tabel dan izin siakad_storage.' };
+      }
     } else if (json.durable === false) {
-      return false;
+      return { success: false, error: 'Penyimpanan permanen Vercel belum dikonfigurasi. Hubungkan Supabase terlebih dahulu.' };
     }
     if (typeof window !== 'undefined') {
       window.dispatchEvent(new CustomEvent('siakad_course_updated'));
     }
-    return true;
-  } catch {
-    return false;
+    return { success: true };
+  } catch (error) {
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'Jaringan gagal menghubungi server penilaian.',
+    };
   }
 }
 
@@ -3420,9 +3435,23 @@ export async function restoreBackupToServer(backupData: any): Promise<{
     });
     const json = await safeJson(res, null);
     if (res.ok && json.success) {
+      if (isSupabaseConfigured()) {
+        if (!await saveDatabaseToSupabase(backupData)) {
+          return {
+            success: false,
+            message: 'Backup diterima server, tetapi gagal disimpan permanen ke Supabase. Periksa tabel siakad_storage dan izin upsert.',
+          };
+        }
+      } else if (json.durable === false) {
+        return {
+          success: false,
+          message: 'Backup tidak dipulihkan permanen. Atur VITE_SUPABASE_URL dan VITE_SUPABASE_ANON_KEY di Vercel.',
+        };
+      }
+
       // Sync local caches
       if (backupData) {
-        saveLocalCache(backupData);
+        saveLocalCache(backupData, false);
       }
       return {
         success: true,
@@ -3433,7 +3462,10 @@ export async function restoreBackupToServer(backupData: any): Promise<{
         totalUas: json.totalUas,
       };
     }
-    return { success: false, message: json.error || 'Gagal memulihkan cadangan data' };
+    return {
+      success: false,
+      message: json?.error || `Gagal memulihkan cadangan data (HTTP ${res.status})`,
+    };
   } catch (err: any) {
     return { success: false, message: err?.message || 'Gagal menghubungi server untuk memulihkan data' };
   }

@@ -900,14 +900,14 @@ export const DosenPortal: React.FC<DosenPortalProps> = ({
     if (!reviewIndivSub) return;
     setIsGradingIndiv(true);
     try {
-      const saved = await gradeIndividualTask(reviewIndivSub.studentId, indivScoreInput, indivFeedbackInput, {
+      const result = await gradeIndividualTask(reviewIndivSub.studentId, indivScoreInput, indivFeedbackInput, {
         submissionId: reviewIndivSub.id,
         meetingNumber: reviewIndivSub.meetingNumber,
       });
-      if (!saved) {
+      if (!result.success) {
         setActionAlertMsg({
           type: 'error',
-          text: 'Nilai gagal disimpan. Periksa akses dosen, koneksi, serta VITE_SUPABASE_URL dan VITE_SUPABASE_ANON_KEY di Vercel.',
+          text: result.error || 'Nilai gagal disimpan. Periksa akses dosen dan konfigurasi storage Vercel.',
         });
         return;
       }
@@ -1272,11 +1272,11 @@ export const DosenPortal: React.FC<DosenPortalProps> = ({
   const handleSaveIndivGrade = async (studentId: string) => {
     setIsGradingIndiv(true);
     try {
-      const saved = await gradeIndividualTask(studentId, indivScoreInput, indivFeedbackInput);
-      if (!saved) {
+      const result = await gradeIndividualTask(studentId, indivScoreInput, indivFeedbackInput);
+      if (!result.success) {
         setActionAlertMsg({
           type: 'error',
-          text: 'Nilai gagal disimpan. Periksa akses dosen, koneksi, serta VITE_SUPABASE_URL dan VITE_SUPABASE_ANON_KEY di Vercel.',
+          text: result.error || 'Nilai gagal disimpan. Periksa akses dosen dan konfigurasi storage Vercel.',
         });
         return;
       }
@@ -4955,7 +4955,7 @@ export const DosenPortal: React.FC<DosenPortalProps> = ({
                 <input
                   type="file"
                   id="backup-file-input"
-                  accept=".zip,.rar,application/zip,application/x-zip-compressed"
+                  accept=".zip,.rar,.json,application/zip,application/x-zip-compressed,application/json"
                   onChange={handleRestoreBackupFile}
                   disabled={isRestoring}
                   className="hidden"
@@ -4970,7 +4970,7 @@ export const DosenPortal: React.FC<DosenPortalProps> = ({
                     <UploadCloud size={24} />
                   </div>
                   <div className="font-bold text-xs text-slate-900">
-                    {isRestoring ? 'Memproses dan Memulihkan Data dari Arsip...' : 'Klik di sini untuk Memilih Berkas Arsip Backup (.ZIP / .RAR)'}
+                    {isRestoring ? 'Memproses dan Memulihkan Data dari Arsip...' : 'Klik di sini untuk Memilih Backup (.ZIP / .JSON)'}
                   </div>
                   <div className="text-[11px] text-slate-500">
                     Format berkas arsip .zip / .rar resmi SIAKAD Pascasarjana (Vault Engine Terpadu)

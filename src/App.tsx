@@ -556,6 +556,7 @@ export default function App() {
             students={db?.students || []}
             currentStudent={currentStudent}
             utsSubmissions={db?.utsSubmissions || []}
+            utsDrafts={db?.utsDrafts || {}}
             submissions={db?.utsSubmissions || []}
             utsFormat={db?.utsFormat || db?.courseProfile?.utsFormat || 'esai'}
             groups={db?.groups || []}

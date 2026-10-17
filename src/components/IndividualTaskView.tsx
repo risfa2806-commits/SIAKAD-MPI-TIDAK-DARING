@@ -323,7 +323,9 @@ export const IndividualTaskView: React.FC<IndividualTaskViewProps> = ({
   const [pptFileName, setPptFileName] = useState<string>(existingSubmission?.pptFileName || '');
   const [pptFileData, setPptFileData] = useState<string>(existingSubmission?.pptFileData || '');
 
-  const [makalahType, setMakalahType] = useState<'link' | 'file'>(existingSubmission?.makalahType || 'link');
+  const [makalahType, setMakalahType] = useState<'link' | 'file' | 'hardcopy_print'>(
+    existingSubmission?.hardcopyRequested ? 'hardcopy_print' : (existingSubmission?.makalahType || 'link')
+  );
   const [makalahUrl, setMakalahUrl] = useState<string>(existingSubmission?.makalahUrl || '');
   const [makalahFileName, setMakalahFileName] = useState<string>(existingSubmission?.makalahFileName || '');
   const [makalahFileData, setMakalahFileData] = useState<string>(existingSubmission?.makalahFileData || '');
@@ -485,7 +487,7 @@ export const IndividualTaskView: React.FC<IndividualTaskViewProps> = ({
       setPptFileName(existingSubmission.pptFileName || '');
       setPptFileData(existingSubmission.pptFileData || '');
 
-      setMakalahType(existingSubmission.makalahType || 'link');
+      setMakalahType(existingSubmission.hardcopyRequested ? 'hardcopy_print' : (existingSubmission.makalahType || 'link'));
       setMakalahUrl(existingSubmission.makalahUrl || '');
       setMakalahFileName(existingSubmission.makalahFileName || '');
       setMakalahFileData(existingSubmission.makalahFileData || '');
@@ -569,7 +571,9 @@ export const IndividualTaskView: React.FC<IndividualTaskViewProps> = ({
 
     // Validation based on submission choice
     const hasPpt = (pptType === 'link' && !!pptUrl.trim()) || (pptType === 'file' && !!pptFileData);
-    const hasMakalah = (makalahType === 'link' && !!makalahUrl.trim()) || (makalahType === 'file' && !!makalahFileData);
+    const hasMakalah = makalahType === 'hardcopy_print' ||
+      (makalahType === 'link' && !!makalahUrl.trim()) ||
+      (makalahType === 'file' && !!makalahFileData);
 
     if (submissionChoice === 'ppt_only') {
       if (!hasPpt) {
@@ -624,7 +628,8 @@ export const IndividualTaskView: React.FC<IndividualTaskViewProps> = ({
       pptUrl: pptType === 'link' ? pptUrl.trim() : undefined,
       pptFileName: pptType === 'file' ? pptFileName : undefined,
       pptFileData: pptType === 'file' ? pptFileData : undefined,
-      makalahType,
+      makalahType: makalahType === 'hardcopy_print' ? undefined : makalahType,
+      hardcopyRequested: makalahType === 'hardcopy_print',
       makalahUrl: makalahType === 'link' ? makalahUrl.trim() : undefined,
       makalahFileName: makalahType === 'file' ? makalahFileName : undefined,
       makalahFileData: makalahType === 'file' ? makalahFileData : undefined,
@@ -634,19 +639,16 @@ export const IndividualTaskView: React.FC<IndividualTaskViewProps> = ({
       feedback: existingSubmission?.feedback,
     };
 
-    // 1. Immediately update local state on user click so form locks and status flips to "Terkirim" without UI delay
-    setLocalSubmissions(prev => {
-      const filtered = prev.filter(
-        s => s.id !== payload.id &&
-        !(s.studentId === payload.studentId && (Number(s.meetingNumber) || 2) === selectedMeetingNumber)
-      );
-      return [payload, ...filtered];
-    });
-
     try {
-      // 2. Asynchronous database call to verify completion
       const result = await submitIndividualTask(payload);
       if (result.success) {
+        setLocalSubmissions(prev => {
+          const filtered = prev.filter(
+            s => s.id !== payload.id &&
+            !(s.studentId === payload.studentId && (Number(s.meetingNumber) || 2) === selectedMeetingNumber)
+          );
+          return [result.submission || payload, ...filtered];
+        });
         setIsEditingExisting(false);
         setSubmitSuccessMsg(
           result.offlineStored
@@ -2834,6 +2836,7 @@ export const IndividualTaskView: React.FC<IndividualTaskViewProps> = ({
                 </div>
               </div>
 
+              <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
               {/* Section 1: Presentation Slides (PPT / Canva) */}
               <div className={`space-y-3 p-4 rounded-xl border transition-all ${
                 submissionChoice === 'makalah_only' ? 'bg-slate-50/40 border-slate-200 opacity-60' : 'bg-slate-50/80 border-slate-200'
@@ -2848,7 +2851,7 @@ export const IndividualTaskView: React.FC<IndividualTaskViewProps> = ({
                   </label>
                   
                   {/* Mode switcher */}
-                  <div className="flex items-center bg-slate-200/80 p-0.5 rounded-lg text-xs self-start sm:self-auto">
+                  <div className="flex flex-wrap items-center bg-slate-200/80 p-0.5 rounded-lg text-xs self-start sm:self-auto">
                     <button
                       type="button"
                       onClick={() => setPptType('link')}
@@ -2935,6 +2938,18 @@ export const IndividualTaskView: React.FC<IndividualTaskViewProps> = ({
                     >
                       Upload File Makalah
                     </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setMakalahType('hardcopy_print');
+                        setSubmissionChoice('makalah_only');
+                      }}
+                      className={`px-3 py-1 rounded-md font-semibold transition-all ${
+                        makalahType === 'hardcopy_print' ? 'bg-emerald-700 text-white shadow-xs' : 'text-slate-600 hover:text-slate-900'
+                      }`}
+                    >
+                      Kumpul Cetak / Print Fisik
+                    </button>
                   </div>
                 </div>
 
@@ -2951,7 +2966,7 @@ export const IndividualTaskView: React.FC<IndividualTaskViewProps> = ({
                       />
                     </div>
                   </div>
-                ) : (
+                ) : makalahType === 'file' ? (
                   <div>
                     <input
                       type="file"
@@ -2965,7 +2980,27 @@ export const IndividualTaskView: React.FC<IndividualTaskViewProps> = ({
                       </p>
                     )}
                   </div>
+                ) : (
+                  <div className="rounded-lg border border-emerald-300 bg-emerald-50 p-4 text-sm text-emerald-950">
+                    <div className="font-bold">Makalah diserahkan sebagai printout fisik</div>
+                    <p className="mt-1 text-xs leading-relaxed">
+                      Tidak perlu mengunggah file makalah. Permintaan akan tercatat dan menunggu verifikasi dosen setelah berkas cetak diserahkan langsung.
+                    </p>
+                    <label className="mt-3 block text-[11px] font-bold" htmlFor="hardcopy-notes">
+                      Catatan penyerahan (opsional)
+                    </label>
+                    <input
+                      id="hardcopy-notes"
+                      type="text"
+                      value={notes}
+                      onChange={e => setNotes(e.target.value)}
+                      placeholder="Contoh: diserahkan langsung saat pertemuan"
+                      className="mt-1 w-full rounded-lg border border-emerald-300 bg-white px-3 py-2 text-xs"
+                    />
+                  </div>
                 )}
+              </div>
+
               </div>
 
               {/* Section 3: Notes / Ringkasan Pokok */}
@@ -3011,7 +3046,7 @@ export const IndividualTaskView: React.FC<IndividualTaskViewProps> = ({
       {/* MODAL KONFIRMASI PENGIRIMAN TUGAS PRESENTASI */}
       {isConfirmSubmitOpen && targetStudent && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/70 backdrop-blur-xs animate-in fade-in duration-200">
-          <div className="bg-white dark:bg-slate-900 rounded-2xl max-w-lg w-full max-h-[90vh] flex flex-col shadow-2xl overflow-hidden border border-slate-200 dark:border-slate-800 animate-in zoom-in-95 duration-200">
+          <div className="bg-white dark:bg-slate-900 rounded-2xl max-w-5xl w-full max-h-[92dvh] flex flex-col shadow-2xl overflow-hidden border border-slate-200 dark:border-slate-800 animate-in zoom-in-95 duration-200">
             {/* Header */}
             <div className="px-6 py-4 bg-gradient-to-r from-emerald-800 to-slate-900 text-white flex items-center justify-between">
               <div className="flex items-center gap-2.5">
@@ -3033,7 +3068,7 @@ export const IndividualTaskView: React.FC<IndividualTaskViewProps> = ({
             </div>
 
             {/* Body */}
-            <div className="p-6 overflow-y-auto space-y-4 text-xs sm:text-sm text-slate-700 dark:text-slate-300">
+            <div className="p-4 sm:p-6 overflow-y-auto grid grid-cols-1 lg:grid-cols-2 gap-4 text-xs sm:text-sm text-slate-700 dark:text-slate-300">
               {/* Student info */}
               <div className="p-3.5 rounded-xl bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 space-y-2">
                 <div className="flex items-center justify-between border-b border-slate-200 dark:border-slate-700 pb-2">
@@ -3090,7 +3125,11 @@ export const IndividualTaskView: React.FC<IndividualTaskViewProps> = ({
                   <FileText size={16} className="text-indigo-700 dark:text-indigo-400 shrink-0 mt-0.5" />
                   <div className="flex-1 min-w-0">
                     <span className="font-bold text-slate-900 dark:text-white block text-xs">2. Dokumen Makalah (PDF / Docs)</span>
-                    {makalahType === 'file' ? (
+                    {makalahType === 'hardcopy_print' ? (
+                      <p className="text-xs text-emerald-800 dark:text-emerald-300 font-medium mt-0.5">
+                        Printout fisik dipilih. Tidak ada file makalah yang perlu diunggah; menunggu verifikasi dosen.
+                      </p>
+                    ) : makalahType === 'file' ? (
                       makalahFileName ? (
                         <p className="text-xs text-indigo-800 dark:text-indigo-300 font-medium truncate mt-0.5">
                           📄 File: {makalahFileName}
@@ -3119,7 +3158,7 @@ export const IndividualTaskView: React.FC<IndividualTaskViewProps> = ({
               </div>
 
               {/* Warning Notice Box */}
-              <div className="p-3.5 rounded-xl bg-amber-50 dark:bg-amber-950/30 border border-amber-300 dark:border-amber-700 flex items-start gap-2.5 text-amber-900 dark:text-amber-200">
+              <div className="lg:col-span-2 p-3.5 rounded-xl bg-amber-50 dark:bg-amber-950/30 border border-amber-300 dark:border-amber-700 flex items-start gap-2.5 text-amber-900 dark:text-amber-200">
                 <AlertCircle size={18} className="text-amber-600 dark:text-amber-400 shrink-0 mt-0.5" />
                 <div className="text-[11px] leading-relaxed">
                   <strong className="font-bold block mb-0.5">PERINGATAN ATURAN PENGUMPULAN:</strong>

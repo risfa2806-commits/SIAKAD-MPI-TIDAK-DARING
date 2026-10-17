@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { Student, UtsQuestion, UtsSubmission, GroupProject, ExamScheduleSettings } from '../types';
+import { Student, UtsQuestion, UtsSubmission, UtsDraft, GroupProject, ExamScheduleSettings } from '../types';
 import {
   submitUtsSubmissionApi,
+  saveUtsDraftApi,
   deleteUtsSubmissionApi,
   saveUtsQuestionsApi,
   syncUtsQuestionsFromRpsApi,
@@ -51,6 +52,7 @@ interface UtsExamViewProps {
   currentStudent: Student | null;
   utsQuestions?: UtsQuestion[];
   utsSubmissions?: UtsSubmission[];
+  utsDrafts?: Record<string, UtsDraft>;
   utsFormat?: 'esai' | 'proyek_video';
   groups?: GroupProject[];
   questions?: UtsQuestion[];
@@ -68,6 +70,7 @@ export const UtsExamView: React.FC<UtsExamViewProps> = ({
   currentStudent,
   utsQuestions = [],
   utsSubmissions = [],
+  utsDrafts = {},
   utsFormat = 'esai',
   groups = [],
   questions = [],
@@ -147,6 +150,8 @@ export const UtsExamView: React.FC<UtsExamViewProps> = ({
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [draftSavedTimestamp, setDraftSavedTimestamp] = useState<string | null>(null);
+  const [draftSyncStatus, setDraftSyncStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
+  const [monitoringDraftStudentId, setMonitoringDraftStudentId] = useState<string | null>(null);
 
   // Question Management states (Dosen)
   const [isAddingQuestion, setIsAddingQuestion] = useState(false);
@@ -166,6 +171,35 @@ export const UtsExamView: React.FC<UtsExamViewProps> = ({
   const [isSavingGrade, setIsSavingGrade] = useState(false);
   const [resettingUtsStudentId, setResettingUtsStudentId] = useState<string | null>(null);
   const [confirmResetUtsId, setConfirmResetUtsId] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!currentStudent || isDosen || studentSubmission || !isExamOpen) return;
+    const hasDraftContent = (Object.values(answers) as string[]).some(answer => answer.trim().length > 0) || Boolean(docLink.trim());
+    if (!hasDraftContent) return;
+
+    let active = true;
+    setDraftSyncStatus('saving');
+    const timer = window.setTimeout(async () => {
+      const result = await saveUtsDraftApi({
+        studentId: currentStudent.id,
+        answers,
+        docLink: docLink.trim(),
+      });
+      if (!active) return;
+      if (result.success) {
+        setDraftSavedTimestamp(new Date(result.savedAt || Date.now()).toLocaleTimeString('id-ID'));
+        setDraftSyncStatus('saved');
+      } else {
+        setDraftSyncStatus('error');
+        setErrorMsg(result.error || 'Draf UTS gagal disinkronkan ke server.');
+      }
+    }, 1200);
+
+    return () => {
+      active = false;
+      window.clearTimeout(timer);
+    };
+  }, [answers, currentStudent?.id, docLink, isDosen, isExamOpen, studentSubmission]);
 
   const handleResetUtsSubmission = async (targetStudentId: string, studentName: string) => {
     setResettingUtsStudentId(targetStudentId);
@@ -227,6 +261,14 @@ export const UtsExamView: React.FC<UtsExamViewProps> = ({
       }
       setDocLink(studentSubmission.docLink || '');
     } else if (currentStudent) {
+      const serverDraft = utsDrafts[currentStudent.id];
+      if (serverDraft) {
+        setAnswers(serverDraft.answers || {});
+        setDocLink(serverDraft.docLink || '');
+        setDraftSavedTimestamp(new Date(serverDraft.savedAt).toLocaleTimeString('id-ID'));
+        setDraftSyncStatus('saved');
+        return;
+      }
       try {
         const draft = localStorage.getItem(`uts_draft_${currentStudent.id}`);
         if (draft && (draft.trim().startsWith('{') || draft.trim().startsWith('['))) {
@@ -238,7 +280,7 @@ export const UtsExamView: React.FC<UtsExamViewProps> = ({
         setAnswers({});
       }
     }
-  }, [currentStudent?.id, studentSubmission]);
+  }, [currentStudent?.id, studentSubmission, utsDrafts[currentStudent?.id || '']?.savedAt]);
 
   // Auto-fill grading fields when selecting student for grading
   useEffect(() => {
@@ -435,6 +477,7 @@ export const UtsExamView: React.FC<UtsExamViewProps> = ({
   const handleAnswerChange = (qNum: number, text: string) => {
     const updated = { ...answers, [qNum]: text };
     setAnswers(updated);
+    setDraftSyncStatus('saving');
     if (currentStudent) {
       try {
         localStorage.setItem(`uts_draft_${currentStudent.id}`, JSON.stringify(updated));
@@ -478,11 +521,13 @@ export const UtsExamView: React.FC<UtsExamViewProps> = ({
       });
 
       if (res.success) {
-        setSuccessMsg('Lembar Jawaban UTS (Individu) berhasil dikirim dan tersimpan otomatis ke sistem SIAKAD Dosen!');
+        setSuccessMsg(res.offlineStored
+          ? 'Jawaban UTS tersimpan di perangkat dan akan disinkronkan saat koneksi kembali.'
+          : 'Lembar Jawaban UTS berhasil disimpan permanen dan tersedia di portal dosen.');
         await onRefreshData().catch(() => {});
         setActiveTab('status');
       } else {
-        setErrorMsg('Gagal mengirimkan UTS. Silakan coba kembali.');
+        setErrorMsg(res.error || 'Gagal mengirimkan UTS. Silakan coba kembali.');
       }
     } catch {
       setErrorMsg('Terjadi gangguan jaringan saat pengiriman.');
@@ -1502,7 +1547,13 @@ export const UtsExamView: React.FC<UtsExamViewProps> = ({
                   </div>
                   {draftSavedTimestamp && (
                     <span className="text-[11px] text-emerald-700 font-semibold bg-emerald-50 px-2.5 py-1 rounded-full border border-emerald-200">
-                      Draft tersimpan otomatis: {draftSavedTimestamp}
+                      {draftSyncStatus === 'saving'
+                        ? 'Menyinkronkan draf...'
+                        : draftSyncStatus === 'saved'
+                        ? `Draf tersimpan di server: ${draftSavedTimestamp}`
+                        : draftSyncStatus === 'error'
+                        ? 'Gagal sinkron; salinan lokal tetap ada'
+                        : `Draft lokal: ${draftSavedTimestamp}`}
                     </span>
                   )}
                 </div>
@@ -1893,6 +1944,82 @@ export const UtsExamView: React.FC<UtsExamViewProps> = ({
                     </div>
                   ))}
                 </div>
+              </div>
+
+              <div className="bg-white rounded-2xl p-5 border border-emerald-200 shadow-xs space-y-3">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-emerald-100 pb-3">
+                  <div>
+                    <h3 className="font-bold text-base text-slate-900">Pemantauan Pengerjaan UTS</h3>
+                    <p className="text-xs text-slate-500">Draf lintas perangkat diperbarui otomatis.</p>
+                  </div>
+                  <span className="text-xs font-bold text-emerald-800 bg-emerald-50 px-3 py-1 rounded-full">
+                    {Object.keys(utsDrafts).length} draf tersimpan
+                  </span>
+                </div>
+
+                <div className="overflow-x-auto">
+                  <table className="w-full text-left text-xs text-slate-700">
+                    <thead className="bg-slate-100 text-slate-600 uppercase text-[10px] font-bold">
+                      <tr>
+                        <th className="py-2 px-3">Mahasiswa</th>
+                        <th className="py-2 px-3 text-center">Progres</th>
+                        <th className="py-2 px-3">Status</th>
+                        <th className="py-2 px-3">Update terakhir</th>
+                        <th className="py-2 px-3 text-right">Aksi</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-100">
+                      {students.map(student => {
+                        const draft = utsDrafts[student.id];
+                        const submitted = activeSubmissions.some(sub => sub.studentId === student.id);
+                        const answeredCount = (Object.values(draft?.answers || {}) as string[]).filter(answer => answer.trim().length > 0).length;
+                        const progress = activeQuestions.length ? Math.min(100, Math.round(answeredCount / activeQuestions.length * 100)) : 0;
+                        return (
+                          <tr key={student.id} className="hover:bg-slate-50">
+                            <td className="py-2.5 px-3 font-semibold">{student.name}</td>
+                            <td className="py-2.5 px-3 text-center">{answeredCount}/{activeQuestions.length} soal ({progress}%)</td>
+                            <td className="py-2.5 px-3">
+                              <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
+                                submitted ? 'bg-emerald-100 text-emerald-800' : draft && answeredCount ? 'bg-amber-100 text-amber-800' : 'bg-slate-100 text-slate-600'
+                              }`}>
+                                {submitted ? 'Terkumpul' : draft && answeredCount ? 'Sedang mengerjakan' : 'Belum mulai'}
+                              </span>
+                            </td>
+                            <td className="py-2.5 px-3 text-slate-500">
+                              {draft?.savedAt ? new Date(draft.savedAt).toLocaleTimeString('id-ID') : '-'}
+                            </td>
+                            <td className="py-2.5 px-3 text-right">
+                              <button
+                                type="button"
+                                disabled={!draft}
+                                onClick={() => setMonitoringDraftStudentId(current => current === student.id ? null : student.id)}
+                                className="px-2.5 py-1 rounded border border-emerald-200 text-emerald-800 hover:bg-emerald-50 disabled:opacity-40 disabled:cursor-not-allowed"
+                              >
+                                {monitoringDraftStudentId === student.id ? 'Tutup draf' : 'Lihat draf'}
+                              </button>
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+
+                {monitoringDraftStudentId && utsDrafts[monitoringDraftStudentId] && (
+                  <div className="max-h-80 overflow-y-auto rounded-xl border border-emerald-200 bg-emerald-50/50 p-4 space-y-3">
+                    <h4 className="font-bold text-sm text-emerald-950">
+                      Draf UTS: {utsDrafts[monitoringDraftStudentId].studentName}
+                    </h4>
+                    {activeQuestions.map(question => (
+                      <div key={question.id} className="rounded-lg border border-slate-200 bg-white p-3">
+                        <div className="text-xs font-bold text-slate-800">Soal {question.number}: {question.title}</div>
+                        <p className="mt-1 whitespace-pre-wrap text-xs text-slate-700">
+                          {utsDrafts[monitoringDraftStudentId].answers[question.number] || 'Belum dijawab'}
+                        </p>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
 
               {/* Rekap Pengumpulan & Deteksi AI Mahasiswa (Ternilai Otomatis) */}

@@ -1958,6 +1958,10 @@ export const DosenPortal: React.FC<DosenPortalProps> = ({
                                   <span className="inline-flex items-center gap-1 text-[10px] font-bold text-purple-900 bg-purple-100 border border-purple-300 px-2 py-0.5 rounded-full" title="Makalah Cetak Fisik Terverifikasi Dosen (Bebas Upload File)">
                                     <Printer size={10} className="text-purple-700" /> {sub.grade !== undefined ? `Cetak: ${sub.grade}` : 'Cetak Fisik'}
                                   </span>
+                                ) : sub.hardcopyRequested ? (
+                                  <span className="inline-flex items-center gap-1 text-[10px] font-bold text-amber-900 bg-amber-100 border border-amber-300 px-2 py-0.5 rounded-full">
+                                    <Printer size={10} /> Menunggu verifikasi printout
+                                  </span>
                                 ) : (
                                   <span className="inline-flex items-center gap-1 text-[10px] font-bold text-emerald-700 bg-emerald-100 px-2 py-0.5 rounded-full">
                                     <CheckCircle2 size={11} /> {sub.grade !== undefined ? `Nilai: ${sub.grade}` : 'Terkirim'}
@@ -3656,11 +3660,19 @@ export const DosenPortal: React.FC<DosenPortalProps> = ({
                 <option value="">Pilih mahasiswa...</option>
                 {(students || []).map(student => {
                   const studentSub = (submissions || []).find(sub => sub.studentId === student.id);
-                  const isPrintout = Boolean(studentSub?.isHardcopyPrint || studentSub?.makalahType === 'hardcopy_print');
+                  const isPrintout = Boolean(studentSub?.isHardcopyPrint || (studentSub?.makalahType === 'hardcopy_print' && !studentSub?.hardcopyRequested));
                   const hasDigitalFile = Boolean(studentSub && (
                     studentSub.pptFileData || studentSub.pptUrl || studentSub.makalahFileData || studentSub.makalahUrl
                   ));
-                  const status = isPrintout ? 'Printout' : hasDigitalFile ? 'File diunggah' : studentSub ? 'Terkirim' : 'Belum terkumpul';
+                  const status = isPrintout
+                    ? 'Printout terverifikasi'
+                    : studentSub?.hardcopyRequested
+                    ? 'Printout menunggu verifikasi'
+                    : hasDigitalFile
+                    ? 'File diunggah'
+                    : studentSub
+                    ? 'Terkirim'
+                    : 'Belum terkumpul';
                   return (
                     <option key={student.id} value={student.id}>
                       {student.name} - {status}
@@ -3671,12 +3683,21 @@ export const DosenPortal: React.FC<DosenPortalProps> = ({
               <button
                 type="button"
                 disabled={!submissionActionSubmission}
-                onClick={() => submissionActionSubmission && handleOpenReviewIndiv(submissionActionSubmission)}
+                onClick={() => {
+                  if (!submissionActionSubmission) return;
+                  if (submissionActionSubmission.hardcopyRequested && submissionActionStudent) {
+                    handleOpenHardcopyModal(submissionActionStudent, submissionActionSubmission, submissionActionSubmission.meetingNumber);
+                  } else {
+                    handleOpenReviewIndiv(submissionActionSubmission);
+                  }
+                }}
                 className="flex items-center justify-center gap-1.5 px-3 py-2 bg-indigo-700 hover:bg-indigo-800 text-white rounded-lg text-xs font-bold disabled:bg-slate-300 disabled:cursor-not-allowed"
                 title="Buka kiriman digital atau nilai makalah printout yang sudah dicatat"
               >
                 <Eye size={13} />
-                <span>{submissionActionSubmission?.isHardcopyPrint || submissionActionSubmission?.makalahType === 'hardcopy_print'
+                <span>{submissionActionSubmission?.hardcopyRequested
+                  ? 'Verifikasi Printout'
+                  : submissionActionSubmission?.isHardcopyPrint || submissionActionSubmission?.makalahType === 'hardcopy_print'
                   ? 'Nilai Printout'
                   : 'Review Unggahan'}</span>
               </button>
@@ -3793,7 +3814,8 @@ export const DosenPortal: React.FC<DosenPortalProps> = ({
                 );
                 const hasMakalah = Boolean(
                   (sub.makalahType === 'link' && sub.makalahUrl) ||
-                  (sub.makalahType === 'file' && (sub.makalahFileData || sub.makalahFileName))
+                  (sub.makalahType === 'file' && (sub.makalahFileData || sub.makalahFileName)) ||
+                  sub.hardcopyRequested
                 );
 
                 return (
@@ -3860,6 +3882,11 @@ export const DosenPortal: React.FC<DosenPortalProps> = ({
                           <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-lg text-xs font-bold bg-purple-100 text-purple-900 border border-purple-300 shadow-2xs">
                             <Printer size={13} className="text-purple-700" />
                             <span>Makalah: Cetak Fisik (Hardcopy) Diterima • Bebas Upload File</span>
+                          </span>
+                        ) : sub.hardcopyRequested ? (
+                          <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-lg text-xs font-bold bg-amber-100 text-amber-900 border border-amber-300">
+                            <Printer size={13} />
+                            <span>Makalah: Printout diminta • Menunggu verifikasi dosen</span>
                           </span>
                         ) : hasMakalah ? (
                           <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-bold bg-purple-50 text-purple-800 border border-purple-200">

@@ -74,6 +74,7 @@ export interface IndividualSubmission {
   pptFileName?: string;
   pptFileData?: string; // base64 or stored URL
   makalahType?: 'link' | 'file' | 'hardcopy_print';
+  hardcopyRequested?: boolean; // Mahasiswa meminta verifikasi penyerahan makalah cetak
   isHardcopyPrint?: boolean; // True jika makalah dikumpulkan versi cetak/print fisik langsung ke dosen (tanpa upload file)
   hardcopyReceivedAt?: string; // Waktu penerimaan berkas cetak oleh dosen
   hardcopyReceiver?: string; // Nama dosen yang menerima berkas cetak
@@ -141,6 +142,14 @@ export interface UtsSubmission {
   aiVerdict?: 'Orisinal Mahasiswa' | 'Campuran' | 'Terindikasi AI / Copas';
   aiDetectedFlags?: string[];      // Daftar frasa atau pola khas AI yang terdeteksi
   aiAnalysisNotes?: string;
+}
+
+export interface UtsDraft {
+  studentId: string;
+  studentName: string;
+  answers: Record<number, string>;
+  docLink?: string;
+  savedAt: string;
 }
 
 export interface StudentGrade {
@@ -266,6 +275,7 @@ export interface CourseDataPayload {
   submissions: IndividualSubmission[];
   utsQuestions: UtsQuestion[];
   utsSubmissions: UtsSubmission[];
+  utsDrafts?: Record<string, UtsDraft>;
   uasQuestions?: UtsQuestion[];
   uasSubmissions?: UtsSubmission[];
   quizQuestions?: QuizQuestion[];
@@ -300,6 +310,7 @@ export interface SiakadDatabase {
   allTimeSubmissions?: IndividualSubmission[];
   utsQuestions: UtsQuestion[];
   utsSubmissions: UtsSubmission[];
+  utsDrafts?: Record<string, UtsDraft>;
   uasQuestions?: UtsQuestion[];
   uasSubmissions?: UtsSubmission[];
   quizQuestions?: QuizQuestion[];

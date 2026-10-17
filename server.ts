@@ -30,6 +30,7 @@ import {
   SiakadDatabase,
   Student,
   IndividualSubmission,
+  UtsDraft,
   UtsSubmission,
   UtsQuestion,
   StudentGrade,
@@ -1524,6 +1525,7 @@ function loadDatabase(): SiakadDatabase {
         allTimeSubmissions: parsed.allTimeSubmissions || parsed.submissions || [],
         utsQuestions: activeRoomData.utsQuestions || (activeCourseId.includes('mpi3') ? INITIAL_UTS_QUESTIONS_SEM3 : INITIAL_DATABASE.utsQuestions),
         utsSubmissions: activeRoomData.utsSubmissions || [],
+        utsDrafts: activeRoomData.utsDrafts || parsed.utsDrafts || {},
         uasQuestions: activeRoomData.uasQuestions || (INITIAL_DATABASE.uasQuestions || INITIAL_UAS_QUESTIONS),
         uasSubmissions: activeRoomData.uasSubmissions || [],
         quizQuestions: activeRoomData.quizQuestions || INITIAL_QUIZ_QUESTIONS,
@@ -1675,6 +1677,7 @@ function saveDatabase(): void {
       if (db.courseProfile) db.allCoursesData[db.activeCourseId].profile = db.courseProfile;
       if (db.submissions) db.allCoursesData[db.activeCourseId].submissions = db.submissions;
       if (db.utsSubmissions) db.allCoursesData[db.activeCourseId].utsSubmissions = db.utsSubmissions;
+      if (db.utsDrafts) db.allCoursesData[db.activeCourseId].utsDrafts = db.utsDrafts;
       if (db.uasSubmissions) db.allCoursesData[db.activeCourseId].uasSubmissions = db.uasSubmissions;
       if (db.quizSubmissions) db.allCoursesData[db.activeCourseId].quizSubmissions = db.quizSubmissions;
     }
@@ -2060,7 +2063,7 @@ app.post('/api/submissions', (req, res) => {
   }
 
   saveDatabase();
-  res.json({ success: true, submission: updatedSubmission });
+  res.json({ success: true, durable: !IS_SERVERLESS, submission: updatedSubmission });
 });
 
 // 3B. Konfirmasi Makalah Cetak / Hardcopy oleh Dosen (Tanpa Perlu Upload File)
@@ -2092,6 +2095,7 @@ app.post(['/api/submissions/confirm-print', '/submissions/confirm-print'], (req,
   if (sub) {
     sub.isHardcopyPrint = Boolean(isHardcopyPrint);
     if (isHardcopyPrint) {
+      sub.hardcopyRequested = false;
       sub.makalahType = 'hardcopy_print';
       sub.hardcopyReceivedAt = nowIso;
       sub.hardcopyReceiver = dosenName;
@@ -2101,6 +2105,7 @@ app.post(['/api/submissions/confirm-print', '/submissions/confirm-print'], (req,
         sub.notes = 'Makalah telah dikumpulkan dalam bentuk berkas cetak fisik (print out) langsung ke Dosen Pengampu.';
       }
     } else {
+      sub.hardcopyRequested = false;
       sub.makalahType = sub.makalahFileData ? 'file' : (sub.makalahUrl ? 'link' : undefined);
     }
     if (grade !== undefined && grade !== null && grade !== '') {
@@ -2534,6 +2539,31 @@ app.post('/api/individual-grade', (req, res) => {
   });
 });
 
+// Save an in-progress UTS draft so lecturers can monitor work across devices.
+app.post('/api/uts-drafts', (req, res) => {
+  const studentId = String(req.body?.studentId || '');
+  const student = (db.students || []).find(item => item.id === studentId);
+  if (!student) {
+    return res.status(404).json({ error: 'Mahasiswa tidak ditemukan pada course aktif.' });
+  }
+  if (!isDosenAuthorized(req) && db.utsExamSettings?.isOpen === false) {
+    return res.status(403).json({ error: 'UTS sedang dikunci; draf tidak dapat diperbarui.' });
+  }
+
+  const answers = req.body?.answers && typeof req.body.answers === 'object' ? req.body.answers : {};
+  const draft: UtsDraft = {
+    studentId: student.id,
+    studentName: student.name,
+    answers,
+    docLink: typeof req.body?.docLink === 'string' ? req.body.docLink : '',
+    savedAt: new Date().toISOString(),
+  };
+  if (!db.utsDrafts) db.utsDrafts = {};
+  db.utsDrafts[studentId] = draft;
+  saveDatabase();
+  res.json({ success: true, durable: !IS_SERVERLESS, draft });
+});
+
 // 7b. Submit UTS answers (Mahasiswa - 5 Soal Essay dengan Deteksi AI & Penilaian Otomatis)
 app.post('/api/uts-submissions', (req, res) => {
   const { studentId, studentName, answers, docLink, fileName, fileData } = req.body;
@@ -2619,6 +2649,7 @@ app.post('/api/uts-submissions', (req, res) => {
   } else {
     db.utsSubmissions.push(updatedSubmission);
   }
+  if (db.utsDrafts) delete db.utsDrafts[studentId];
 
   // Automatically synchronize UTS grade with SIAKAD academic record
   if (!db.grades) db.grades = {};
@@ -2648,7 +2679,12 @@ app.post('/api/uts-submissions', (req, res) => {
   }
 
   saveDatabase();
-  res.json({ success: true, submission: updatedSubmission, studentGrade: db.grades[studentId] });
+  res.json({
+    success: true,
+    durable: !IS_SERVERLESS,
+    submission: updatedSubmission,
+    studentGrade: db.grades[studentId],
+  });
 });
 
 // 7b-2. Delete / Reset UTS submission (Only Dosen, allows student to resubmit for revision)
@@ -2749,6 +2785,7 @@ app.post('/api/uts/sync-from-rps', (req, res) => {
   const cTitle = db.courseProfile?.name || db.courseProfile?.courseTitle || 'Mata Kuliah Aktif';
   res.json({
     success: true,
+    durable: !IS_SERVERLESS,
     message: `5 Soal Essay UTS berhasil disinkronkan otomatis dari materi RPS Pertemuan 1-7 (${cTitle})!`,
     questions: db.utsQuestions,
   });
@@ -2783,6 +2820,7 @@ app.post('/api/uas/sync-from-rps', (req, res) => {
   const cTitle = db.courseProfile?.name || db.courseProfile?.courseTitle || 'Mata Kuliah Aktif';
   res.json({
     success: true,
+    durable: !IS_SERVERLESS,
     message: `5 Soal Essay UAS berhasil disinkronkan otomatis dari materi RPS Pertemuan 9-15 (${cTitle})!`,
     questions: db.uasQuestions,
   });
@@ -4265,19 +4303,39 @@ app.post('/api/students/restore-canonical', (req, res) => {
   });
 });
 
-// 10a-3c. Sync 10 Official Presentation & Video Groups from RPS STAI Jarinabi
-app.all('/api/groups/sync-rps-10', (req, res) => {
-  db.groups = JSON.parse(JSON.stringify(INITIAL_GROUPS));
-  db.meetings = db.meetings.map(m => {
-    const initM = INITIAL_MEETINGS.find(im => im.meetingNumber === m.meetingNumber);
-    return initM ? { ...m, ...initM } : m;
-  });
+// Sync the active course groups from its saved RPS without replacing its roster.
+app.post('/api/groups/sync-rps-10', (req, res) => {
+  if (!isDosenAuthorized(req)) {
+    return res.status(403).json({ error: 'Akses ditolak. Hanya Dosen yang dapat menyinkronkan kelompok RPS.' });
+  }
+
+  if (db.rpsRawText?.trim()) {
+    const { detectedMeetings, updatedStudents, detectedGroups } = parseRpsContent(
+      db.rpsRawText,
+      'auto',
+      db.students || [],
+      db.groups || []
+    );
+    if (detectedMeetings.length > 0) db.meetings = detectedMeetings;
+    if (updatedStudents.length > 0) db.students = updatedStudents;
+    if (detectedGroups.length > 0) db.groups = detectedGroups;
+  }
+
+  if (!Array.isArray(db.groups) || db.groups.length === 0) {
+    return res.status(400).json({ error: 'Kelompok course aktif kosong dan RPS belum memuat daftar kelompok.' });
+  }
+
   saveDatabase();
+  const { dosenPassword, ...safeDb } = db;
   res.json({
     success: true,
-    message: '10 Kelompok resmi perkuliahan & presentasi sesuai RPS STAI Jarinabi berhasil disinkronkan otomatis!',
+    durable: !IS_SERVERLESS,
+    message: db.rpsRawText?.trim()
+      ? 'Kelompok dan jadwal berhasil disinkronkan dari RPS course aktif.'
+      : 'Tidak ada teks RPS tersimpan; kelompok semester aktif dipertahankan tanpa perubahan.',
     groups: db.groups,
     meetings: db.meetings,
+    data: safeDb,
   });
 });
 
@@ -4698,6 +4756,7 @@ function switchActiveCourseInternal(courseId: string): boolean {
       submissions: JSON.parse(JSON.stringify(db.submissions || [])),
       utsQuestions: JSON.parse(JSON.stringify(db.utsQuestions || [])),
       utsSubmissions: JSON.parse(JSON.stringify(db.utsSubmissions || [])),
+      utsDrafts: JSON.parse(JSON.stringify(db.utsDrafts || {})),
       uasQuestions: JSON.parse(JSON.stringify(db.uasQuestions || [])),
       uasSubmissions: JSON.parse(JSON.stringify(db.uasSubmissions || [])),
       quizQuestions: JSON.parse(JSON.stringify(db.quizQuestions || [])),
@@ -4723,6 +4782,7 @@ function switchActiveCourseInternal(courseId: string): boolean {
     db.submissions = saved.submissions || [];
     db.utsQuestions = saved.utsQuestions || [];
     db.utsSubmissions = saved.utsSubmissions || [];
+    db.utsDrafts = saved.utsDrafts || {};
     if (saved.uasQuestions && saved.uasQuestions.length > 0) db.uasQuestions = saved.uasQuestions;
     db.uasSubmissions = saved.uasSubmissions || [];
     if (saved.quizQuestions && saved.quizQuestions.length > 0) db.quizQuestions = saved.quizQuestions;
@@ -4742,6 +4802,7 @@ function switchActiveCourseInternal(courseId: string): boolean {
     db.submissions = initC.submissions || [];
     db.utsQuestions = initC.utsQuestions || [];
     db.utsSubmissions = initC.utsSubmissions || [];
+    db.utsDrafts = initC.utsDrafts || {};
     db.uasQuestions = initC.uasQuestions || [];
     db.uasSubmissions = initC.uasSubmissions || [];
     db.quizQuestions = initC.quizQuestions || [];
@@ -4782,6 +4843,7 @@ function switchActiveCourseInternal(courseId: string): boolean {
     db.grades = cohort.grades;
     db.submissions = [];
     db.utsSubmissions = [];
+    db.utsDrafts = {};
     db.uasSubmissions = [];
     db.quizSubmissions = [];
     db.attendance = { 1: {} };
@@ -4798,6 +4860,7 @@ function switchActiveCourseInternal(courseId: string): boolean {
       submissions: [],
       utsQuestions: db.utsQuestions,
       utsSubmissions: [],
+      utsDrafts: {},
       uasQuestions: db.uasQuestions,
       uasSubmissions: [],
       quizQuestions: db.quizQuestions,
@@ -5868,7 +5931,7 @@ app.put('/api/meetings/:meetingNumber', (req, res) => {
   if (assignmentDescription !== undefined) meeting.assignmentDescription = assignmentDescription;
 
   saveDatabase();
-  res.json({ success: true, meeting });
+  res.json({ success: true, durable: !IS_SERVERLESS, meeting });
 });
 
 // 10h. Add New Meeting (Only Dosen)
@@ -5900,7 +5963,7 @@ app.post('/api/meetings', (req, res) => {
   db.meetings.sort((a, b) => a.meetingNumber - b.meetingNumber);
 
   saveDatabase();
-  res.json({ success: true, meeting: newMeeting });
+  res.json({ success: true, durable: !IS_SERVERLESS, meeting: newMeeting });
 });
 
 // 10i. Delete Meeting (Only Dosen)
@@ -5913,7 +5976,7 @@ app.delete('/api/meetings/:meetingNumber', (req, res) => {
   db.meetings = (db.meetings || []).filter(m => m.meetingNumber !== meetingNum);
 
   saveDatabase();
-  res.json({ success: true, deleted: initialLen - db.meetings.length });
+  res.json({ success: true, durable: !IS_SERVERLESS, deleted: initialLen - db.meetings.length });
 });
 
 // 10i-2. Add Presenter / Student to Meeting Presentation Group (Dosen & Mahasiswa)

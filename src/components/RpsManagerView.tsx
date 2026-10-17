@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { MeetingSchedule, DosenProfile, Student, GroupProject } from '../types';
 import { getDefaultRpsText } from '../data/initialData';
 import {
@@ -42,6 +42,13 @@ interface RpsManagerViewProps {
   onRefreshData: () => Promise<void>;
 }
 
+const formatMeetingDateLabel = (isoDate: string) => {
+  const parsedDate = new Date(`${isoDate}T00:00:00`);
+  return Number.isNaN(parsedDate.getTime())
+    ? isoDate
+    : parsedDate.toLocaleDateString('id-ID', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
+};
+
 export const RpsManagerView: React.FC<RpsManagerViewProps> = ({
   meetings = [],
   courseProfile,
@@ -54,6 +61,7 @@ export const RpsManagerView: React.FC<RpsManagerViewProps> = ({
 
   // Upload & text sync state
   const [pastedRpsText, setPastedRpsText] = useState<string>(rpsRawText || '');
+  const lastServerRpsRef = useRef(rpsRawText || '');
   const [uploadedFileName, setUploadedFileName] = useState<string>('');
   const [uploadedFileBase64, setUploadedFileBase64] = useState<string>('');
   const [isReadingDoc, setIsReadingDoc] = useState<boolean>(false);
@@ -62,6 +70,12 @@ export const RpsManagerView: React.FC<RpsManagerViewProps> = ({
   const [uasFormat, setUasFormat] = useState<'proyek' | 'esai'>('proyek');
   const [isProcessingSync, setIsProcessingSync] = useState(false);
   const [syncFeedback, setSyncFeedback] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
+
+  useEffect(() => {
+    const nextRpsText = rpsRawText || '';
+    setPastedRpsText(current => current === lastServerRpsRef.current ? nextRpsText : current);
+    lastServerRpsRef.current = nextRpsText;
+  }, [rpsRawText, courseProfile?.courseTitle]);
 
   // Course profile edit state
   const [courseForm, setCourseForm] = useState<DosenProfile>({
@@ -195,7 +209,7 @@ export const RpsManagerView: React.FC<RpsManagerViewProps> = ({
   // Generate Complete 16-Meeting RPS Syllabus Automatically
   const handleGenerateRpsAuto = async () => {
     const currentCourseTitle = courseProfile?.courseTitle || courseForm.courseTitle || courseForm.name || 'Filsafat Ilmu';
-    const generatedRps = getDefaultRpsText(currentCourseTitle);
+    const generatedRps = pastedRpsText.trim() || rpsRawText.trim() || getDefaultRpsText(currentCourseTitle);
 
     setPastedRpsText(generatedRps);
     setIsProcessingSync(true);
@@ -366,6 +380,8 @@ export const RpsManagerView: React.FC<RpsManagerViewProps> = ({
         });
         setMeetingToDelete(null);
         await onRefreshData();
+      } else {
+        setMeetingFeedback({ type: 'error', message: 'Gagal menghapus pertemuan. Periksa akses dosen dan koneksi storage.' });
       }
     } catch {
       setMeetingFeedback({
@@ -405,6 +421,8 @@ export const RpsManagerView: React.FC<RpsManagerViewProps> = ({
           message: 'Pertemuan baru berhasil ditambahkan ke RPS!',
         });
         await onRefreshData();
+      } else {
+        setMeetingFeedback({ type: 'error', message: 'Pertemuan gagal disimpan. Periksa akses dosen dan konfigurasi storage Vercel.' });
       }
     } finally {
       setIsAddingMeeting(false);
@@ -958,10 +976,16 @@ export const RpsManagerView: React.FC<RpsManagerViewProps> = ({
                           Tanggal Presensi / Pertemuan:
                         </label>
                         <input
-                          type="text"
-                          value={meetingForm.dateStr || ''}
-                          onChange={(e) => setMeetingForm({ ...meetingForm, dateStr: e.target.value })}
-                          placeholder="Contoh: Sabtu, 12 September 2026"
+                          type="date"
+                          value={meetingForm.isoDate || ''}
+                          onChange={(e) => {
+                            const isoDate = e.target.value;
+                            setMeetingForm(prev => ({
+                              ...prev,
+                              isoDate,
+                              dateStr: isoDate ? formatMeetingDateLabel(isoDate) : prev.dateStr,
+                            }));
+                          }}
                           className="w-full px-3 py-2 rounded-xl border border-slate-300 text-xs font-semibold bg-white"
                         />
                       </div>
@@ -1267,10 +1291,16 @@ export const RpsManagerView: React.FC<RpsManagerViewProps> = ({
                     Tanggal Pertemuan:
                   </label>
                   <input
-                    type="text"
-                    placeholder="Sabtu, 31 Oktober 2026"
-                    value={newMeetingForm.dateStr || ''}
-                    onChange={(e) => setNewMeetingForm({ ...newMeetingForm, dateStr: e.target.value })}
+                    type="date"
+                    value={newMeetingForm.isoDate || ''}
+                    onChange={(e) => {
+                      const isoDate = e.target.value;
+                      setNewMeetingForm(prev => ({
+                        ...prev,
+                        isoDate,
+                        dateStr: isoDate ? formatMeetingDateLabel(isoDate) : prev.dateStr,
+                      }));
+                    }}
                     className="w-full px-3 py-2 rounded-xl border border-slate-300 text-xs font-semibold bg-white"
                   />
                 </div>

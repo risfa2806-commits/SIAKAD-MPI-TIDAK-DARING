@@ -2168,6 +2168,7 @@ app.post(['/api/submissions/confirm-print', '/submissions/confirm-print'], (req,
   const { dosenPassword, ...safeDb } = db;
   res.json({
     success: true,
+    durable: !IS_SERVERLESS,
     message: isHardcopyPrint
       ? `Makalah cetak fisik untuk ${std.name} berhasil dikonfirmasi diterima!`
       : `Status cetak fisik untuk ${std.name} berhasil dibatalkan.`,
@@ -2525,7 +2526,12 @@ app.post('/api/individual-grade', (req, res) => {
   }
 
   saveDatabase();
-  res.json({ success: true, submission: sub, studentGrade: db.grades[studentId] });
+  res.json({
+    success: true,
+    durable: !IS_SERVERLESS,
+    submission: sub,
+    studentGrade: db.grades[studentId],
+  });
 });
 
 // 7b. Submit UTS answers (Mahasiswa - 5 Soal Essay dengan Deteksi AI & Penilaian Otomatis)

@@ -88,12 +88,12 @@ export function getLocalCache(): SiakadDatabase {
   return { ...INITIAL_DATABASE, allCoursesData: JSON.parse(JSON.stringify(INITIAL_ALL_COURSES_DATA)) };
 }
 
-export function saveLocalCache(db: SiakadDatabase) {
+export function saveLocalCache(db: SiakadDatabase, persistCloud = true) {
   // Always persist complete data to IndexedDB (no 5MB storage limit)
   saveToIndexedDb(db).catch(err => console.warn('IndexedDB auto-save warning:', err));
 
   // If Supabase is connected, persist cloud database copy
-  if (isSupabaseConfigured()) {
+  if (persistCloud && isSupabaseConfigured()) {
     saveDatabaseToSupabase(db).catch(err => console.warn('Supabase auto-save warning:', err));
   }
 
@@ -262,6 +262,21 @@ function alignCourseRoom(targetDb: SiakadDatabase): SiakadDatabase {
 export async function fetchDatabase(): Promise<{ db: SiakadDatabase; isOffline: boolean }> {
   const activeCourseId = typeof window !== 'undefined' ? localStorage.getItem('siakad_active_course_id') : null;
   const dbUrl = activeCourseId ? `/api/db?courseId=${encodeURIComponent(activeCourseId)}` : '/api/db';
+
+  if (isSupabaseConfigured()) {
+    try {
+      const sbData = await fetchDatabaseFromSupabase();
+      if (sbData && Array.isArray(sbData.students) && sbData.students.length > 0) {
+        const finalDb = alignCourseRoom(sbData);
+        saveLocalCache(finalDb, false);
+        syncPendingSubmissionsToServer();
+        return { db: finalDb, isOffline: false };
+      }
+    } catch {
+      // Fall back to the API and local caches when cloud storage is unavailable.
+    }
+  }
+
   const headers: Record<string, string> = { Accept: 'application/json' };
   if (activeCourseId) {
     headers['x-active-course-id'] = activeCourseId;
@@ -478,20 +493,31 @@ export async function confirmHardcopySubmissionApi(payload: {
 
     const json = await safeJson(res, null);
     if (res.ok && json?.success) {
+      let updatedDb: SiakadDatabase | null = json.data || null;
+      if (!updatedDb && json.submission) {
+        updatedDb = getLocalCache();
+        if (!updatedDb.submissions) updatedDb.submissions = [];
+        const idx = updatedDb.submissions.findIndex(s =>
+          s.id === json.submission.id ||
+          (s.studentId === payload.studentId && Number(s.meetingNumber) === Number(json.submission.meetingNumber))
+        );
+        if (idx >= 0) updatedDb.submissions[idx] = json.submission;
+        else updatedDb.submissions.push(json.submission);
+      }
+
+      if (updatedDb) {
+        saveLocalCache(updatedDb, false);
+        if (isSupabaseConfigured()) {
+          if (!await saveDatabaseToSupabase(updatedDb)) {
+            return { success: false, error: 'Status printout gagal disimpan ke Supabase.' };
+          }
+        } else if (json.durable === false) {
+          return { success: false, error: 'Penyimpanan permanen Vercel belum dikonfigurasi. Hubungkan Supabase terlebih dahulu.' };
+        }
+      }
+
       if (typeof window !== 'undefined') {
         window.dispatchEvent(new CustomEvent('siakad_course_updated'));
-      }
-      if (json.data) {
-        saveLocalCache(json.data);
-        saveToIndexedDb(json.data).catch(() => {});
-      } else if (json.submission) {
-        const currentDb = getLocalCache();
-        if (!currentDb.submissions) currentDb.submissions = [];
-        const idx = currentDb.submissions.findIndex(s => s.id === json.submission.id || (s.studentId === payload.studentId && s.meetingNumber === json.submission.meetingNumber));
-        if (idx >= 0) currentDb.submissions[idx] = json.submission;
-        else currentDb.submissions.push(json.submission);
-        saveLocalCache(currentDb);
-        saveToIndexedDb(currentDb).catch(() => {});
       }
       return { success: true, submission: json.submission, message: json.message };
     }
@@ -616,7 +642,33 @@ export async function gradeIndividualTask(
         meetingNumber: extra?.meetingNumber,
       }),
     });
-    return res.ok;
+    const json = await safeJson(res, null);
+    if (!res.ok || !json?.success) return false;
+
+    const currentDb = getLocalCache();
+    if (!currentDb.submissions) currentDb.submissions = [];
+    if (json.submission) {
+      const idx = currentDb.submissions.findIndex(s =>
+        s.id === json.submission.id ||
+        (s.studentId === studentId && Number(s.meetingNumber) === Number(json.submission.meetingNumber))
+      );
+      if (idx >= 0) currentDb.submissions[idx] = json.submission;
+      else currentDb.submissions.push(json.submission);
+    }
+    if (json.studentGrade) {
+      currentDb.grades = { ...(currentDb.grades || {}), [studentId]: json.studentGrade };
+    }
+
+    saveLocalCache(currentDb, false);
+    if (isSupabaseConfigured()) {
+      if (!await saveDatabaseToSupabase(currentDb)) return false;
+    } else if (json.durable === false) {
+      return false;
+    }
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('siakad_course_updated'));
+    }
+    return true;
   } catch {
     return false;
   }

@@ -712,10 +712,19 @@ export const DosenPortal: React.FC<DosenPortalProps> = ({
   };
 
   // Grading state for individual PPT
+  const [submissionActionStudentId, setSubmissionActionStudentId] = useState('');
   const [gradingStudentId, setGradingStudentId] = useState<string | null>(null);
   const [indivScoreInput, setIndivScoreInput] = useState<number>(85);
   const [indivFeedbackInput, setIndivFeedbackInput] = useState<string>('');
   const [isGradingIndiv, setIsGradingIndiv] = useState(false);
+  const submissionActionStudent = (students || []).find(student => student.id === submissionActionStudentId) || null;
+  const submissionActionSubmissions = submissionActionStudent
+    ? (submissions || []).filter(sub => sub.studentId === submissionActionStudent.id)
+    : [];
+  const submissionActionSubmission = submissionActionStudent
+    ? submissionActionSubmissions.find(sub => (Number(sub.meetingNumber) || 2) === (Number(submissionActionStudent.meetingNumber) || 2))
+      || submissionActionSubmissions[0]
+    : undefined;
 
   // Grading state for UTS 5 essay
   const [gradingUtsStudentId, setGradingUtsStudentId] = useState<string | null>(null);
@@ -898,7 +907,7 @@ export const DosenPortal: React.FC<DosenPortalProps> = ({
       if (!saved) {
         setActionAlertMsg({
           type: 'error',
-          text: 'Nilai gagal disimpan. Periksa koneksi dan akses portal dosen, lalu coba lagi.',
+          text: 'Nilai gagal disimpan. Periksa akses dosen, koneksi, serta VITE_SUPABASE_URL dan VITE_SUPABASE_ANON_KEY di Vercel.',
         });
         return;
       }
@@ -1263,9 +1272,25 @@ export const DosenPortal: React.FC<DosenPortalProps> = ({
   const handleSaveIndivGrade = async (studentId: string) => {
     setIsGradingIndiv(true);
     try {
-      await gradeIndividualTask(studentId, indivScoreInput, indivFeedbackInput);
+      const saved = await gradeIndividualTask(studentId, indivScoreInput, indivFeedbackInput);
+      if (!saved) {
+        setActionAlertMsg({
+          type: 'error',
+          text: 'Nilai gagal disimpan. Periksa akses dosen, koneksi, serta VITE_SUPABASE_URL dan VITE_SUPABASE_ANON_KEY di Vercel.',
+        });
+        return;
+      }
+      setActionAlertMsg({
+        type: 'success',
+        text: `Nilai presentasi mahasiswa berhasil disimpan (${indivScoreInput}).`,
+      });
       setGradingStudentId(null);
       await onRefreshData();
+    } catch {
+      setActionAlertMsg({
+        type: 'error',
+        text: 'Terjadi kesalahan saat menyimpan nilai presentasi.',
+      });
     } finally {
       setIsGradingIndiv(false);
     }
@@ -3618,24 +3643,56 @@ export const DosenPortal: React.FC<DosenPortalProps> = ({
                 Tugas presentasi yang sudah dikirim (individu atau kelompok sesuai pembagian dosen). Dosen dapat mengunduh PPT, membuka Canva, dan memberikan nilai serta catatan evaluasi.
               </p>
             </div>
-            <div className="flex items-center gap-2 self-start sm:self-auto flex-wrap">
+            <div className="flex flex-col sm:flex-row sm:items-center gap-2 self-start sm:self-auto">
               <span className="text-xs font-bold px-3 py-1.5 bg-indigo-100 text-indigo-900 rounded-xl">
                 Total Terkirim: {submissions?.length || 0} / {students?.length || 0}
               </span>
+              <select
+                value={submissionActionStudentId}
+                onChange={event => setSubmissionActionStudentId(event.target.value)}
+                className="min-w-56 px-3 py-2 text-xs font-semibold rounded-lg border border-slate-300 bg-white text-slate-800"
+                aria-label="Pilih mahasiswa dan status pengumpulan"
+              >
+                <option value="">Pilih mahasiswa...</option>
+                {(students || []).map(student => {
+                  const studentSub = (submissions || []).find(sub => sub.studentId === student.id);
+                  const isPrintout = Boolean(studentSub?.isHardcopyPrint || studentSub?.makalahType === 'hardcopy_print');
+                  const hasDigitalFile = Boolean(studentSub && (
+                    studentSub.pptFileData || studentSub.pptUrl || studentSub.makalahFileData || studentSub.makalahUrl
+                  ));
+                  const status = isPrintout ? 'Printout' : hasDigitalFile ? 'File diunggah' : studentSub ? 'Terkirim' : 'Belum terkumpul';
+                  return (
+                    <option key={student.id} value={student.id}>
+                      {student.name} - {status}
+                    </option>
+                  );
+                })}
+              </select>
               <button
                 type="button"
-                onClick={() => {
-                  const first = students[0];
-                  if (first) {
-                    const existingSub = (submissions || []).find(s => s.studentId === first.id);
-                    handleOpenHardcopyModal(first, existingSub, existingSub?.meetingNumber || first.meetingNumber || 2);
-                  }
-                }}
-                className="flex items-center gap-1.5 px-3.5 py-1.5 bg-purple-700 hover:bg-purple-800 text-white rounded-xl text-xs font-bold transition-all shadow-xs cursor-pointer"
+                disabled={!submissionActionSubmission}
+                onClick={() => submissionActionSubmission && handleOpenReviewIndiv(submissionActionSubmission)}
+                className="flex items-center justify-center gap-1.5 px-3 py-2 bg-indigo-700 hover:bg-indigo-800 text-white rounded-lg text-xs font-bold disabled:bg-slate-300 disabled:cursor-not-allowed"
+                title="Buka kiriman digital atau nilai makalah printout yang sudah dicatat"
+              >
+                <Eye size={13} />
+                <span>{submissionActionSubmission?.isHardcopyPrint || submissionActionSubmission?.makalahType === 'hardcopy_print'
+                  ? 'Nilai Printout'
+                  : 'Review Unggahan'}</span>
+              </button>
+              <button
+                type="button"
+                disabled={!submissionActionStudent}
+                onClick={() => submissionActionStudent && handleOpenHardcopyModal(
+                  submissionActionStudent,
+                  submissionActionSubmission,
+                  submissionActionSubmission?.meetingNumber || submissionActionStudent.meetingNumber || 2
+                )}
+                className="flex items-center justify-center gap-1.5 px-3 py-2 bg-purple-700 hover:bg-purple-800 text-white rounded-lg text-xs font-bold disabled:bg-slate-300 disabled:cursor-not-allowed"
                 title="Tandai mahasiswa telah mengumpulkan makalah cetak fisik langsung ke dosen (Bebas upload file)"
               >
                 <Printer size={13} />
-                <span>+ Konfirmasi Makalah Cetak Fisik</span>
+                <span>Konfirmasi Printout</span>
               </button>
             </div>
           </div>
@@ -6375,7 +6432,7 @@ export const DosenPortal: React.FC<DosenPortalProps> = ({
                 />
               </div>
 
-              {hardcopyModalData.sub?.isHardcopyPrint && (
+              {(hardcopyModalData.sub?.isHardcopyPrint || hardcopyModalData.sub?.makalahType === 'hardcopy_print') && (
                 <div className="p-2.5 bg-emerald-50 border border-emerald-200 rounded-xl flex items-center justify-between">
                   <div className="flex items-center gap-1.5 text-emerald-900 font-bold text-[11px]">
                     <CheckCircle2 size={13} className="text-emerald-600" />
@@ -6394,7 +6451,7 @@ export const DosenPortal: React.FC<DosenPortalProps> = ({
             </div>
 
             <div className="flex items-center justify-between gap-2 pt-2 border-t border-slate-100">
-              {hardcopyModalData.sub?.isHardcopyPrint ? (
+              {hardcopyModalData.sub?.isHardcopyPrint || hardcopyModalData.sub?.makalahType === 'hardcopy_print' ? (
                 <button
                   type="button"
                   disabled={isSavingHardcopy}

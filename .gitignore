@@ -9,3 +9,5 @@ coverage/
 powershell.cmd
 data/siakad-all-time-submissions.json
 data/*.backup.json
+data/siakad-db.private.local.json
+src/data/initialData.private.local.ts

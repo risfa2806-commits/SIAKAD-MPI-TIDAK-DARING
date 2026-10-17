@@ -768,7 +768,7 @@ export const DosenPortal: React.FC<DosenPortalProps> = ({
     sub?: IndividualSubmission;
     meetingNumber: number;
   } | null>(null);
-  const [hardcopyScoreInput, setHardcopyScoreInput] = useState<number | ''>(85);
+  const [hardcopyScoreInput, setHardcopyScoreInput] = useState<number | ''>('');
   const [hardcopyNotesInput, setHardcopyNotesInput] = useState<string>(
     'Makalah telah dikumpulkan dalam bentuk berkas cetak fisik (print out) langsung ke Dosen Pengampu.'
   );
@@ -781,7 +781,7 @@ export const DosenPortal: React.FC<DosenPortalProps> = ({
       sub,
       meetingNumber: targetMeeting,
     });
-    setHardcopyScoreInput(sub?.grade !== undefined ? sub.grade : 85);
+    setHardcopyScoreInput(sub?.grade !== undefined ? sub.grade : '');
     setHardcopyNotesInput(
       sub?.notes || 'Makalah telah dikumpulkan dalam bentuk berkas cetak fisik (print out) langsung ke Dosen Pengampu.'
     );
@@ -836,12 +836,12 @@ export const DosenPortal: React.FC<DosenPortalProps> = ({
     const std = student || (students || []).find(s => s.id === sub.studentId);
     printHardcopySubmissionReceiptPdf({
       campusName: currentFullDb.courseProfile?.campusName,
-      studyProgram: currentFullDb.courseProfile?.programName,
+      studyProgram: currentFullDb.courseProfile?.studyProgram,
       courseTitle: currentFullDb.courseProfile?.courseTitle,
       courseCode: currentFullDb.courseProfile?.courseCode,
       semester: currentFullDb.courseProfile?.semester,
       dosenFullName: currentFullDb.courseProfile?.dosenName,
-      dosenNidn: currentFullDb.courseProfile?.dosenNidn,
+      dosenNidn: currentFullDb.courseProfile?.nip,
       studentName: sub.studentName || std?.name || 'Mahasiswa',
       studentNim: std?.nim || sub.studentId || '-',
       rpsPart: sub.rpsPart,
@@ -891,16 +891,28 @@ export const DosenPortal: React.FC<DosenPortalProps> = ({
     if (!reviewIndivSub) return;
     setIsGradingIndiv(true);
     try {
-      await gradeIndividualTask(reviewIndivSub.studentId, indivScoreInput, indivFeedbackInput, {
+      const saved = await gradeIndividualTask(reviewIndivSub.studentId, indivScoreInput, indivFeedbackInput, {
         submissionId: reviewIndivSub.id,
         meetingNumber: reviewIndivSub.meetingNumber,
       });
+      if (!saved) {
+        setActionAlertMsg({
+          type: 'error',
+          text: 'Nilai gagal disimpan. Periksa koneksi dan akses portal dosen, lalu coba lagi.',
+        });
+        return;
+      }
       setActionAlertMsg({
         type: 'success',
         text: `Nilai tugas Pertemuan ${reviewIndivSub.meetingNumber} mahasiswa ${reviewIndivSub.studentName} (${indivScoreInput}) berhasil disimpan!`,
       });
       setReviewIndivSub(null);
       await onRefreshData();
+    } catch {
+      setActionAlertMsg({
+        type: 'error',
+        text: 'Terjadi kesalahan saat menyimpan nilai. Silakan coba lagi.',
+      });
     } finally {
       setIsGradingIndiv(false);
     }
@@ -5298,14 +5310,26 @@ export const DosenPortal: React.FC<DosenPortalProps> = ({
                         <span>Buka & Pratinjau Naskah Dokumen Makalah</span>
                       </button>
 
-                      <button
-                        type="button"
-                        onClick={() => handleOpenDocPreview(reviewIndivSub, 'makalah')}
-                        className="w-full flex items-center justify-center gap-2 py-1.5 px-3 bg-slate-800 hover:bg-slate-900 text-white rounded-lg text-xs font-bold transition-colors shadow-xs cursor-pointer"
-                      >
-                        <Download size={14} />
-                        <span>Unduh File Dokumen ({reviewIndivSub.makalahFileName || 'Makalah.doc'})</span>
-                      </button>
+                      {reviewIndivSub.makalahFileData || reviewIndivSub.makalahUrl ? (
+                        <a
+                          href={reviewIndivSub.makalahFileData || reviewIndivSub.makalahUrl}
+                          download={reviewIndivSub.makalahUrl?.startsWith('http') ? undefined : (reviewIndivSub.makalahFileName || 'Makalah.doc')}
+                          target={reviewIndivSub.makalahUrl?.startsWith('http') && !reviewIndivSub.makalahFileData ? '_blank' : undefined}
+                          rel={reviewIndivSub.makalahUrl?.startsWith('http') && !reviewIndivSub.makalahFileData ? 'noreferrer' : undefined}
+                          className="w-full flex items-center justify-center gap-2 py-1.5 px-3 bg-slate-800 hover:bg-slate-900 text-white rounded-lg text-xs font-bold transition-colors shadow-xs cursor-pointer"
+                        >
+                          {reviewIndivSub.makalahUrl?.startsWith('http') && !reviewIndivSub.makalahFileData
+                            ? <ExternalLink size={14} />
+                            : <Download size={14} />}
+                          <span>{reviewIndivSub.makalahUrl?.startsWith('http') && !reviewIndivSub.makalahFileData
+                            ? 'Buka Tautan Dokumen'
+                            : `Unduh File Dokumen (${reviewIndivSub.makalahFileName || 'Makalah'})`}</span>
+                        </a>
+                      ) : (
+                        <div className="text-center text-[11px] text-slate-500 py-1.5">
+                          Tidak ada file digital untuk diunduh.
+                        </div>
+                      )}
 
                       <button
                         type="button"
@@ -6290,7 +6314,7 @@ export const DosenPortal: React.FC<DosenPortalProps> = ({
                         sub: existingSub,
                         meetingNumber: existingSub?.meetingNumber || std.meetingNumber || 2,
                       });
-                      setHardcopyScoreInput(existingSub?.grade !== undefined ? existingSub.grade : 85);
+                      setHardcopyScoreInput(existingSub?.grade !== undefined ? existingSub.grade : '');
                     }
                   }}
                   className="w-full px-3 py-2 text-xs rounded-xl border border-slate-300 bg-white font-medium focus:ring-2 focus:ring-purple-500 focus:outline-none"
@@ -6308,7 +6332,15 @@ export const DosenPortal: React.FC<DosenPortalProps> = ({
                   <label className="block font-bold text-slate-700 mb-1">Pertemuan Sesi:</label>
                   <select
                     value={hardcopyModalData.meetingNumber}
-                    onChange={(e) => setHardcopyModalData(prev => prev ? { ...prev, meetingNumber: Number(e.target.value) } : null)}
+                    onChange={(e) => {
+                      const meetingNumber = Number(e.target.value);
+                      const existingSub = (submissions || []).find(s =>
+                        s.studentId === hardcopyModalData.student.id && (Number(s.meetingNumber) || 2) === meetingNumber
+                      );
+                      setHardcopyModalData(prev => prev ? { ...prev, meetingNumber, sub: existingSub } : null);
+                      setHardcopyScoreInput(existingSub?.grade !== undefined ? existingSub.grade : '');
+                      setHardcopyNotesInput(existingSub?.notes || 'Makalah telah dikumpulkan dalam bentuk berkas cetak fisik (print out) langsung ke Dosen Pengampu.');
+                    }}
                     className="w-full px-3 py-2 text-xs rounded-xl border border-slate-300 bg-white font-medium focus:ring-2 focus:ring-purple-500 focus:outline-none"
                   >
                     {[1, 2, 3, 4, 5, 6, 7, 9, 10, 11, 12, 13, 14, 15].map(num => (
@@ -6319,7 +6351,7 @@ export const DosenPortal: React.FC<DosenPortalProps> = ({
                   </select>
                 </div>
                 <div>
-                  <label className="block font-bold text-slate-700 mb-1">Nilai Makalah (0-100):</label>
+                  <label className="block font-bold text-slate-700 mb-1">Nilai Makalah (opsional, 0-100):</label>
                   <input
                     type="number"
                     min={0}

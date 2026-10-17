@@ -94,7 +94,10 @@ app.use(express.urlencoded({ extended: true, limit: '150mb' }));
 
 const IS_SERVERLESS = Boolean(process.env.VERCEL || process.env.AWS_LAMBDA_FUNCTION_NAME);
 const DATA_DIR = IS_SERVERLESS ? path.join('/tmp', 'data') : path.join(process.cwd(), 'data');
-const DATA_FILE = path.join(DATA_DIR, 'siakad-db.json');
+const PRIVATE_LOCAL_DATA_FILE = path.join(process.cwd(), 'data', 'siakad-db.private.local.json');
+const DATA_FILE = !IS_SERVERLESS && fs.existsSync(PRIVATE_LOCAL_DATA_FILE)
+  ? PRIVATE_LOCAL_DATA_FILE
+  : path.join(DATA_DIR, 'siakad-db.json');
 const BACKUP_FILE = path.join(DATA_DIR, 'siakad-db.backup.json');
 const SUBMISSIONS_VAULT_FILE = path.join(DATA_DIR, 'siakad-all-time-submissions.json');
 

@@ -1,4 +1,5 @@
 import express from 'express';
+import { createClient } from '@supabase/supabase-js';
 import path from 'path';
 import fs from 'fs';
 import JSZip from 'jszip';
@@ -124,6 +125,7 @@ try {
 
 // In-memory cache + disk persistence
 let db: SiakadDatabase;
+let databaseMutationVersion = 0;
 
 function calculateLetterGrade(score: number): string {
   if (score >= 85) return 'A';
@@ -1665,6 +1667,7 @@ function loadDatabase(): SiakadDatabase {
 
 function saveDatabase(): void {
   try {
+    databaseMutationVersion += 1;
     db.lastUpdated = new Date().toISOString();
 
     // Ensure all changes to active course are mirrored into allCoursesData for cross-semester persistence
@@ -1716,6 +1719,53 @@ function saveDatabase(): void {
 }
 
 db = loadDatabase();
+
+let serverSupabaseClient: any = null;
+let durableDatabaseWriteQueue: Promise<void> = Promise.resolve();
+function getServerSupabaseClient() {
+  const supabaseUrl = process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL;
+  const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  if (!supabaseUrl || !serviceRoleKey) return null;
+  if (!serverSupabaseClient) {
+    serverSupabaseClient = createClient(supabaseUrl, serviceRoleKey, {
+      auth: { persistSession: false, autoRefreshToken: false },
+    });
+  }
+  return serverSupabaseClient;
+}
+
+function persistServerDatabaseToSupabase(): Promise<void> {
+  const snapshot = JSON.parse(JSON.stringify(db));
+  delete snapshot.dosenPassword;
+  const write = durableDatabaseWriteQueue.then(async () => {
+    const client = getServerSupabaseClient();
+    if (!client) throw new Error('SUPABASE_URL atau SUPABASE_SERVICE_ROLE_KEY belum diatur.');
+    const { error } = await client
+      .from('siakad_storage')
+      .upsert({ id: 'main_database', data: snapshot, updated_at: new Date().toISOString() });
+    if (error) throw error;
+  });
+  durableDatabaseWriteQueue = write.catch(() => {});
+  return write;
+}
+
+async function loadServerDatabaseFromSupabase(): Promise<void> {
+  const client = getServerSupabaseClient();
+  if (!client) return;
+  const { data, error } = await client
+    .from('siakad_storage')
+    .select('data')
+    .eq('id', 'main_database')
+    .maybeSingle();
+  if (error) throw error;
+  if (data?.data && typeof data.data === 'object') {
+    db = {
+      ...INITIAL_DATABASE,
+      ...data.data,
+      allCoursesData: data.data.allCoursesData || INITIAL_ALL_COURSES_DATA,
+    };
+  }
+}
 
 // Durable upload storage directory for all documents (PPT, Makalah, UTS, UAS, Quiz)
 const UPLOAD_DIR = path.join(DATA_DIR, 'uploads');
@@ -1789,6 +1839,48 @@ setInterval(() => {
     saveDatabase();
   }
 }, 60 * 1000);
+
+app.use((req, res, next) => {
+  if (!IS_SERVERLESS || !getServerSupabaseClient()) return next();
+  loadServerDatabaseFromSupabase()
+    .then(() => next())
+    .catch((error: any) => {
+      console.error('Failed to load durable SIAKAD database:', error);
+      res.status(503).json({ success: false, error: 'Database cloud tidak dapat dibaca. Periksa konfigurasi Supabase.' });
+    });
+});
+
+app.use((req, res, next) => {
+  if (!IS_SERVERLESS || !['POST', 'PUT', 'PATCH', 'DELETE'].includes(req.method)) return next();
+
+  const startingMutationVersion = databaseMutationVersion;
+  const sendJson = res.json.bind(res);
+  res.json = ((payload: any) => {
+    if (databaseMutationVersion === startingMutationVersion || payload?.success !== true) {
+      return sendJson(payload);
+    }
+
+    const client = getServerSupabaseClient();
+    if (!client) {
+      res.statusCode = 503;
+      return sendJson({
+        success: false,
+        durable: false,
+        error: 'Penyimpanan permanen belum dikonfigurasi. Atur SUPABASE_URL dan SUPABASE_SERVICE_ROLE_KEY di Vercel.',
+      });
+    }
+
+    persistServerDatabaseToSupabase()
+      .then(() => sendJson({ ...payload, durable: true }))
+      .catch((error: any) => {
+        res.statusCode = 503;
+        sendJson({ success: false, durable: false, error: `Gagal menyimpan database permanen: ${error?.message || 'Supabase tidak merespons'}` });
+      });
+    return res;
+  }) as typeof res.json;
+
+  next();
+});
 
 // ================= API ROUTES =================
 

@@ -253,6 +253,12 @@ function alignCourseRoom(targetDb: SiakadDatabase): SiakadDatabase {
   return targetDb;
 }
 
+async function persistDatabaseIfNeeded(data: SiakadDatabase, serverDurable?: boolean): Promise<boolean> {
+  if (serverDurable === true) return true;
+  if (isSupabaseConfigured()) return saveDatabaseToSupabase(data);
+  return serverDurable !== false;
+}
+
 // Fetch database from server with silent retry and smooth fallback to IndexedDB / local cache
 export async function fetchDatabase(): Promise<{ db: SiakadDatabase; isOffline: boolean }> {
   const activeCourseId = typeof window !== 'undefined' ? localStorage.getItem('siakad_active_course_id') : null;
@@ -384,12 +390,8 @@ export async function submitIndividualTask(submission: IndividualSubmission): Pr
       if (subIdx >= 0) currentDb.submissions[subIdx] = savedSub;
       else currentDb.submissions.push(savedSub);
 
-      if (isSupabaseConfigured()) {
-        if (!await saveDatabaseToSupabase(currentDb)) {
-          return { success: false, submission, offlineStored: false, error: 'Tugas diterima server, tetapi gagal disimpan permanen ke Supabase.' };
-        }
-      } else if (data.durable === false) {
-        return { success: false, submission, offlineStored: false, error: 'Penyimpanan permanen Vercel belum dikonfigurasi. Hubungkan Supabase terlebih dahulu.' };
+      if (!await persistDatabaseIfNeeded(currentDb, data.durable)) {
+        return { success: false, submission, offlineStored: false, error: 'Tugas gagal disimpan permanen. Periksa konfigurasi Supabase Vercel.' };
       }
 
       saveLocalCache(currentDb, false);
@@ -497,12 +499,8 @@ export async function confirmHardcopySubmissionApi(payload: {
 
     if (updatedDb) {
       saveLocalCache(updatedDb, false);
-      if (isSupabaseConfigured()) {
-        if (!await saveDatabaseToSupabase(updatedDb)) {
-          return { success: false, error: 'Status printout gagal disimpan ke Supabase.' };
-        }
-      } else if (json.durable === false) {
-        return { success: false, error: 'Penyimpanan permanen Vercel belum dikonfigurasi. Hubungkan Supabase terlebih dahulu.' };
+      if (!await persistDatabaseIfNeeded(updatedDb, json.durable)) {
+        return { success: false, error: 'Status printout gagal disimpan permanen. Periksa konfigurasi Supabase Vercel.' };
       }
     }
 
@@ -653,12 +651,8 @@ export async function gradeIndividualTask(
     }
 
     saveLocalCache(currentDb, false);
-    if (isSupabaseConfigured()) {
-      if (!await saveDatabaseToSupabase(currentDb)) {
-        return { success: false, error: 'Nilai gagal disimpan ke Supabase. Periksa tabel dan izin siakad_storage.' };
-      }
-    } else if (json.durable === false) {
-      return { success: false, error: 'Penyimpanan permanen Vercel belum dikonfigurasi. Hubungkan Supabase terlebih dahulu.' };
+    if (!await persistDatabaseIfNeeded(currentDb, json.durable)) {
+      return { success: false, error: 'Nilai gagal disimpan permanen. Periksa konfigurasi Supabase Vercel.' };
     }
     if (typeof window !== 'undefined') {
       window.dispatchEvent(new CustomEvent('siakad_course_updated'));
@@ -709,12 +703,8 @@ export async function saveUtsDraftApi(payload: {
       currentDb.allCoursesData[currentDb.activeCourseId].utsDrafts = currentDb.utsDrafts;
     }
 
-    if (isSupabaseConfigured()) {
-      if (!await saveDatabaseToSupabase(currentDb)) {
-        return { success: false, error: 'Draf diterima server, tetapi gagal tersimpan permanen di Supabase.' };
-      }
-    } else if (json.durable === false) {
-      return { success: false, error: 'Pemantauan draf UTS lintas perangkat memerlukan Supabase pada Vercel.' };
+    if (!await persistDatabaseIfNeeded(currentDb, json.durable)) {
+      return { success: false, error: 'Draf diterima server tetapi gagal tersimpan permanen ke storage Vercel.' };
     }
 
     saveLocalCache(currentDb, false);
@@ -762,12 +752,8 @@ export async function submitUtsSubmissionApi(payload: {
     else localDb.utsSubmissions.push(savedUts);
     if (localDb.utsDrafts) delete localDb.utsDrafts[payload.studentId];
 
-    if (isSupabaseConfigured()) {
-      if (!await saveDatabaseToSupabase(localDb)) {
-        return { success: false, submission: savedUts, offlineStored: false, error: 'Jawaban diterima server tetapi gagal disimpan permanen ke Supabase.' };
-      }
-    } else if (data.durable === false) {
-      return { success: false, submission: savedUts, offlineStored: false, error: 'Penyimpanan UTS permanen di Vercel memerlukan Supabase.' };
+    if (!await persistDatabaseIfNeeded(localDb, data.durable)) {
+      return { success: false, submission: savedUts, offlineStored: false, error: 'Jawaban UTS gagal disimpan permanen ke storage Vercel.' };
     }
 
     saveLocalCache(localDb, false);
@@ -984,10 +970,8 @@ export async function syncUtsQuestionsFromRpsApi(): Promise<{
     }
     const local = getLocalCache();
     local.utsQuestions = json.questions;
-    if (isSupabaseConfigured()) {
-      if (!await saveDatabaseToSupabase(local)) return { success: false, error: 'Soal UTS dibuat tetapi gagal disimpan ke Supabase.' };
-    } else if (json.durable === false) {
-      return { success: false, error: 'Soal UTS tidak tersimpan permanen di Vercel. Hubungkan Supabase.' };
+    if (!await persistDatabaseIfNeeded(local, json.durable)) {
+      return { success: false, error: 'Soal UTS gagal disimpan permanen ke storage Vercel.' };
     }
     saveLocalCache(local, false);
     await saveToIndexedDb(local).catch(() => {});
@@ -1017,10 +1001,8 @@ export async function syncUasQuestionsFromRpsApi(): Promise<{
     }
     const local = getLocalCache();
     local.uasQuestions = json.questions;
-    if (isSupabaseConfigured()) {
-      if (!await saveDatabaseToSupabase(local)) return { success: false, error: 'Soal UAS dibuat tetapi gagal disimpan ke Supabase.' };
-    } else if (json.durable === false) {
-      return { success: false, error: 'Soal UAS tidak tersimpan permanen di Vercel. Hubungkan Supabase.' };
+    if (!await persistDatabaseIfNeeded(local, json.durable)) {
+      return { success: false, error: 'Soal UAS gagal disimpan permanen ke storage Vercel.' };
     }
     saveLocalCache(local, false);
     await saveToIndexedDb(local).catch(() => {});
@@ -2526,14 +2508,10 @@ export async function uploadRpsApi(payload: {
     }
 
     if (json.data) {
-      saveLocalCache(json.data, false);
-      if (isSupabaseConfigured()) {
-        if (!await saveDatabaseToSupabase(json.data)) {
-          return { success: false, error: 'RPS diproses, tetapi gagal disimpan ke Supabase. Periksa siakad_storage dan izin upsert.' };
-        }
-      } else if (json.durable === false) {
-        return { success: false, error: 'RPS tidak tersimpan permanen di Vercel. Atur VITE_SUPABASE_URL dan VITE_SUPABASE_ANON_KEY.' };
+      if (!await persistDatabaseIfNeeded(json.data, json.durable)) {
+        return { success: false, error: 'RPS gagal disimpan permanen ke storage Vercel.' };
       }
+      saveLocalCache(json.data, false);
     }
     return json;
   } catch (err) {
@@ -2597,11 +2575,7 @@ export async function updateMeetingApi(meetingNumber: number, data: any): Promis
     if (currentDb.activeCourseId && currentDb.allCoursesData?.[currentDb.activeCourseId]) {
       currentDb.allCoursesData[currentDb.activeCourseId].meetings = currentDb.meetings;
     }
-    if (isSupabaseConfigured()) {
-      if (!await saveDatabaseToSupabase(currentDb)) return null;
-    } else if (json.durable === false) {
-      return null;
-    }
+    if (!await persistDatabaseIfNeeded(currentDb, json.durable)) return null;
     saveLocalCache(currentDb, false);
     await saveToIndexedDb(currentDb).catch(() => {});
     return json.meeting;
@@ -2629,11 +2603,7 @@ export async function addMeetingApi(data: any): Promise<any> {
     if (currentDb.activeCourseId && currentDb.allCoursesData?.[currentDb.activeCourseId]) {
       currentDb.allCoursesData[currentDb.activeCourseId].meetings = currentDb.meetings;
     }
-    if (isSupabaseConfigured()) {
-      if (!await saveDatabaseToSupabase(currentDb)) return null;
-    } else if (json.durable === false) {
-      return null;
-    }
+    if (!await persistDatabaseIfNeeded(currentDb, json.durable)) return null;
     saveLocalCache(currentDb, false);
     await saveToIndexedDb(currentDb).catch(() => {});
     return json.meeting;
@@ -2660,11 +2630,7 @@ export async function deleteMeetingApi(meetingNumber: number): Promise<boolean> 
     if (currentDb.activeCourseId && currentDb.allCoursesData?.[currentDb.activeCourseId]) {
       currentDb.allCoursesData[currentDb.activeCourseId].meetings = currentDb.meetings;
     }
-    if (isSupabaseConfigured()) {
-      if (!await saveDatabaseToSupabase(currentDb)) return false;
-    } else if (json.durable === false) {
-      return false;
-    }
+    if (!await persistDatabaseIfNeeded(currentDb, json.durable)) return false;
     saveLocalCache(currentDb, false);
     await saveToIndexedDb(currentDb).catch(() => {});
     return true;
@@ -2739,12 +2705,8 @@ export async function syncGroupsRpsApi(): Promise<{
     const json = await safeJson(res, {});
     if (res.ok && json.success) {
       if (json.data) {
-        if (isSupabaseConfigured()) {
-          if (!await saveDatabaseToSupabase(json.data)) {
-            return { success: false, error: 'Kelompok berhasil diproses tetapi gagal disimpan ke Supabase.' };
-          }
-        } else if (json.durable === false) {
-          return { success: false, error: 'Sinkronisasi kelompok di Vercel memerlukan Supabase.' };
+        if (!await persistDatabaseIfNeeded(json.data, json.durable)) {
+          return { success: false, error: 'Sinkronisasi kelompok gagal disimpan permanen ke storage Vercel.' };
         }
         saveLocalCache(json.data, false);
       }
@@ -3531,17 +3493,10 @@ export async function restoreBackupToServer(backupData: any): Promise<{
     });
     const json = await safeJson(res, null);
     if (res.ok && json.success) {
-      if (isSupabaseConfigured()) {
-        if (!await saveDatabaseToSupabase(backupData)) {
-          return {
-            success: false,
-            message: 'Backup diterima server, tetapi gagal disimpan permanen ke Supabase. Periksa tabel siakad_storage dan izin upsert.',
-          };
-        }
-      } else if (json.durable === false) {
+      if (!await persistDatabaseIfNeeded(backupData, json.durable)) {
         return {
           success: false,
-          message: 'Backup tidak dipulihkan permanen. Atur VITE_SUPABASE_URL dan VITE_SUPABASE_ANON_KEY di Vercel.',
+          message: 'Backup gagal disimpan permanen ke storage Vercel.',
         };
       }
 

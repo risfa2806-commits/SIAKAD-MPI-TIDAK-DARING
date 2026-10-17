@@ -12,6 +12,7 @@ import {
   submitPeerReviewApi,
 } from '../services/api';
 import { DocumentPreviewModal, DocumentPreviewData } from './DocumentPreviewModal';
+import { printHardcopySubmissionReceiptPdf } from '../utils/documentExport';
 import {
   FileText,
   Upload,

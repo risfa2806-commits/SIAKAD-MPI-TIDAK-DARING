@@ -73,7 +73,10 @@ export interface IndividualSubmission {
   pptUrl?: string;
   pptFileName?: string;
   pptFileData?: string; // base64 or stored URL
-  makalahType?: 'link' | 'file';
+  makalahType?: 'link' | 'file' | 'hardcopy_print';
+  isHardcopyPrint?: boolean; // True jika makalah dikumpulkan versi cetak/print fisik langsung ke dosen (tanpa upload file)
+  hardcopyReceivedAt?: string; // Waktu penerimaan berkas cetak oleh dosen
+  hardcopyReceiver?: string; // Nama dosen yang menerima berkas cetak
   makalahUrl?: string;
   makalahFileName?: string;
   makalahFileData?: string;

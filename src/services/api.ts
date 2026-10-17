@@ -457,6 +457,94 @@ export async function submitIndividualTask(submission: IndividualSubmission): Pr
   }
 }
 
+// Dosen API: Konfirmasi Penerimaan Makalah Cetak Fisik / Hardcopy (Tanpa Perlu Upload File)
+export async function confirmHardcopySubmissionApi(payload: {
+  studentId: string;
+  meetingNumber?: number;
+  grade?: number;
+  feedback?: string;
+  notes?: string;
+  isHardcopyPrint?: boolean;
+}): Promise<{ success: boolean; submission?: IndividualSubmission; error?: string; message?: string }> {
+  try {
+    const res = await fetch('/api/submissions/confirm-print', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        ...getDosenAuthHeaders(),
+      },
+      body: JSON.stringify({ ...payload, isDosen: true }),
+    });
+
+    const json = await safeJson(res, null);
+    if (res.ok && json?.success) {
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new CustomEvent('siakad_course_updated'));
+      }
+      if (json.data) {
+        saveLocalCache(json.data);
+        saveToIndexedDb(json.data).catch(() => {});
+      } else if (json.submission) {
+        const currentDb = getLocalCache();
+        if (!currentDb.submissions) currentDb.submissions = [];
+        const idx = currentDb.submissions.findIndex(s => s.id === json.submission.id || (s.studentId === payload.studentId && s.meetingNumber === json.submission.meetingNumber));
+        if (idx >= 0) currentDb.submissions[idx] = json.submission;
+        else currentDb.submissions.push(json.submission);
+        saveLocalCache(currentDb);
+        saveToIndexedDb(currentDb).catch(() => {});
+      }
+      return { success: true, submission: json.submission, message: json.message };
+    }
+    return { success: false, error: json?.error || 'Gagal mengonfirmasi pengumpulan makalah cetak' };
+  } catch (err: any) {
+    console.warn('Network error confirming hardcopy submission, saving locally:', err);
+    // Optimistic fallback for offline
+    try {
+      const currentDb = getLocalCache();
+      const std = (currentDb.students || []).find(s => s.id === payload.studentId);
+      if (std) {
+        if (!currentDb.submissions) currentDb.submissions = [];
+        const targetMeeting = payload.meetingNumber !== undefined ? Number(payload.meetingNumber) : (std.meetingNumber || 2);
+        let sub = currentDb.submissions.find(s => s.studentId === std.id && (Number(s.meetingNumber) || 2) === targetMeeting);
+        const nowIso = new Date().toISOString();
+        if (sub) {
+          sub.isHardcopyPrint = payload.isHardcopyPrint !== false;
+          sub.makalahType = sub.isHardcopyPrint ? 'hardcopy_print' : sub.makalahType;
+          sub.hardcopyReceivedAt = nowIso;
+          sub.hardcopyReceiver = currentDb.courseProfile?.dosenName || 'Dosen Pengampu';
+          if (payload.grade !== undefined) sub.grade = Number(payload.grade);
+          if (payload.feedback !== undefined) sub.feedback = payload.feedback;
+        } else {
+          sub = {
+            id: `sub-print-opt-${Date.now()}-${std.id}`,
+            studentId: std.id,
+            studentName: std.name,
+            rpsPart: std.rpsPart || `Pertemuan ${targetMeeting}`,
+            topic: std.topic || 'Tugas Makalah & Presentasi',
+            meetingNumber: targetMeeting,
+            presentationType: std.groupId ? 'kelompok' : 'individu',
+            groupId: std.groupId,
+            pptType: 'link',
+            makalahType: 'hardcopy_print',
+            isHardcopyPrint: true,
+            hardcopyReceivedAt: nowIso,
+            hardcopyReceiver: currentDb.courseProfile?.dosenName || 'Dosen Pengampu',
+            notes: payload.notes || 'Makalah telah dikumpulkan dalam bentuk cetak fisik (print out) langsung ke Dosen Pengampu.',
+            submittedAt: nowIso,
+            grade: payload.grade !== undefined ? Number(payload.grade) : undefined,
+            feedback: payload.feedback || '',
+          };
+          currentDb.submissions.push(sub);
+        }
+        saveLocalCache(currentDb);
+        saveToIndexedDb(currentDb).catch(() => {});
+        return { success: true, submission: sub, message: 'Tersimpan di memori lokal (Mode Cadangan)' };
+      }
+    } catch {}
+    return { success: false, error: 'Kesalahan koneksi saat mengonfirmasi pengumpulan cetak' };
+  }
+}
+
 // Submit group video project
 export async function submitGroupProject(payload: {
   groupId: number;
@@ -1237,6 +1325,9 @@ export async function deleteSubmissionApi(
               sub.makalahUrl = '';
               sub.makalahFileName = '';
               sub.makalahFileData = '';
+              sub.isHardcopyPrint = false;
+              sub.hardcopyReceivedAt = undefined;
+              sub.hardcopyReceiver = undefined;
             }
             if (reason) sub.feedback = reason;
           }

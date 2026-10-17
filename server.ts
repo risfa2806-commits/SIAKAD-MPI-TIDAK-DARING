@@ -1952,8 +1952,12 @@ app.post('/api/submissions', (req, res) => {
     presentationType: isGroupSubmission ? 'kelompok' : 'individu',
     pptUrl,
     pptFileData,
-    makalahUrl,
-    makalahFileData,
+    makalahType: submissionData.makalahType || (submissionData.isHardcopyPrint ? 'hardcopy_print' : (makalahUrl || makalahFileData ? 'file' : undefined)),
+    isHardcopyPrint: Boolean(submissionData.isHardcopyPrint || submissionData.makalahType === 'hardcopy_print'),
+    hardcopyReceivedAt: submissionData.hardcopyReceivedAt || (submissionData.isHardcopyPrint || submissionData.makalahType === 'hardcopy_print' ? new Date().toISOString() : undefined),
+    hardcopyReceiver: submissionData.hardcopyReceiver || (submissionData.isHardcopyPrint || submissionData.makalahType === 'hardcopy_print' ? (db.courseProfile?.dosenName || 'Dosen Pengampu') : undefined),
+    makalahUrl: submissionData.makalahType === 'hardcopy_print' ? undefined : makalahUrl,
+    makalahFileData: submissionData.makalahType === 'hardcopy_print' ? undefined : makalahFileData,
     submittedAt: new Date().toISOString(),
   };
 
@@ -2056,6 +2060,119 @@ app.post('/api/submissions', (req, res) => {
   res.json({ success: true, submission: updatedSubmission });
 });
 
+// 3B. Konfirmasi Makalah Cetak / Hardcopy oleh Dosen (Tanpa Perlu Upload File)
+app.post(['/api/submissions/confirm-print', '/submissions/confirm-print'], (req, res) => {
+  if (!isDosenAuthorized(req)) {
+    return res.status(403).json({ error: 'Akses Ditolak: Hanya Dosen yang berwenang mengonfirmasi pengumpulan makalah cetak!' });
+  }
+
+  const { studentId, meetingNumber, grade, feedback, notes, isHardcopyPrint = true } = req.body;
+  if (!studentId) {
+    return res.status(400).json({ error: 'studentId wajib disertakan' });
+  }
+
+  const std = (db.students || []).find(s => s.id === studentId || s.nim === studentId);
+  if (!std) {
+    return res.status(404).json({ error: 'Mahasiswa tidak ditemukan dalam basis data' });
+  }
+
+  const targetMeeting = meetingNumber !== undefined ? Number(meetingNumber) : (std.meetingNumber || 2);
+  if (!db.submissions) db.submissions = [];
+
+  let sub = db.submissions.find(s =>
+    s.studentId === std.id && (Number(s.meetingNumber) || 2) === targetMeeting
+  );
+
+  const dosenName = db.courseProfile?.dosenName || 'Dosen Pengampu';
+  const nowIso = new Date().toISOString();
+
+  if (sub) {
+    sub.isHardcopyPrint = Boolean(isHardcopyPrint);
+    if (isHardcopyPrint) {
+      sub.makalahType = 'hardcopy_print';
+      sub.hardcopyReceivedAt = nowIso;
+      sub.hardcopyReceiver = dosenName;
+      if (notes) {
+        sub.notes = notes;
+      } else if (!sub.notes) {
+        sub.notes = 'Makalah telah dikumpulkan dalam bentuk berkas cetak fisik (print out) langsung ke Dosen Pengampu.';
+      }
+    } else {
+      sub.makalahType = sub.makalahFileData ? 'file' : (sub.makalahUrl ? 'link' : undefined);
+    }
+    if (grade !== undefined && grade !== null && grade !== '') {
+      sub.grade = Number(grade);
+      sub.gradedAt = nowIso;
+    }
+    if (feedback !== undefined) {
+      sub.feedback = feedback;
+    }
+  } else {
+    // Buat data pengumpulan baru untuk mencatat berkas cetak fisik tanpa file digital
+    sub = {
+      id: `sub-print-${Date.now()}-${std.id}`,
+      studentId: std.id,
+      studentName: std.name,
+      rpsPart: std.rpsPart || `Pertemuan ${targetMeeting}`,
+      topic: std.topic || 'Tugas Makalah & Presentasi RPS',
+      meetingNumber: targetMeeting,
+      presentationType: std.groupId ? 'kelompok' : 'individu',
+      groupId: std.groupId,
+      pptType: 'link',
+      makalahType: 'hardcopy_print',
+      isHardcopyPrint: true,
+      hardcopyReceivedAt: nowIso,
+      hardcopyReceiver: dosenName,
+      notes: notes || 'Makalah telah dikumpulkan dalam bentuk berkas cetak fisik (print out) langsung ke Dosen Pengampu.',
+      submittedAt: nowIso,
+      grade: (grade !== undefined && grade !== null && grade !== '') ? Number(grade) : undefined,
+      feedback: feedback || '',
+      gradedAt: (grade !== undefined && grade !== null && grade !== '') ? nowIso : undefined,
+    };
+    db.submissions.push(sub);
+  }
+
+  // Sinkronkan nilai akademik jika dosen langsung menginput nilai
+  if (sub.grade !== undefined && !isNaN(sub.grade)) {
+    if (!db.grades) db.grades = {};
+    if (!db.grades[std.id]) {
+      db.grades[std.id] = {
+        attendanceScore: 100,
+        attitudeScore: 88,
+        individualScore: sub.grade,
+        utsScore: 85,
+        uasScore: 85,
+        groupScore: 85,
+        finalScore: sub.grade,
+        letterGrade: 'A',
+        notes: sub.feedback || 'Nilai Makalah Cetak (Hardcopy)',
+      };
+    } else {
+      db.grades[std.id].individualScore = sub.grade;
+      if (sub.feedback) db.grades[std.id].notes = sub.feedback;
+    }
+    recalculateStudentGrade(db.grades[std.id]);
+  }
+
+  // Sync to course cache for cross-session persistence
+  if (db.allCoursesData && db.activeCourseId && db.allCoursesData[db.activeCourseId]) {
+    db.allCoursesData[db.activeCourseId].submissions = db.submissions;
+    db.allCoursesData[db.activeCourseId].grades = db.grades;
+  }
+
+  saveDatabase();
+
+  const { dosenPassword, ...safeDb } = db;
+  res.json({
+    success: true,
+    message: isHardcopyPrint
+      ? `Makalah cetak fisik untuk ${std.name} berhasil dikonfirmasi diterima!`
+      : `Status cetak fisik untuk ${std.name} berhasil dibatalkan.`,
+    submission: sub,
+    data: safeDb,
+  });
+});
+
 // 4. Delete submission or part (Only Dosen)
 app.delete('/api/submissions/:id', (req, res) => {
   if (!isDosenAuthorized(req)) {
@@ -2107,7 +2224,12 @@ app.post('/api/submissions/:id/delete-part', (req, res) => {
     if (reason) sub.feedback = reason;
 
     // Check if makalah is also empty
-    const hasMakalah = Boolean((sub.makalahType === 'link' && sub.makalahUrl) || (sub.makalahType === 'file' && sub.makalahFileData));
+    const hasMakalah = Boolean(
+      (sub.makalahType === 'link' && sub.makalahUrl) ||
+      (sub.makalahType === 'file' && sub.makalahFileData) ||
+      sub.isHardcopyPrint ||
+      sub.makalahType === 'hardcopy_print'
+    );
     if (!hasMakalah) {
       db.submissions.splice(subIndex, 1);
       saveDatabase();
@@ -2118,6 +2240,9 @@ app.post('/api/submissions/:id/delete-part', (req, res) => {
     sub.makalahUrl = '';
     sub.makalahFileName = '';
     sub.makalahFileData = '';
+    sub.isHardcopyPrint = false;
+    sub.hardcopyReceivedAt = undefined;
+    sub.hardcopyReceiver = undefined;
     if (reason) sub.feedback = reason;
 
     // Check if ppt is also empty

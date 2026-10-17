@@ -4182,3 +4182,298 @@ export function printQuizRecapPdf(options: {
   const html = generateQuizRecapPrintHtml(options);
   printViaHiddenIframe(html, `Rekap_Kuis_${options.courseTitle || 'SIAKAD'}`);
 }
+
+/**
+ * Generate & Print Official Receipt for Hardcopy / Physical Printout Paper Submission
+ * Mahasiswa/Dosen dapat mencetak surat tanda terima resmi penyerahan makalah cetak fisik
+ */
+export function printHardcopySubmissionReceiptPdf(options: {
+  campusName?: string;
+  studyProgram?: string;
+  courseTitle?: string;
+  courseCode?: string;
+  semester?: string;
+  dosenFullName?: string;
+  dosenNidn?: string;
+  studentName: string;
+  studentNim: string;
+  rpsPart?: string;
+  meetingNumber?: number;
+  topic?: string;
+  submittedAt?: string;
+  receiverName?: string;
+  grade?: number;
+  feedback?: string;
+  notes?: string;
+}): void {
+  const campus = options.campusName || 'INSTITUT AGAMA ISLAM TARBIYATUT THOLABAH';
+  const prodi = options.studyProgram || 'MANAJEMEN PENDIDIKAN ISLAM (MPI)';
+  const course = options.courseTitle || 'Filsafat Ilmu';
+  const dosen = options.dosenFullName || 'Risfa Tri Ulfa, S.Pd., M.Pd.';
+  const nidn = options.dosenNidn || '198806282015032001';
+  const meeting = options.meetingNumber || 2;
+  const rps = options.rpsPart || `Pertemuan ${meeting}`;
+  const topic = options.topic || 'Kajian Makalah Akademik';
+  const receiver = options.receiverName || dosen;
+  const dateStr = options.submittedAt
+    ? new Date(options.submittedAt).toLocaleDateString('id-ID', {
+        weekday: 'long',
+        day: 'numeric',
+        month: 'long',
+        year: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit',
+      })
+    : new Date().toLocaleDateString('id-ID', {
+        weekday: 'long',
+        day: 'numeric',
+        month: 'long',
+        year: 'numeric',
+      });
+
+  const receiptNo = `TT-MKL/${new Date().getFullYear()}/${meeting.toString().padStart(2, '0')}/${options.studentNim.slice(-4)}`;
+
+  const html = `
+    <!DOCTYPE html>
+    <html lang="id">
+    <head>
+      <meta charset="utf-8">
+      <title>Tanda_Terima_Makalah_Cetak_${options.studentName.replace(/\\s+/g, '_')}</title>
+      <style>
+        @page {
+          size: A4 portrait;
+          margin: 15mm 20mm;
+        }
+        body {
+          font-family: 'Times New Roman', Times, serif;
+          font-size: 11pt;
+          line-height: 1.6;
+          color: #111827;
+          background: #fff;
+          margin: 0;
+          padding: 10px;
+        }
+        .kop-table {
+          width: 100%;
+          border-bottom: 3px double #1f2937;
+          padding-bottom: 12px;
+          margin-bottom: 20px;
+        }
+        .kop-center {
+          text-align: center;
+        }
+        .kop-univ {
+          font-size: 14pt;
+          font-weight: bold;
+          text-transform: uppercase;
+          letter-spacing: 0.5px;
+          color: #064e3b;
+          margin: 0;
+        }
+        .kop-fakultas {
+          font-size: 11pt;
+          font-weight: bold;
+          text-transform: uppercase;
+          margin: 2px 0;
+        }
+        .kop-address {
+          font-size: 8.5pt;
+          font-style: italic;
+          color: #4b5563;
+          margin: 0;
+        }
+        .title-box {
+          text-align: center;
+          margin: 20px 0;
+        }
+        .title-main {
+          font-size: 13pt;
+          font-weight: bold;
+          text-decoration: underline;
+          text-transform: uppercase;
+          margin: 0;
+        }
+        .receipt-no {
+          font-size: 9.5pt;
+          color: #374151;
+          margin-top: 4px;
+        }
+        .verified-badge {
+          display: inline-block;
+          background: #ecfdf5;
+          border: 1.5px solid #059669;
+          color: #065f46;
+          font-weight: bold;
+          font-size: 9pt;
+          padding: 4px 14px;
+          border-radius: 9999px;
+          margin-top: 8px;
+        }
+        .content-table {
+          width: 100%;
+          border-collapse: collapse;
+          margin: 18px 0;
+        }
+        .content-table td {
+          padding: 6px 4px;
+          vertical-align: top;
+        }
+        .content-table td.label {
+          width: 28%;
+          font-weight: bold;
+          color: #1f2937;
+        }
+        .content-table td.sep {
+          width: 2%;
+        }
+        .statement-box {
+          background: #f8fafc;
+          border: 1px solid #cbd5e1;
+          border-left: 4px solid #059669;
+          padding: 12px 14px;
+          border-radius: 4px;
+          font-size: 10pt;
+          margin: 20px 0;
+          line-height: 1.5;
+        }
+        .sign-table {
+          width: 100%;
+          margin-top: 35px;
+          page-break-inside: avoid;
+        }
+        .sign-table td {
+          width: 50%;
+          text-align: center;
+          vertical-align: top;
+        }
+        .sign-space {
+          height: 65px;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+        }
+        .watermark {
+          font-size: 8pt;
+          color: #94a3b8;
+          text-align: center;
+          margin-top: 40px;
+          border-top: 1px dashed #cbd5e1;
+          padding-top: 8px;
+        }
+      </style>
+    </head>
+    <body>
+      <table class="kop-table">
+        <tr>
+          <td class="kop-center">
+            <h1 class="kop-univ">${campus}</h1>
+            <p class="kop-fakultas">PROGRAM STUDI ${prodi}</p>
+            <p class="kop-address">Sistem Informasi Akademik Terpadu (SIAKAD) • Arsip Bukti Penyerahan Dokumen</p>
+          </td>
+        </tr>
+      </table>
+
+      <div class="title-box">
+        <h2 class="title-main">SURAT TANDA TERIMA MAKALAH CETAK FISIK (HARDCOPY)</h2>
+        <div class="receipt-no">Nomor Bukti: <strong>${receiptNo}</strong></div>
+        <div class="verified-badge">✓ DITERIMA & DIVERIFIKASI DOSEN PENGAMPU (BEBAS UPLOAD FILE)</div>
+      </div>
+
+      <p style="text-indent: 20px; text-align: justify; margin-bottom: 12px;">
+        Menerangkan dengan sebenarnya bahwa mahasiswa di bawah ini telah menyerahkan naskah tugas karya tulis ilmiah / makalah perkuliahan dalam bentuk <strong>berkas cetak fisik (print out)</strong> secara langsung kepada Dosen Pengampu:
+      </p>
+
+      <table class="content-table">
+        <tr>
+          <td class="label">Nama Mahasiswa</td>
+          <td class="sep">:</td>
+          <td><strong>${options.studentName}</strong></td>
+        </tr>
+        <tr>
+          <td class="label">Nomor Induk Mahasiswa (NIM)</td>
+          <td class="sep">:</td>
+          <td>${options.studentNim}</td>
+        </tr>
+        <tr>
+          <td class="label">Mata Kuliah / SKS</td>
+          <td class="sep">:</td>
+          <td>${course} (3 SKS)</td>
+        </tr>
+        <tr>
+          <td class="label">Pertemuan / Part RPS</td>
+          <td class="sep">:</td>
+          <td><strong>Pertemuan ${meeting}</strong> (${rps})</td>
+        </tr>
+        <tr>
+          <td class="label">Topik Bahasan Makalah</td>
+          <td class="sep">:</td>
+          <td><em>"${topic}"</em></td>
+        </tr>
+        <tr>
+          <td class="label">Format Penyerahan</td>
+          <td class="sep">:</td>
+          <td><strong>Naskah Cetak Fisik / Hardcopy Print Out (Jilid Rapi)</strong></td>
+        </tr>
+        <tr>
+          <td class="label">Waktu Diterima Dosen</td>
+          <td class="sep">:</td>
+          <td>${dateStr} WIB</td>
+        </tr>
+        <tr>
+          <td class="label">Dosen Penerima</td>
+          <td class="sep">:</td>
+          <td><strong>${receiver}</strong></td>
+        </tr>
+        ${options.grade !== undefined ? `
+        <tr>
+          <td class="label">Nilai Akademik Makalah</td>
+          <td class="sep">:</td>
+          <td><strong style="color: #065f46; font-size: 12pt;">${options.grade} / 100</strong></td>
+        </tr>
+        ` : ''}
+        ${options.feedback ? `
+        <tr>
+          <td class="label">Catatan / Evaluasi Dosen</td>
+          <td class="sep">:</td>
+          <td>${options.feedback}</td>
+        </tr>
+        ` : ''}
+      </table>
+
+      <div class="statement-box">
+        <strong>Ketentuan Validasi Sistem:</strong>
+        <br/>
+        Dengan diterbitkannya lembar tanda terima ini, mahasiswa bersangkutan <strong>dibebaskan dari kewajiban mengunggah berkas file digital pada portal SIAKAD</strong>. Status tugas pada sistem secara otomatis tercatat sebagai <em>"Sudah Mengumpulkan (Cetak Fisik Terverifikasi)"</em> dan tersimpan permanen di basis data server.
+      </div>
+
+      <table class="sign-table">
+        <tr>
+          <td>
+            Mahasiswa Penyerah,
+            <div class="sign-space"></div>
+            <strong>${options.studentName}</strong><br/>
+            NIM. ${options.studentNim}
+          </td>
+          <td>
+            Diterima & Diverifikasi Oleh,<br/>
+            Dosen Pengampu Perkuliahan
+            <div class="sign-space">
+              <img src="${DOSEN_SIGNATURE_BASE64}" style="max-height: 55px;" alt="TTD Dosen" />
+            </div>
+            <strong>${dosen}</strong><br/>
+            NIDN. ${nidn}
+          </td>
+        </tr>
+      </table>
+
+      <div class="watermark">
+        Dokumen ini diterbitkan secara otomatis oleh SIAKAD Cloud Engine sebagai bukti sah penyerahan tugas akademik.<br/>
+        Validasi Kode Sistem: SIAKAD-VAL-${Date.now().toString(36).toUpperCase()}-${options.studentNim}
+      </div>
+    </body>
+    </html>
+  `;
+
+  printViaHiddenIframe(html, `Tanda_Terima_Makalah_${options.studentName.replace(/\\s+/g, '_')}`);
+}
+

@@ -37,6 +37,7 @@ import {
   addStudentActivityPointsApi,
   deleteStudentActivityPointLogApi,
   bulkAddActivityPointsApi,
+  confirmHardcopySubmissionApi,
 } from '../services/api';
 import { getActivityTier } from './StudentProfileModal';
 import {
@@ -45,6 +46,7 @@ import {
   validateBackupJson,
   exportAllTasksToZip,
   printViaHiddenIframe,
+  printHardcopySubmissionReceiptPdf,
 } from '../utils/documentExport';
 import { DOSEN_SIGNATURE_BASE64 } from '../assets/dosenSignature';
 import { DocumentPreviewModal, DocumentPreviewData } from './DocumentPreviewModal';
@@ -759,6 +761,99 @@ export const DosenPortal: React.FC<DosenPortalProps> = ({
   const [reviewUtsStudentId, setReviewUtsStudentId] = useState<string | null>(null);
   const [reviewGroupId, setReviewGroupId] = useState<number | null>(null);
   const [autoGradingInfo, setAutoGradingInfo] = useState<{ type: 'indiv' | 'uts' | 'uas'; breakdown: string[] } | null>(null);
+
+  // Modal Konfirmasi Pengumpulan Makalah Cetak Fisik (Hardcopy Print Out - Tanpa Perlu Upload File)
+  const [hardcopyModalData, setHardcopyModalData] = useState<{
+    student: Student;
+    sub?: IndividualSubmission;
+    meetingNumber: number;
+  } | null>(null);
+  const [hardcopyScoreInput, setHardcopyScoreInput] = useState<number | ''>(85);
+  const [hardcopyNotesInput, setHardcopyNotesInput] = useState<string>(
+    'Makalah telah dikumpulkan dalam bentuk berkas cetak fisik (print out) langsung ke Dosen Pengampu.'
+  );
+  const [isSavingHardcopy, setIsSavingHardcopy] = useState<boolean>(false);
+
+  const handleOpenHardcopyModal = (student: Student, sub?: IndividualSubmission, meetingNumber?: number) => {
+    const targetMeeting = meetingNumber || sub?.meetingNumber || student.meetingNumber || 2;
+    setHardcopyModalData({
+      student,
+      sub,
+      meetingNumber: targetMeeting,
+    });
+    setHardcopyScoreInput(sub?.grade !== undefined ? sub.grade : 85);
+    setHardcopyNotesInput(
+      sub?.notes || 'Makalah telah dikumpulkan dalam bentuk berkas cetak fisik (print out) langsung ke Dosen Pengampu.'
+    );
+  };
+
+  const handleExecuteConfirmHardcopy = async (isHardcopy: boolean = true) => {
+    if (!hardcopyModalData) return;
+    setIsSavingHardcopy(true);
+    try {
+      const res = await confirmHardcopySubmissionApi({
+        studentId: hardcopyModalData.student.id,
+        meetingNumber: hardcopyModalData.meetingNumber,
+        isHardcopyPrint: isHardcopy,
+        grade: typeof hardcopyScoreInput === 'number' ? hardcopyScoreInput : undefined,
+        feedback: typeof hardcopyScoreInput === 'number' ? `Nilai Makalah Cetak Fisik: ${hardcopyScoreInput}. ${hardcopyNotesInput}` : hardcopyNotesInput,
+        notes: hardcopyNotesInput,
+      });
+
+      if (res.success) {
+        setActionAlertMsg({
+          type: 'success',
+          text: isHardcopy
+            ? `Berhasil! Pengumpulan makalah cetak fisik untuk ${hardcopyModalData.student.name} telah dikonfirmasi (bebas upload file).`
+            : `Status cetak fisik untuk ${hardcopyModalData.student.name} berhasil dibatalkan.`,
+        });
+        if (reviewIndivSub && (reviewIndivSub.studentId === hardcopyModalData.student.id || reviewIndivSub.id === hardcopyModalData.sub?.id)) {
+          if (res.submission) {
+            setReviewIndivSub(res.submission);
+          } else {
+            setReviewIndivSub(prev => prev ? { ...prev, isHardcopyPrint: isHardcopy, makalahType: isHardcopy ? 'hardcopy_print' : prev.makalahType } : null);
+          }
+        }
+        setHardcopyModalData(null);
+        await onRefreshData();
+      } else {
+        setActionAlertMsg({
+          type: 'error',
+          text: res.error || 'Gagal menyimpan status pengumpulan makalah cetak fisik.',
+        });
+      }
+    } catch (e: any) {
+      setActionAlertMsg({
+        type: 'error',
+        text: 'Terjadi kesalahan sistem saat menyimpan status makalah cetak.',
+      });
+    } finally {
+      setIsSavingHardcopy(false);
+    }
+  };
+
+  const handlePrintHardcopyReceipt = (sub: IndividualSubmission, student?: Student) => {
+    const std = student || (students || []).find(s => s.id === sub.studentId);
+    printHardcopySubmissionReceiptPdf({
+      campusName: currentFullDb.courseProfile?.campusName,
+      studyProgram: currentFullDb.courseProfile?.programName,
+      courseTitle: currentFullDb.courseProfile?.courseTitle,
+      courseCode: currentFullDb.courseProfile?.courseCode,
+      semester: currentFullDb.courseProfile?.semester,
+      dosenFullName: currentFullDb.courseProfile?.dosenName,
+      dosenNidn: currentFullDb.courseProfile?.dosenNidn,
+      studentName: sub.studentName || std?.name || 'Mahasiswa',
+      studentNim: std?.nim || sub.studentId || '-',
+      rpsPart: sub.rpsPart,
+      meetingNumber: sub.meetingNumber,
+      topic: sub.topic,
+      submittedAt: sub.hardcopyReceivedAt || sub.submittedAt,
+      receiverName: sub.hardcopyReceiver || currentFullDb.courseProfile?.dosenName,
+      grade: sub.grade,
+      feedback: sub.feedback,
+      notes: sub.notes,
+    });
+  };
 
   // YouTube embed converter helper
   const getYouTubeEmbedUrl = (url?: string): string | null => {
@@ -1773,7 +1868,7 @@ export const DosenPortal: React.FC<DosenPortalProps> = ({
                     <th className="py-2.5 px-3">Mahasiswa</th>
                     <th className="py-2.5 px-3">Part RPS & Topik</th>
                     <th className="py-2.5 px-3 text-center">Keaktifan</th>
-                    <th className="py-2.5 px-3 text-center">Tugas PPT</th>
+                    <th className="py-2.5 px-3 text-center">Tugas PPT / Makalah</th>
                     <th className="py-2.5 px-3 text-center">Lembar UTS</th>
                     <th className="py-2.5 px-3 text-center">Proyek UAS</th>
                     <th className="py-2.5 px-3 text-center">Kuis</th>
@@ -1821,11 +1916,28 @@ export const DosenPortal: React.FC<DosenPortalProps> = ({
                           </td>
                           <td className="py-3 px-3 text-center">
                             {sub ? (
-                              <div className="inline-flex items-center gap-1">
-                                <span className="inline-flex items-center gap-1 text-[10px] font-bold text-emerald-700 bg-emerald-100 px-2 py-0.5 rounded-full">
-                                  <CheckCircle2 size={11} /> {sub.grade !== undefined ? `Nilai: ${sub.grade}` : 'Terkirim'}
-                                </span>
+                              <div className="inline-flex items-center gap-1 flex-wrap justify-center">
+                                {sub.isHardcopyPrint || sub.makalahType === 'hardcopy_print' ? (
+                                  <span className="inline-flex items-center gap-1 text-[10px] font-bold text-purple-900 bg-purple-100 border border-purple-300 px-2 py-0.5 rounded-full" title="Makalah Cetak Fisik Terverifikasi Dosen (Bebas Upload File)">
+                                    <Printer size={10} className="text-purple-700" /> {sub.grade !== undefined ? `Cetak: ${sub.grade}` : 'Cetak Fisik'}
+                                  </span>
+                                ) : (
+                                  <span className="inline-flex items-center gap-1 text-[10px] font-bold text-emerald-700 bg-emerald-100 px-2 py-0.5 rounded-full">
+                                    <CheckCircle2 size={11} /> {sub.grade !== undefined ? `Nilai: ${sub.grade}` : 'Terkirim'}
+                                  </span>
+                                )}
+                                {(sub.isHardcopyPrint || sub.makalahType === 'hardcopy_print') && (
+                                  <button
+                                    type="button"
+                                    onClick={() => handlePrintHardcopyReceipt(sub, std)}
+                                    className="p-1 text-purple-700 hover:text-purple-900 hover:bg-purple-50 rounded transition-colors"
+                                    title="Cetak Bukti Surat Tanda Terima Makalah Fisik (PDF Resmi)"
+                                  >
+                                    <Printer size={13} />
+                                  </button>
+                                )}
                                 <button
+                                  type="button"
                                   onClick={() => handleOpenReviewIndiv(sub)}
                                   className="p-1 text-indigo-600 hover:text-indigo-800 hover:bg-indigo-50 rounded transition-colors"
                                   title="Review tugas & berikan penilaian"
@@ -1833,6 +1945,15 @@ export const DosenPortal: React.FC<DosenPortalProps> = ({
                                   <Eye size={13} />
                                 </button>
                                 <button
+                                  type="button"
+                                  onClick={() => handleOpenHardcopyModal(std, sub, std.meetingNumber || 2)}
+                                  className="p-1 text-purple-600 hover:text-purple-800 hover:bg-purple-50 rounded transition-colors"
+                                  title="Kelola / Konfirmasi Pengumpulan Makalah Cetak Fisik"
+                                >
+                                  <Edit size={12} />
+                                </button>
+                                <button
+                                  type="button"
                                   onClick={() => {
                                     setDeleteModalData({ sub, studentName: std.name });
                                     setDeletePartChoice('all');
@@ -1845,9 +1966,20 @@ export const DosenPortal: React.FC<DosenPortalProps> = ({
                                 </button>
                               </div>
                             ) : (
-                              <span className="text-[10px] font-medium text-amber-700 bg-amber-50 px-2 py-0.5 rounded-full">
-                                Belum
-                              </span>
+                              <div className="inline-flex items-center gap-1 justify-center">
+                                <span className="text-[10px] font-medium text-amber-700 bg-amber-50 px-2 py-0.5 rounded-full">
+                                  Belum
+                                </span>
+                                <button
+                                  type="button"
+                                  onClick={() => handleOpenHardcopyModal(std, undefined, std.meetingNumber || 2)}
+                                  className="inline-flex items-center gap-1 px-2 py-0.5 text-[9px] font-bold text-purple-800 bg-purple-50 hover:bg-purple-100 border border-purple-200 rounded-md transition-colors cursor-pointer"
+                                  title="Konfirmasi bahwa mahasiswa telah menyerahkan makalah cetak fisik (Bebas upload file)"
+                                >
+                                  <Printer size={10} className="text-purple-600" />
+                                  <span>+ Cetak</span>
+                                </button>
+                              </div>
                             )}
                           </td>
                           <td className="py-3 px-3 text-center">
@@ -3474,9 +3606,26 @@ export const DosenPortal: React.FC<DosenPortalProps> = ({
                 Tugas presentasi yang sudah dikirim (individu atau kelompok sesuai pembagian dosen). Dosen dapat mengunduh PPT, membuka Canva, dan memberikan nilai serta catatan evaluasi.
               </p>
             </div>
-            <span className="text-xs font-bold px-3 py-1 bg-indigo-100 text-indigo-900 rounded-full self-start sm:self-auto">
-              Total Terkirim: {submissions?.length || 0} / {students?.length || 0}
-            </span>
+            <div className="flex items-center gap-2 self-start sm:self-auto flex-wrap">
+              <span className="text-xs font-bold px-3 py-1.5 bg-indigo-100 text-indigo-900 rounded-xl">
+                Total Terkirim: {submissions?.length || 0} / {students?.length || 0}
+              </span>
+              <button
+                type="button"
+                onClick={() => {
+                  const first = students[0];
+                  if (first) {
+                    const existingSub = (submissions || []).find(s => s.studentId === first.id);
+                    handleOpenHardcopyModal(first, existingSub, existingSub?.meetingNumber || first.meetingNumber || 2);
+                  }
+                }}
+                className="flex items-center gap-1.5 px-3.5 py-1.5 bg-purple-700 hover:bg-purple-800 text-white rounded-xl text-xs font-bold transition-all shadow-xs cursor-pointer"
+                title="Tandai mahasiswa telah mengumpulkan makalah cetak fisik langsung ke dosen (Bebas upload file)"
+              >
+                <Printer size={13} />
+                <span>+ Konfirmasi Makalah Cetak Fisik</span>
+              </button>
+            </div>
           </div>
 
           {/* Action notification banner */}
@@ -3638,7 +3787,12 @@ export const DosenPortal: React.FC<DosenPortalProps> = ({
                         )}
 
                         {/* Makalah Indicator */}
-                        {hasMakalah ? (
+                        {sub.isHardcopyPrint || sub.makalahType === 'hardcopy_print' ? (
+                          <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-lg text-xs font-bold bg-purple-100 text-purple-900 border border-purple-300 shadow-2xs">
+                            <Printer size={13} className="text-purple-700" />
+                            <span>Makalah: Cetak Fisik (Hardcopy) Diterima • Bebas Upload File</span>
+                          </span>
+                        ) : hasMakalah ? (
                           <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-bold bg-purple-50 text-purple-800 border border-purple-200">
                             <FileText size={13} className="text-purple-600" />
                             <span>
@@ -3669,7 +3823,7 @@ export const DosenPortal: React.FC<DosenPortalProps> = ({
                       </div>
                     </div>
 
-                    {/* Action buttons: Access files, Grade, and Delete if mistaken */}
+                    {/* Action buttons: Access files, Grade, Hardcopy, and Delete */}
                     <div className="flex flex-wrap items-center gap-2 self-start lg:self-center">
                       {/* PPT Link or Download */}
                       {sub.pptUrl && (sub.pptUrl.startsWith('http') || sub.pptType === 'link') && (
@@ -3697,27 +3851,64 @@ export const DosenPortal: React.FC<DosenPortalProps> = ({
                         </a>
                       )}
 
-                      {/* Buka Dokumen Makalah (Pratinjau Lengkap) */}
-                      <button
-                        type="button"
-                        onClick={() => handleOpenDocPreview(sub, 'makalah')}
-                        className="flex items-center gap-1.5 px-3 py-1.5 bg-purple-50 hover:bg-purple-100 text-purple-800 border border-purple-200 rounded-lg text-xs font-bold transition-colors shadow-xs cursor-pointer"
-                        title="Buka & Pratinjau Dokumen Makalah Mahasiswa"
-                      >
-                        <FileText size={13} />
-                        <span>Buka Makalah</span>
-                      </button>
+                      {/* Makalah Actions: Hardcopy print or Digital */}
+                      {sub.isHardcopyPrint || sub.makalahType === 'hardcopy_print' ? (
+                        <>
+                          <button
+                            type="button"
+                            onClick={() => handlePrintHardcopyReceipt(sub, std)}
+                            className="flex items-center gap-1.5 px-3 py-1.5 bg-purple-700 hover:bg-purple-800 text-white rounded-lg text-xs font-bold transition-colors shadow-xs cursor-pointer"
+                            title="Cetak Surat Bukti Tanda Terima Makalah Fisik (Resmi PDF)"
+                          >
+                            <Printer size={13} />
+                            <span>Tanda Terima Cetak</span>
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => handleOpenHardcopyModal(std || { id: sub.studentId, name: sub.studentName, nim: '', lastActive: '', meetingNumber: sub.meetingNumber }, sub, sub.meetingNumber)}
+                            className="flex items-center gap-1.5 px-2.5 py-1.5 bg-purple-50 hover:bg-purple-100 text-purple-800 border border-purple-200 rounded-lg text-xs font-bold transition-colors cursor-pointer"
+                            title="Kelola Nilai / Catatan Makalah Cetak"
+                          >
+                            <Edit size={13} />
+                            <span>Edit Cetak</span>
+                          </button>
+                        </>
+                      ) : (
+                        <>
+                          {/* Buka Dokumen Makalah (Pratinjau Lengkap) */}
+                          <button
+                            type="button"
+                            onClick={() => handleOpenDocPreview(sub, 'makalah')}
+                            className="flex items-center gap-1.5 px-3 py-1.5 bg-purple-50 hover:bg-purple-100 text-purple-800 border border-purple-200 rounded-lg text-xs font-bold transition-colors shadow-xs cursor-pointer"
+                            title="Buka & Pratinjau Dokumen Makalah Mahasiswa"
+                          >
+                            <FileText size={13} />
+                            <span>Buka Makalah</span>
+                          </button>
 
-                      {/* Unduh File Makalah */}
-                      <button
-                        type="button"
-                        onClick={() => handleOpenDocPreview(sub, 'makalah')}
-                        className="flex items-center gap-1.5 px-2.5 py-1.5 bg-slate-50 hover:bg-slate-100 text-slate-700 border border-slate-200 rounded-lg text-xs font-semibold transition-colors shadow-2xs cursor-pointer"
-                        title="Unduh berkas dokumen makalah (.doc / .pdf)"
-                      >
-                        <Download size={13} />
-                        <span className="hidden sm:inline">Unduh</span>
-                      </button>
+                          {/* Unduh File Makalah */}
+                          <button
+                            type="button"
+                            onClick={() => handleOpenDocPreview(sub, 'makalah')}
+                            className="flex items-center gap-1.5 px-2.5 py-1.5 bg-slate-50 hover:bg-slate-100 text-slate-700 border border-slate-200 rounded-lg text-xs font-semibold transition-colors shadow-2xs cursor-pointer"
+                            title="Unduh berkas dokumen makalah (.doc / .pdf)"
+                          >
+                            <Download size={13} />
+                            <span className="hidden sm:inline">Unduh</span>
+                          </button>
+
+                          {/* Tandai Kumpul Cetak jika fisik */}
+                          <button
+                            type="button"
+                            onClick={() => handleOpenHardcopyModal(std || { id: sub.studentId, name: sub.studentName, nim: '', lastActive: '', meetingNumber: sub.meetingNumber }, sub, sub.meetingNumber)}
+                            className="flex items-center gap-1 px-2.5 py-1.5 bg-purple-50 hover:bg-purple-100 text-purple-800 border border-purple-200 rounded-lg text-xs font-bold transition-colors cursor-pointer"
+                            title="Tandai mahasiswa ini telah mengumpulkan makalah cetak fisik langsung ke dosen (Bebas upload file)"
+                          >
+                            <Printer size={13} />
+                            <span>Kumpul Cetak</span>
+                          </button>
+                        </>
+                      )}
 
                       {/* Review & Nilai Button */}
                       <button
@@ -5038,17 +5229,65 @@ export const DosenPortal: React.FC<DosenPortalProps> = ({
                 </div>
 
                 {/* Status Makalah */}
-                <div className="p-3.5 rounded-xl border border-purple-200 bg-purple-50/50 space-y-2">
+                <div className={`p-3.5 rounded-xl border space-y-2 ${
+                  reviewIndivSub.isHardcopyPrint || reviewIndivSub.makalahType === 'hardcopy_print'
+                    ? 'border-purple-300 bg-purple-50/80'
+                    : 'border-purple-200 bg-purple-50/50'
+                }`}>
                   <div className="flex items-center justify-between">
-                    <span className="text-xs font-bold text-purple-950 flex items-center gap-1">
+                    <span className="text-xs font-bold text-purple-950 flex items-center gap-1.5">
+                      {reviewIndivSub.isHardcopyPrint || reviewIndivSub.makalahType === 'hardcopy_print' ? (
+                        <Printer size={15} className="text-purple-700" />
+                      ) : (
+                        <FileText size={15} className="text-purple-700" />
+                      )}
                       <span>Dokumen Makalah</span>
                     </span>
                     <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-purple-100 text-purple-800">
-                      {reviewIndivSub.makalahType === 'link' ? 'Tautan Dokumen' : 'File Dokumen Terunggah'}
+                      {reviewIndivSub.isHardcopyPrint || reviewIndivSub.makalahType === 'hardcopy_print'
+                        ? 'Cetak Fisik (Hardcopy Print)'
+                        : (reviewIndivSub.makalahType === 'link' ? 'Tautan Dokumen' : 'File Dokumen Terunggah')}
                     </span>
                   </div>
 
-                  {(reviewIndivSub.makalahUrl || reviewIndivSub.makalahFileData || reviewIndivSub.topic) ? (
+                  {reviewIndivSub.isHardcopyPrint || reviewIndivSub.makalahType === 'hardcopy_print' ? (
+                    <div className="space-y-2">
+                      <div className="p-3 bg-white rounded-lg border border-purple-200 space-y-1.5">
+                        <div className="flex items-center gap-1.5 text-xs font-bold text-purple-900">
+                          <CheckCircle2 size={14} className="text-purple-700" />
+                          <span>Makalah Diterima Versi Cetak Fisik (Hardcopy Print Out)</span>
+                        </div>
+                        <p className="text-[11px] text-purple-900 leading-relaxed">
+                          Mahasiswa telah mengumpulkan naskah cetak fisik langsung kepada <strong>{reviewIndivSub.hardcopyReceiver || 'Dosen Pengampu'}</strong>. Berkas ini sah dan tidak memerlukan upload dokumen digital.
+                        </p>
+                        <div className="text-[10px] text-slate-500 pt-0.5">
+                          Waktu Verifikasi: {new Date(reviewIndivSub.hardcopyReceivedAt || reviewIndivSub.submittedAt).toLocaleString('id-ID', { dateStyle: 'full', timeStyle: 'short' })}
+                        </div>
+                      </div>
+
+                      <div className="flex items-center gap-2">
+                        <button
+                          type="button"
+                          onClick={() => handlePrintHardcopyReceipt(reviewIndivSub)}
+                          className="flex-1 flex items-center justify-center gap-1.5 py-2 px-3 bg-purple-700 hover:bg-purple-800 text-white rounded-lg text-xs font-bold transition-colors shadow-xs cursor-pointer"
+                          title="Cetak Surat Bukti Tanda Terima Penyerahan Makalah Fisik (Resmi PDF)"
+                        >
+                          <Printer size={14} />
+                          <span>Cetak Tanda Terima Fisik (PDF)</span>
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const std = (students || []).find(s => s.id === reviewIndivSub.studentId);
+                            handleOpenHardcopyModal(std || { id: reviewIndivSub.studentId, name: reviewIndivSub.studentName, nim: '', lastActive: '', meetingNumber: reviewIndivSub.meetingNumber }, reviewIndivSub, reviewIndivSub.meetingNumber);
+                          }}
+                          className="px-3 py-2 bg-white hover:bg-slate-100 text-slate-700 border border-slate-300 rounded-lg text-xs font-semibold"
+                        >
+                          Kelola
+                        </button>
+                      </div>
+                    </div>
+                  ) : (reviewIndivSub.makalahUrl || reviewIndivSub.makalahFileData || reviewIndivSub.topic) ? (
                     <div className="space-y-1.5">
                       <button
                         type="button"
@@ -5068,6 +5307,19 @@ export const DosenPortal: React.FC<DosenPortalProps> = ({
                         <span>Unduh File Dokumen ({reviewIndivSub.makalahFileName || 'Makalah.doc'})</span>
                       </button>
 
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const std = (students || []).find(s => s.id === reviewIndivSub.studentId);
+                          handleOpenHardcopyModal(std || { id: reviewIndivSub.studentId, name: reviewIndivSub.studentName, nim: '', lastActive: '', meetingNumber: reviewIndivSub.meetingNumber }, reviewIndivSub, reviewIndivSub.meetingNumber);
+                        }}
+                        className="w-full flex items-center justify-center gap-1.5 py-1.5 px-3 bg-purple-50 hover:bg-purple-100 text-purple-800 border border-purple-200 rounded-lg text-xs font-bold transition-colors cursor-pointer mt-1"
+                        title="Tandai mahasiswa ini menyerahkan versi cetak fisik (Bebas upload file)"
+                      >
+                        <Printer size={13} />
+                        <span>Konfirmasi Naskah Cetak Fisik</span>
+                      </button>
+
                       {reviewIndivSub.makalahFileName && (
                         <div className="text-[11px] text-slate-500">
                           Nama Berkas: {reviewIndivSub.makalahFileName}
@@ -5075,8 +5327,21 @@ export const DosenPortal: React.FC<DosenPortalProps> = ({
                       )}
                     </div>
                   ) : (
-                    <div className="text-xs text-rose-700 italic bg-white p-2 rounded border border-rose-200">
-                      Belum ada dokumen Makalah yang diunggah atau telah dihapus.
+                    <div className="space-y-2">
+                      <div className="text-xs text-rose-700 italic bg-white p-2 rounded border border-rose-200">
+                        Belum ada dokumen Makalah digital yang diunggah.
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const std = (students || []).find(s => s.id === reviewIndivSub.studentId);
+                          handleOpenHardcopyModal(std || { id: reviewIndivSub.studentId, name: reviewIndivSub.studentName, nim: '', lastActive: '', meetingNumber: reviewIndivSub.meetingNumber }, reviewIndivSub, reviewIndivSub.meetingNumber);
+                        }}
+                        className="w-full flex items-center justify-center gap-1.5 py-2 px-3 bg-purple-700 hover:bg-purple-800 text-white rounded-lg text-xs font-bold transition-colors shadow-xs cursor-pointer"
+                      >
+                        <Printer size={14} />
+                        <span>Tandai Kumpul Makalah Cetak Fisik (Tanpa Upload File)</span>
+                      </button>
                     </div>
                   )}
                 </div>
@@ -5972,6 +6237,172 @@ export const DosenPortal: React.FC<DosenPortalProps> = ({
           }
         }}
       />
+
+      {/* MODAL KONFIRMASI PENERIMAAN MAKALAH CETAK FISIK (HARDCOPY PRINT OUT - BEBAS UPLOAD FILE) */}
+      {hardcopyModalData && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-900/60 backdrop-blur-xs animate-in fade-in overflow-y-auto">
+          <div className="bg-white rounded-2xl max-w-lg w-full p-5 sm:p-6 shadow-2xl border border-slate-200 my-8 space-y-4">
+            <div className="flex items-start justify-between border-b border-slate-100 pb-3">
+              <div className="flex items-center gap-2.5">
+                <div className="h-10 w-10 rounded-xl bg-purple-100 text-purple-700 flex items-center justify-center font-bold">
+                  <Printer size={20} />
+                </div>
+                <div>
+                  <h3 className="font-bold text-base text-slate-900">
+                    Konfirmasi Makalah Cetak Fisik
+                  </h3>
+                  <p className="text-xs text-slate-500">
+                    Bebas upload file digital • Status langsung tercatat resmi
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setHardcopyModalData(null)}
+                className="p-1 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-100 cursor-pointer"
+              >
+                <X size={18} />
+              </button>
+            </div>
+
+            <div className="p-3 bg-purple-50/80 rounded-xl border border-purple-200 text-xs text-purple-900 space-y-1">
+              <div className="font-bold flex items-center gap-1.5 text-purple-950">
+                <ShieldCheck size={14} className="text-purple-700" />
+                <span>Penerimaan Naskah Makalah Fisik Langsung ke Dosen</span>
+              </div>
+              <p className="leading-relaxed">
+                Fitur ini memungkinkan Dosen mencatat bahwa mahasiswa telah mengumpulkan makalah dalam bentuk berkas cetak/print out fisik langsung ke Dosen Pengampu. Mahasiswa <strong>tidak perlu lagi mengunggah berkas file digital</strong> dan status tugas otomatis terverifikasi di portal mahasiswa dan sistem SIAKAD.
+              </p>
+            </div>
+
+            <div className="space-y-3 text-xs">
+              <div>
+                <label className="block font-bold text-slate-700 mb-1">Pilih Mahasiswa:</label>
+                <select
+                  value={hardcopyModalData.student.id}
+                  onChange={(e) => {
+                    const std = students.find(s => s.id === e.target.value);
+                    if (std) {
+                      const existingSub = (submissions || []).find(s => s.studentId === std.id && (Number(s.meetingNumber) || 2) === hardcopyModalData.meetingNumber)
+                        || (submissions || []).find(s => s.studentId === std.id);
+                      setHardcopyModalData({
+                        student: std,
+                        sub: existingSub,
+                        meetingNumber: existingSub?.meetingNumber || std.meetingNumber || 2,
+                      });
+                      setHardcopyScoreInput(existingSub?.grade !== undefined ? existingSub.grade : 85);
+                    }
+                  }}
+                  className="w-full px-3 py-2 text-xs rounded-xl border border-slate-300 bg-white font-medium focus:ring-2 focus:ring-purple-500 focus:outline-none"
+                >
+                  {students.map(s => (
+                    <option key={s.id} value={s.id}>
+                      {s.name} (NIM: {s.nim}) - {s.rpsPart || `Pertemuan ${s.meetingNumber || 2}`}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block font-bold text-slate-700 mb-1">Pertemuan Sesi:</label>
+                  <select
+                    value={hardcopyModalData.meetingNumber}
+                    onChange={(e) => setHardcopyModalData(prev => prev ? { ...prev, meetingNumber: Number(e.target.value) } : null)}
+                    className="w-full px-3 py-2 text-xs rounded-xl border border-slate-300 bg-white font-medium focus:ring-2 focus:ring-purple-500 focus:outline-none"
+                  >
+                    {[1, 2, 3, 4, 5, 6, 7, 9, 10, 11, 12, 13, 14, 15].map(num => (
+                      <option key={num} value={num}>
+                        Pertemuan #{num}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label className="block font-bold text-slate-700 mb-1">Nilai Makalah (0-100):</label>
+                  <input
+                    type="number"
+                    min={0}
+                    max={100}
+                    value={hardcopyScoreInput}
+                    onChange={(e) => setHardcopyScoreInput(e.target.value === '' ? '' : Number(e.target.value))}
+                    placeholder="Contoh: 88"
+                    className="w-full px-3 py-2 text-xs rounded-xl border border-slate-300 focus:ring-2 focus:ring-purple-500 focus:outline-none"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block font-bold text-slate-700 mb-1">Catatan / Evaluasi Penerimaan:</label>
+                <textarea
+                  rows={2}
+                  value={hardcopyNotesInput}
+                  onChange={(e) => setHardcopyNotesInput(e.target.value)}
+                  placeholder="Catatan penyerahan fisik oleh mahasiswa..."
+                  className="w-full px-3 py-2 text-xs rounded-xl border border-slate-300 focus:ring-2 focus:ring-purple-500 focus:outline-none"
+                />
+              </div>
+
+              {hardcopyModalData.sub?.isHardcopyPrint && (
+                <div className="p-2.5 bg-emerald-50 border border-emerald-200 rounded-xl flex items-center justify-between">
+                  <div className="flex items-center gap-1.5 text-emerald-900 font-bold text-[11px]">
+                    <CheckCircle2 size={13} className="text-emerald-600" />
+                    <span>Sudah Berstatus Makalah Cetak Fisik</span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => handlePrintHardcopyReceipt(hardcopyModalData.sub!, hardcopyModalData.student)}
+                    className="text-xs font-bold text-purple-700 hover:text-purple-900 underline flex items-center gap-1 cursor-pointer"
+                  >
+                    <Printer size={12} />
+                    <span>Cetak Tanda Terima</span>
+                  </button>
+                </div>
+              )}
+            </div>
+
+            <div className="flex items-center justify-between gap-2 pt-2 border-t border-slate-100">
+              {hardcopyModalData.sub?.isHardcopyPrint ? (
+                <button
+                  type="button"
+                  disabled={isSavingHardcopy}
+                  onClick={() => handleExecuteConfirmHardcopy(false)}
+                  className="px-3 py-2 text-xs font-semibold text-rose-700 hover:bg-rose-50 rounded-xl border border-rose-200 transition-colors cursor-pointer"
+                >
+                  Batalkan Status Cetak Fisik
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => setHardcopyModalData(null)}
+                  className="px-3 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-100 rounded-xl transition-colors cursor-pointer"
+                >
+                  Tutup
+                </button>
+              )}
+
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => setHardcopyModalData(null)}
+                  className="px-3 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-100 rounded-xl transition-colors cursor-pointer"
+                >
+                  Batal
+                </button>
+                <button
+                  type="button"
+                  disabled={isSavingHardcopy}
+                  onClick={() => handleExecuteConfirmHardcopy(true)}
+                  className="px-4 py-2 text-xs font-bold text-white bg-purple-700 hover:bg-purple-800 rounded-xl shadow-xs transition-all flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
+                >
+                  <Printer size={13} />
+                  <span>{isSavingHardcopy ? 'Menyimpan...' : 'Konfirmasi Makalah Cetak'}</span>
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
     </div>
   );

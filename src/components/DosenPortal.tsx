@@ -391,7 +391,7 @@ export const DosenPortal: React.FC<DosenPortalProps> = ({
       if (res.success) {
         setRestoreFeedback({
           type: 'success',
-          text: `Pemulihan arsip ZIP sukses! ${res.totalStudents || backupData.students.length} data mahasiswa, ${res.totalSubmissions || backupData.submissions?.length || 0} tugas presentasi, ${res.totalUts || backupData.utsSubmissions?.length || 0} naskah UTS, dan ${res.totalUas || backupData.uasSubmissions?.length || 0} naskah UAS berhasil dipulihkan secara permanen ke server SIAKAD.`,
+          text: `Pemulihan backup sukses! ${res.totalStudents || backupData.students.length} data mahasiswa, ${res.totalSubmissions || backupData.submissions?.length || 0} tugas presentasi, ${res.totalUts || backupData.utsSubmissions?.length || 0} naskah UTS, dan ${res.totalUas || backupData.uasSubmissions?.length || 0} naskah UAS berhasil dipulihkan ke server SIAKAD.`,
         });
         await onRefreshData();
       } else {
@@ -4939,7 +4939,7 @@ export const DosenPortal: React.FC<DosenPortalProps> = ({
                 </div>
                 <div>
                   <h4 className="font-bold text-sm text-slate-900">
-                    3. Pulihkan Data dari Berkas Arsip (.ZIP / .RAR)
+                    3. Pulihkan Data dari Backup (.ZIP / .JSON)
                   </h4>
                   <p className="text-[11px] text-slate-500">
                     Pulihkan seluruh dokumen tugas mahasiswa dan riwayat nilai dari berkas arsip cadangan
@@ -4948,14 +4948,14 @@ export const DosenPortal: React.FC<DosenPortalProps> = ({
               </div>
 
               <p className="text-xs text-slate-600 leading-relaxed">
-                Jika Anda berpindah perangkat (laptop/komputer), sistem berganti semester, atau ingin mengembalikan kondisi data sebelumnya, pilih berkas arsip berformat <code className="bg-slate-100 px-1.5 py-0.5 rounded text-indigo-700 font-bold">.zip</code> atau <code className="bg-slate-100 px-1.5 py-0.5 rounded text-indigo-700 font-bold">.rar</code> yang pernah diunduh. Sistem akan otomatis memvalidasi keutuhan arsip, merekonstruksi data tugas mahasiswa ke Brankas Permanen (Vault Engine), dan menyinkronkannya kembali ke server database.
+                    Jika Anda berpindah perangkat, sistem berganti semester, atau ingin mengembalikan data sebelumnya, pilih file cadangan <code className="bg-slate-100 px-1.5 py-0.5 rounded text-indigo-700 font-bold">.zip</code> atau <code className="bg-slate-100 px-1.5 py-0.5 rounded text-indigo-700 font-bold">.json</code>. Data akan divalidasi sebelum dipulihkan ke database.
               </p>
 
               <div className="border-2 border-dashed border-slate-300 hover:border-emerald-500 rounded-2xl p-6 text-center transition-colors bg-slate-50/50">
                 <input
                   type="file"
                   id="backup-file-input"
-                  accept=".zip,.rar,.json,application/zip,application/x-zip-compressed,application/json"
+                  accept=".zip,.json,application/zip,application/x-zip-compressed,application/json"
                   onChange={handleRestoreBackupFile}
                   disabled={isRestoring}
                   className="hidden"
@@ -4970,7 +4970,7 @@ export const DosenPortal: React.FC<DosenPortalProps> = ({
                     <UploadCloud size={24} />
                   </div>
                   <div className="font-bold text-xs text-slate-900">
-                    {isRestoring ? 'Memproses dan Memulihkan Data dari Arsip...' : 'Klik di sini untuk Memilih Backup (.ZIP / .JSON)'}
+                    {isRestoring ? 'Memproses dan Memulihkan Data dari Backup...' : 'Klik di sini untuk Memilih Backup (.ZIP / .JSON)'}
                   </div>
                   <div className="text-[11px] text-slate-500">
                     Format berkas arsip .zip / .rar resmi SIAKAD Pascasarjana (Vault Engine Terpadu)

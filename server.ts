@@ -6287,6 +6287,7 @@ app.post('/api/rps/upload', async (req, res) => {
   saveDatabase();
   res.json({
     success: true,
+    durable: !IS_SERVERLESS,
     meetingsCount: db.meetings.length,
     courseProfile: db.courseProfile,
     meetings: db.meetings,

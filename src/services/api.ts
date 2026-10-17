@@ -2494,17 +2494,28 @@ export async function uploadRpsApi(payload: {
   try {
     const res = await fetch('/api/rps/upload', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: getDosenAuthHeaders(),
       body: JSON.stringify(payload),
     });
     const json = await safeJson(res, null);
-    if (res.ok && json.success && json.data) {
-      saveLocalCache(json.data);
+    if (!res.ok || !json?.success) {
+      return { success: false, error: json?.error || `Gagal memproses RPS (HTTP ${res.status}).` };
+    }
+
+    if (json.data) {
+      saveLocalCache(json.data, false);
+      if (isSupabaseConfigured()) {
+        if (!await saveDatabaseToSupabase(json.data)) {
+          return { success: false, error: 'RPS diproses, tetapi gagal disimpan ke Supabase. Periksa siakad_storage dan izin upsert.' };
+        }
+      } else if (json.durable === false) {
+        return { success: false, error: 'RPS tidak tersimpan permanen di Vercel. Atur VITE_SUPABASE_URL dan VITE_SUPABASE_ANON_KEY.' };
+      }
     }
     return json;
   } catch (err) {
     console.warn('Upload RPS error:', err);
-    return { success: false, error: 'Gagal menghubungkan ke server' };
+    return { success: false, error: err instanceof Error ? err.message : 'Gagal menghubungkan ke server RPS.' };
   }
 }
 
@@ -2529,7 +2540,14 @@ export async function parseRpsFileApi(payload: {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(payload),
     });
-    return await safeJson(res, null);
+    const json = await safeJson(res, null);
+    if (!res.ok || !json?.success) {
+      return {
+        success: false,
+        error: json?.error || `Gagal membaca file RPS (HTTP ${res.status}).`,
+      };
+    }
+    return json;
   } catch (err) {
     console.warn('Parse RPS file API error:', err);
     return { success: false, error: 'Gagal menghubungkan ke parser berkas di server' };

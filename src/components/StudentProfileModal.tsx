@@ -116,8 +116,8 @@ export const StudentProfileModal: React.FC<StudentProfileModalProps> = ({
   const logs = student.activityPointLogs || [];
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-950/80 backdrop-blur-md animate-in fade-in duration-200">
-      <div className="bg-slate-900 text-white border border-slate-700/80 rounded-3xl shadow-2xl w-full max-w-2xl max-h-[92vh] flex flex-col overflow-hidden animate-in zoom-in-95 duration-200">
+    <div className="fixed inset-0 z-50 overflow-y-auto bg-slate-950/80 backdrop-blur-md p-3 sm:p-6 flex justify-center items-start min-h-screen animate-in fade-in duration-200">
+      <div className="bg-slate-900 text-white border border-slate-700/80 rounded-3xl shadow-2xl w-full max-w-2xl max-h-[92vh] flex flex-col overflow-hidden my-auto sm:my-6 animate-in zoom-in-95 duration-200">
         
         {/* Modal Header */}
         <div className="p-5 sm:p-6 border-b border-white/10 bg-gradient-to-r from-emerald-950 via-slate-900 to-slate-900 flex items-center justify-between gap-3">

@@ -10,9 +10,14 @@ import {
   removeMeetingPresenterApi,
   updateMeetingPresentationGroupApi,
   submitPeerReviewApi,
+  getLocalCache,
 } from '../services/api';
 import { DocumentPreviewModal, DocumentPreviewData } from './DocumentPreviewModal';
-import { printHardcopySubmissionReceiptPdf } from '../utils/documentExport';
+import {
+  printHardcopySubmissionReceiptPdf,
+  downloadHardcopySubmissionReceiptPdf,
+  exportHardcopyReceiptWord,
+} from '../utils/documentExport';
 import {
   FileText,
   Upload,
@@ -323,9 +328,7 @@ export const IndividualTaskView: React.FC<IndividualTaskViewProps> = ({
   const [pptFileName, setPptFileName] = useState<string>(existingSubmission?.pptFileName || '');
   const [pptFileData, setPptFileData] = useState<string>(existingSubmission?.pptFileData || '');
 
-  const [makalahType, setMakalahType] = useState<'link' | 'file' | 'hardcopy_print'>(
-    existingSubmission?.hardcopyRequested ? 'hardcopy_print' : (existingSubmission?.makalahType || 'link')
-  );
+  const [makalahType, setMakalahType] = useState<'link' | 'file'>(existingSubmission?.makalahType || 'link');
   const [makalahUrl, setMakalahUrl] = useState<string>(existingSubmission?.makalahUrl || '');
   const [makalahFileName, setMakalahFileName] = useState<string>(existingSubmission?.makalahFileName || '');
   const [makalahFileData, setMakalahFileData] = useState<string>(existingSubmission?.makalahFileData || '');
@@ -487,7 +490,7 @@ export const IndividualTaskView: React.FC<IndividualTaskViewProps> = ({
       setPptFileName(existingSubmission.pptFileName || '');
       setPptFileData(existingSubmission.pptFileData || '');
 
-      setMakalahType(existingSubmission.hardcopyRequested ? 'hardcopy_print' : (existingSubmission.makalahType || 'link'));
+      setMakalahType(existingSubmission.makalahType || 'link');
       setMakalahUrl(existingSubmission.makalahUrl || '');
       setMakalahFileName(existingSubmission.makalahFileName || '');
       setMakalahFileData(existingSubmission.makalahFileData || '');
@@ -570,10 +573,9 @@ export const IndividualTaskView: React.FC<IndividualTaskViewProps> = ({
     setSubmitSuccessMsg(null);
 
     // Validation based on submission choice
+    const isHardcopyAlready = Boolean(existingSubmission?.isHardcopyPrint || existingSubmission?.makalahType === 'hardcopy_print');
     const hasPpt = (pptType === 'link' && !!pptUrl.trim()) || (pptType === 'file' && !!pptFileData);
-    const hasMakalah = makalahType === 'hardcopy_print' ||
-      (makalahType === 'link' && !!makalahUrl.trim()) ||
-      (makalahType === 'file' && !!makalahFileData);
+    const hasMakalah = isHardcopyAlready || (makalahType === 'link' && !!makalahUrl.trim()) || (makalahType === 'file' && !!makalahFileData);
 
     if (submissionChoice === 'ppt_only') {
       if (!hasPpt) {
@@ -582,7 +584,7 @@ export const IndividualTaskView: React.FC<IndividualTaskViewProps> = ({
       }
     } else if (submissionChoice === 'makalah_only') {
       if (!hasMakalah) {
-        setErrorMsg('Harap masukkan link Makalah (Google Docs/Drive) atau upload file Makalah Anda.');
+        setErrorMsg('Harap masukkan link Makalah (Google Docs/Drive), upload file Makalah, atau serahkan printout fisik ke dosen.');
         return;
       }
     } else {
@@ -610,6 +612,8 @@ export const IndividualTaskView: React.FC<IndividualTaskViewProps> = ({
         ? targetStudent.rpsPart
         : (currentMeetingSchedule?.partCodes?.[0] || `Pertemuan ${selectedMeetingNumber}`);
 
+    const isHardcopyAlready = Boolean(existingSubmission?.isHardcopyPrint || existingSubmission?.makalahType === 'hardcopy_print');
+
     const payload: IndividualSubmission = {
       id: existingSubmission?.id || `sub-${Date.now()}-${Math.random().toString(36).substr(2, 4)}`,
       studentId: targetStudent.id,
@@ -628,27 +632,32 @@ export const IndividualTaskView: React.FC<IndividualTaskViewProps> = ({
       pptUrl: pptType === 'link' ? pptUrl.trim() : undefined,
       pptFileName: pptType === 'file' ? pptFileName : undefined,
       pptFileData: pptType === 'file' ? pptFileData : undefined,
-      makalahType: makalahType === 'hardcopy_print' ? undefined : makalahType,
-      hardcopyRequested: makalahType === 'hardcopy_print',
+      makalahType: isHardcopyAlready ? 'hardcopy_print' : makalahType,
       makalahUrl: makalahType === 'link' ? makalahUrl.trim() : undefined,
       makalahFileName: makalahType === 'file' ? makalahFileName : undefined,
       makalahFileData: makalahType === 'file' ? makalahFileData : undefined,
+      isHardcopyPrint: isHardcopyAlready,
+      hardcopyReceivedAt: existingSubmission?.hardcopyReceivedAt,
+      hardcopyReceiver: existingSubmission?.hardcopyReceiver,
       notes: notes.trim(),
       submittedAt: new Date().toISOString(),
       grade: existingSubmission?.grade,
       feedback: existingSubmission?.feedback,
     };
 
+    // 1. Immediately update local state on user click so form locks and status flips to "Terkirim" without UI delay
+    setLocalSubmissions(prev => {
+      const filtered = prev.filter(
+        s => s.id !== payload.id &&
+        !(s.studentId === payload.studentId && (Number(s.meetingNumber) || 2) === selectedMeetingNumber)
+      );
+      return [payload, ...filtered];
+    });
+
     try {
+      // 2. Asynchronous database call to verify completion
       const result = await submitIndividualTask(payload);
       if (result.success) {
-        setLocalSubmissions(prev => {
-          const filtered = prev.filter(
-            s => s.id !== payload.id &&
-            !(s.studentId === payload.studentId && (Number(s.meetingNumber) || 2) === selectedMeetingNumber)
-          );
-          return [result.submission || payload, ...filtered];
-        });
         setIsEditingExisting(false);
         setSubmitSuccessMsg(
           result.offlineStored
@@ -1373,7 +1382,12 @@ export const IndividualTaskView: React.FC<IndividualTaskViewProps> = ({
                           </div>
                         )}
 
-                        {sub.makalahType === 'link' && sub.makalahUrl ? (
+                        {sub.isHardcopyPrint || sub.makalahType === 'hardcopy_print' ? (
+                          <div className="flex-1 px-3 py-2 bg-purple-100 text-purple-900 border border-purple-300 rounded-xl text-xs text-center font-bold flex items-center justify-center gap-1 shadow-2xs" title="Naskah Makalah diserahkan dalam bentuk berkas cetak fisik langsung ke Dosen (Bebas upload file)">
+                            <Printer size={13} className="text-purple-700" />
+                            <span>Makalah Fisik (Cetak)</span>
+                          </div>
+                        ) : sub.makalahType === 'link' && sub.makalahUrl ? (
                           <a
                             href={sub.makalahUrl}
                             target="_blank"
@@ -2013,45 +2027,160 @@ export const IndividualTaskView: React.FC<IndividualTaskViewProps> = ({
                   </div>
 
                   {/* Makalah File Preview */}
-                  <div className="p-3.5 bg-slate-50 border border-slate-200 rounded-xl flex items-center justify-between gap-3">
-                    <div className="flex items-center gap-3 min-w-0">
-                      <div className="w-9 h-9 rounded-lg bg-blue-100 text-blue-700 flex items-center justify-center flex-shrink-0 font-black text-xs">
-                        DOC
-                      </div>
-                      <div className="min-w-0">
-                        <div className="text-xs font-bold text-slate-900 truncate">
-                          {existingSubmission.makalahFileName || 'Makalah Lengkap (PDF/DOC)'}
+                  {existingSubmission.isHardcopyPrint || existingSubmission.makalahType === 'hardcopy_print' ? (
+                    <div className="p-3.5 bg-purple-50/90 border border-purple-200 rounded-xl flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-2xs">
+                      <div className="flex items-center gap-3 min-w-0">
+                        <div className="w-10 h-10 rounded-xl bg-purple-700 text-white flex items-center justify-center flex-shrink-0 font-black text-xs shadow-xs">
+                          <Printer size={18} />
                         </div>
-                        <div className="text-[11px] text-slate-500 truncate">
-                          {existingSubmission.makalahType === 'link' ? (existingSubmission.makalahUrl || 'Tautan Google Docs/Drive') : 'Berkas Makalah Kajian'}
+                        <div className="min-w-0">
+                          <div className="text-xs font-bold text-purple-950 flex items-center gap-1.5 flex-wrap">
+                            <span>Makalah Cetak Fisik (Print Out) Diterima Dosen</span>
+                            <span className="text-[10px] bg-purple-200 text-purple-900 font-extrabold px-2 py-0.5 rounded-full">
+                              Bebas Upload File
+                            </span>
+                          </div>
+                          <div className="text-[11px] text-purple-800 mt-0.5 leading-snug">
+                            Telah diserahkan naskah cetak fisik langsung ke <strong>{existingSubmission.hardcopyReceiver || 'Dosen Pengampu'}</strong>. Berkas sah, nilai tercatat, dan Anda tidak perlu mengunggah file makalah digital lagi.
+                          </div>
                         </div>
                       </div>
-                    </div>
-                    <div className="flex items-center gap-2 flex-shrink-0">
-                      {existingSubmission.makalahType === 'link' && existingSubmission.makalahUrl ? (
-                        <a
-                          href={existingSubmission.makalahUrl}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="px-3.5 py-1.5 bg-blue-700 hover:bg-blue-800 text-white rounded-lg text-xs font-bold flex items-center gap-1.5 transition-colors cursor-pointer shadow-xs"
-                        >
-                          <ExternalLink size={13} />
-                          <span>Buka Link Makalah</span>
-                        </a>
-                      ) : existingSubmission.makalahFileData ? (
-                        <a
-                          href={existingSubmission.makalahFileData}
-                          download={existingSubmission.makalahFileName || `Makalah_${targetStudent.name}.pdf`}
-                          className="px-3.5 py-1.5 bg-blue-700 hover:bg-blue-800 text-white rounded-lg text-xs font-bold flex items-center gap-1.5 transition-colors cursor-pointer shadow-xs"
+                      <div className="flex items-center gap-2 flex-wrap sm:flex-nowrap flex-shrink-0 self-start sm:self-center">
+                        <button
+                          type="button"
+                          onClick={async () => {
+                            const dbCache = getLocalCache();
+                            await downloadHardcopySubmissionReceiptPdf({
+                              campusName: dbCache?.courseProfile?.campusName,
+                              studyProgram: dbCache?.courseProfile?.studyProgram,
+                              courseTitle: dbCache?.courseProfile?.courseTitle,
+                              courseCode: dbCache?.courseProfile?.courseCode,
+                              semester: dbCache?.courseProfile?.semester,
+                              dosenFullName: dbCache?.courseProfile?.dosenName,
+                              dosenNidn: dbCache?.courseProfile?.dosenNidn,
+                              studentName: targetStudent.name,
+                              studentNim: targetStudent.nim,
+                              rpsPart: existingSubmission.rpsPart,
+                              meetingNumber: existingSubmission.meetingNumber,
+                              topic: existingSubmission.topic || targetStudent.topic,
+                              submittedAt: existingSubmission.hardcopyReceivedAt || existingSubmission.submittedAt,
+                              receiverName: existingSubmission.hardcopyReceiver || dbCache?.courseProfile?.dosenName,
+                              grade: existingSubmission.grade,
+                              feedback: existingSubmission.feedback,
+                              notes: existingSubmission.notes,
+                            });
+                          }}
+                          className="px-3.5 py-1.5 bg-emerald-700 hover:bg-emerald-800 text-white rounded-lg text-xs font-bold flex items-center gap-1.5 transition-colors cursor-pointer shadow-xs whitespace-nowrap"
+                          title="Unduh Surat Tanda Terima Makalah Fisik langsung sebagai file .PDF resmi"
                         >
                           <Download size={13} />
-                          <span>Unduh Berkas Makalah</span>
-                        </a>
-                      ) : (
-                        <span className="text-xs text-slate-400 italic">Belum Ada Makalah</span>
-                      )}
+                          <span>Unduh PDF Tanda Terima</span>
+                        </button>
+
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const dbCache = getLocalCache();
+                            printHardcopySubmissionReceiptPdf({
+                              campusName: dbCache?.courseProfile?.campusName,
+                              studyProgram: dbCache?.courseProfile?.studyProgram,
+                              courseTitle: dbCache?.courseProfile?.courseTitle,
+                              courseCode: dbCache?.courseProfile?.courseCode,
+                              semester: dbCache?.courseProfile?.semester,
+                              dosenFullName: dbCache?.courseProfile?.dosenName,
+                              dosenNidn: dbCache?.courseProfile?.dosenNidn,
+                              studentName: targetStudent.name,
+                              studentNim: targetStudent.nim,
+                              rpsPart: existingSubmission.rpsPart,
+                              meetingNumber: existingSubmission.meetingNumber,
+                              topic: existingSubmission.topic || targetStudent.topic,
+                              submittedAt: existingSubmission.hardcopyReceivedAt || existingSubmission.submittedAt,
+                              receiverName: existingSubmission.hardcopyReceiver || dbCache?.courseProfile?.dosenName,
+                              grade: existingSubmission.grade,
+                              feedback: existingSubmission.feedback,
+                              notes: existingSubmission.notes,
+                            });
+                          }}
+                          className="px-3.5 py-1.5 bg-purple-700 hover:bg-purple-800 text-white rounded-lg text-xs font-bold flex items-center gap-1.5 transition-colors cursor-pointer shadow-xs whitespace-nowrap"
+                          title="Cetak Surat Bukti Tanda Terima Pengumpulan Makalah Fisik (Browser Print / Save As PDF)"
+                        >
+                          <Printer size={13} />
+                          <span>Cetak Tanda Terima</span>
+                        </button>
+
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const dbCache = getLocalCache();
+                            exportHardcopyReceiptWord({
+                              campusName: dbCache?.courseProfile?.campusName,
+                              studyProgram: dbCache?.courseProfile?.studyProgram,
+                              courseTitle: dbCache?.courseProfile?.courseTitle,
+                              courseCode: dbCache?.courseProfile?.courseCode,
+                              semester: dbCache?.courseProfile?.semester,
+                              dosenFullName: dbCache?.courseProfile?.dosenName,
+                              dosenNidn: dbCache?.courseProfile?.dosenNidn,
+                              studentName: targetStudent.name,
+                              studentNim: targetStudent.nim,
+                              rpsPart: existingSubmission.rpsPart,
+                              meetingNumber: existingSubmission.meetingNumber,
+                              topic: existingSubmission.topic || targetStudent.topic,
+                              submittedAt: existingSubmission.hardcopyReceivedAt || existingSubmission.submittedAt,
+                              receiverName: existingSubmission.hardcopyReceiver || dbCache?.courseProfile?.dosenName,
+                              grade: existingSubmission.grade,
+                              feedback: existingSubmission.feedback,
+                              notes: existingSubmission.notes,
+                            });
+                          }}
+                          className="px-2.5 py-1.5 bg-blue-50 hover:bg-blue-100 text-blue-800 border border-blue-200 rounded-lg text-xs font-bold flex items-center gap-1 transition-colors cursor-pointer whitespace-nowrap"
+                          title="Unduh Tanda Terima format Word (.doc)"
+                        >
+                          <FileText size={13} />
+                          <span>Word</span>
+                        </button>
+                      </div>
                     </div>
-                  </div>
+                  ) : (
+                    <div className="p-3.5 bg-slate-50 border border-slate-200 rounded-xl flex items-center justify-between gap-3">
+                      <div className="flex items-center gap-3 min-w-0">
+                        <div className="w-9 h-9 rounded-lg bg-blue-100 text-blue-700 flex items-center justify-center flex-shrink-0 font-black text-xs">
+                          DOC
+                        </div>
+                        <div className="min-w-0">
+                          <div className="text-xs font-bold text-slate-900 truncate">
+                            {existingSubmission.makalahFileName || 'Makalah Lengkap (PDF/DOC)'}
+                          </div>
+                          <div className="text-[11px] text-slate-500 truncate">
+                            {existingSubmission.makalahType === 'link' ? (existingSubmission.makalahUrl || 'Tautan Google Docs/Drive') : 'Berkas Makalah Kajian'}
+                          </div>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-2 flex-shrink-0">
+                        {existingSubmission.makalahType === 'link' && existingSubmission.makalahUrl ? (
+                          <a
+                            href={existingSubmission.makalahUrl}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="px-3.5 py-1.5 bg-blue-700 hover:bg-blue-800 text-white rounded-lg text-xs font-bold flex items-center gap-1.5 transition-colors cursor-pointer shadow-xs"
+                          >
+                            <ExternalLink size={13} />
+                            <span>Buka Link Makalah</span>
+                          </a>
+                        ) : existingSubmission.makalahFileData ? (
+                          <a
+                            href={existingSubmission.makalahFileData}
+                            download={existingSubmission.makalahFileName || `Makalah_${targetStudent.name}.pdf`}
+                            className="px-3.5 py-1.5 bg-blue-700 hover:bg-blue-800 text-white rounded-lg text-xs font-bold flex items-center gap-1.5 transition-colors cursor-pointer shadow-xs"
+                          >
+                            <Download size={13} />
+                            <span>Unduh Berkas Makalah</span>
+                          </a>
+                        ) : (
+                          <span className="text-xs text-slate-400 italic">Belum Ada Makalah</span>
+                        )}
+                      </div>
+                    </div>
+                  )}
 
                   {/* Details Card */}
                   <div className="p-3.5 bg-slate-50 border border-slate-200 rounded-xl space-y-2 text-xs">
@@ -2836,7 +2965,6 @@ export const IndividualTaskView: React.FC<IndividualTaskViewProps> = ({
                 </div>
               </div>
 
-              <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
               {/* Section 1: Presentation Slides (PPT / Canva) */}
               <div className={`space-y-3 p-4 rounded-xl border transition-all ${
                 submissionChoice === 'makalah_only' ? 'bg-slate-50/40 border-slate-200 opacity-60' : 'bg-slate-50/80 border-slate-200'
@@ -2851,7 +2979,7 @@ export const IndividualTaskView: React.FC<IndividualTaskViewProps> = ({
                   </label>
                   
                   {/* Mode switcher */}
-                  <div className="flex flex-wrap items-center bg-slate-200/80 p-0.5 rounded-lg text-xs self-start sm:self-auto">
+                  <div className="flex items-center bg-slate-200/80 p-0.5 rounded-lg text-xs self-start sm:self-auto">
                     <button
                       type="button"
                       onClick={() => setPptType('link')}
@@ -2938,18 +3066,6 @@ export const IndividualTaskView: React.FC<IndividualTaskViewProps> = ({
                     >
                       Upload File Makalah
                     </button>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setMakalahType('hardcopy_print');
-                        setSubmissionChoice('makalah_only');
-                      }}
-                      className={`px-3 py-1 rounded-md font-semibold transition-all ${
-                        makalahType === 'hardcopy_print' ? 'bg-emerald-700 text-white shadow-xs' : 'text-slate-600 hover:text-slate-900'
-                      }`}
-                    >
-                      Kumpul Cetak / Print Fisik
-                    </button>
                   </div>
                 </div>
 
@@ -2966,7 +3082,7 @@ export const IndividualTaskView: React.FC<IndividualTaskViewProps> = ({
                       />
                     </div>
                   </div>
-                ) : makalahType === 'file' ? (
+                ) : (
                   <div>
                     <input
                       type="file"
@@ -2980,27 +3096,7 @@ export const IndividualTaskView: React.FC<IndividualTaskViewProps> = ({
                       </p>
                     )}
                   </div>
-                ) : (
-                  <div className="rounded-lg border border-emerald-300 bg-emerald-50 p-4 text-sm text-emerald-950">
-                    <div className="font-bold">Makalah diserahkan sebagai printout fisik</div>
-                    <p className="mt-1 text-xs leading-relaxed">
-                      Tidak perlu mengunggah file makalah. Permintaan akan tercatat dan menunggu verifikasi dosen setelah berkas cetak diserahkan langsung.
-                    </p>
-                    <label className="mt-3 block text-[11px] font-bold" htmlFor="hardcopy-notes">
-                      Catatan penyerahan (opsional)
-                    </label>
-                    <input
-                      id="hardcopy-notes"
-                      type="text"
-                      value={notes}
-                      onChange={e => setNotes(e.target.value)}
-                      placeholder="Contoh: diserahkan langsung saat pertemuan"
-                      className="mt-1 w-full rounded-lg border border-emerald-300 bg-white px-3 py-2 text-xs"
-                    />
-                  </div>
                 )}
-              </div>
-
               </div>
 
               {/* Section 3: Notes / Ringkasan Pokok */}
@@ -3046,7 +3142,7 @@ export const IndividualTaskView: React.FC<IndividualTaskViewProps> = ({
       {/* MODAL KONFIRMASI PENGIRIMAN TUGAS PRESENTASI */}
       {isConfirmSubmitOpen && targetStudent && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/70 backdrop-blur-xs animate-in fade-in duration-200">
-          <div className="bg-white dark:bg-slate-900 rounded-2xl max-w-5xl w-full max-h-[92dvh] flex flex-col shadow-2xl overflow-hidden border border-slate-200 dark:border-slate-800 animate-in zoom-in-95 duration-200">
+          <div className="bg-white dark:bg-slate-900 rounded-2xl max-w-lg w-full max-h-[90vh] flex flex-col shadow-2xl overflow-hidden border border-slate-200 dark:border-slate-800 animate-in zoom-in-95 duration-200">
             {/* Header */}
             <div className="px-6 py-4 bg-gradient-to-r from-emerald-800 to-slate-900 text-white flex items-center justify-between">
               <div className="flex items-center gap-2.5">
@@ -3068,7 +3164,7 @@ export const IndividualTaskView: React.FC<IndividualTaskViewProps> = ({
             </div>
 
             {/* Body */}
-            <div className="p-4 sm:p-6 overflow-y-auto grid grid-cols-1 lg:grid-cols-2 gap-4 text-xs sm:text-sm text-slate-700 dark:text-slate-300">
+            <div className="p-6 overflow-y-auto space-y-4 text-xs sm:text-sm text-slate-700 dark:text-slate-300">
               {/* Student info */}
               <div className="p-3.5 rounded-xl bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 space-y-2">
                 <div className="flex items-center justify-between border-b border-slate-200 dark:border-slate-700 pb-2">
@@ -3125,11 +3221,7 @@ export const IndividualTaskView: React.FC<IndividualTaskViewProps> = ({
                   <FileText size={16} className="text-indigo-700 dark:text-indigo-400 shrink-0 mt-0.5" />
                   <div className="flex-1 min-w-0">
                     <span className="font-bold text-slate-900 dark:text-white block text-xs">2. Dokumen Makalah (PDF / Docs)</span>
-                    {makalahType === 'hardcopy_print' ? (
-                      <p className="text-xs text-emerald-800 dark:text-emerald-300 font-medium mt-0.5">
-                        Printout fisik dipilih. Tidak ada file makalah yang perlu diunggah; menunggu verifikasi dosen.
-                      </p>
-                    ) : makalahType === 'file' ? (
+                    {makalahType === 'file' ? (
                       makalahFileName ? (
                         <p className="text-xs text-indigo-800 dark:text-indigo-300 font-medium truncate mt-0.5">
                           📄 File: {makalahFileName}
@@ -3158,7 +3250,7 @@ export const IndividualTaskView: React.FC<IndividualTaskViewProps> = ({
               </div>
 
               {/* Warning Notice Box */}
-              <div className="lg:col-span-2 p-3.5 rounded-xl bg-amber-50 dark:bg-amber-950/30 border border-amber-300 dark:border-amber-700 flex items-start gap-2.5 text-amber-900 dark:text-amber-200">
+              <div className="p-3.5 rounded-xl bg-amber-50 dark:bg-amber-950/30 border border-amber-300 dark:border-amber-700 flex items-start gap-2.5 text-amber-900 dark:text-amber-200">
                 <AlertCircle size={18} className="text-amber-600 dark:text-amber-400 shrink-0 mt-0.5" />
                 <div className="text-[11px] leading-relaxed">
                   <strong className="font-bold block mb-0.5">PERINGATAN ATURAN PENGUMPULAN:</strong>
@@ -3202,8 +3294,8 @@ export const IndividualTaskView: React.FC<IndividualTaskViewProps> = ({
 
       {/* MODAL: Peer Review & Unduh Berkas Tugas Presentasi Teman Sekelas */}
       {reviewingSubmission && (
-        <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4 overflow-y-auto">
-          <div className="bg-white dark:bg-slate-900 rounded-2xl max-w-2xl w-full border border-slate-200 dark:border-slate-800 shadow-2xl overflow-hidden my-6 animate-fadeIn">
+        <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex justify-center items-start p-3 sm:p-6 overflow-y-auto min-h-screen">
+          <div className="bg-white dark:bg-slate-900 rounded-2xl max-w-2xl w-full border border-slate-200 dark:border-slate-800 shadow-2xl overflow-hidden my-4 sm:my-8 animate-fadeIn">
             {/* Modal Header */}
             <div className="p-4 sm:p-5 bg-gradient-to-r from-slate-900 via-indigo-950 to-slate-900 text-white flex items-center justify-between">
               <div className="flex items-center gap-2.5">

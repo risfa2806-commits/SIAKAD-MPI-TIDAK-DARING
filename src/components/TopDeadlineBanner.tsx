@@ -88,7 +88,7 @@ export const TopDeadlineBanner: React.FC<TopDeadlineBannerProps> = ({
           : 'bg-gradient-to-r from-amber-950 via-slate-900 to-amber-950 border-amber-500/50 text-amber-100'
       }`}
     >
-      <div className="max-w-7xl mx-auto px-3 sm:px-4 py-2 sm:py-2.5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2.5">
+      <div className="max-w-[1920px] mx-auto px-3 sm:px-4 py-2 sm:py-2.5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2.5">
         
         {/* Left Info with pulsing icon */}
         <div className="flex items-center gap-2.5 flex-1 min-w-0">

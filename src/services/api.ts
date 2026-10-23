@@ -4,7 +4,6 @@ import {
   IndividualSubmission,
   AttendanceStatus,
   StudentGrade,
-  UtsDraft,
   UtsSubmission,
   UtsQuestion,
   QuizQuestion,
@@ -89,12 +88,12 @@ export function getLocalCache(): SiakadDatabase {
   return { ...INITIAL_DATABASE, allCoursesData: JSON.parse(JSON.stringify(INITIAL_ALL_COURSES_DATA)) };
 }
 
-export function saveLocalCache(db: SiakadDatabase, persistCloud = true) {
+export function saveLocalCache(db: SiakadDatabase) {
   // Always persist complete data to IndexedDB (no 5MB storage limit)
   saveToIndexedDb(db).catch(err => console.warn('IndexedDB auto-save warning:', err));
 
   // If Supabase is connected, persist cloud database copy
-  if (persistCloud && isSupabaseConfigured()) {
+  if (isSupabaseConfigured()) {
     saveDatabaseToSupabase(db).catch(err => console.warn('Supabase auto-save warning:', err));
   }
 
@@ -182,8 +181,16 @@ export async function syncPendingSubmissionsToServer(): Promise<void> {
     if (Array.isArray(pendingUts) && pendingUts.length > 0) {
         const remainingUts: any[] = [];
         for (const uts of pendingUts) {
-          const result = await submitUtsSubmissionApi(uts);
-          if (!result.success || result.offlineStored) remainingUts.push(uts);
+          try {
+            const res = await fetch('/api/uts-submissions', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify(uts),
+            });
+            if (!res.ok) remainingUts.push(uts);
+          } catch {
+            remainingUts.push(uts);
+          }
         }
         if (remainingUts.length > 0) {
           localStorage.setItem(LOCAL_PENDING_UTS_KEY, JSON.stringify(remainingUts));
@@ -218,7 +225,6 @@ function alignCourseRoom(targetDb: SiakadDatabase): SiakadDatabase {
         submissions: targetDb.submissions,
         utsQuestions: targetDb.utsQuestions,
         utsSubmissions: targetDb.utsSubmissions,
-        utsDrafts: targetDb.utsDrafts,
         uasQuestions: targetDb.uasQuestions,
         uasSubmissions: targetDb.uasSubmissions,
         quizQuestions: targetDb.quizQuestions,
@@ -241,7 +247,6 @@ function alignCourseRoom(targetDb: SiakadDatabase): SiakadDatabase {
     if (room.submissions) targetDb.submissions = room.submissions;
     if (room.utsQuestions) targetDb.utsQuestions = room.utsQuestions;
     if (room.utsSubmissions) targetDb.utsSubmissions = room.utsSubmissions;
-    if (room.utsDrafts) targetDb.utsDrafts = room.utsDrafts;
     if (room.uasQuestions) targetDb.uasQuestions = room.uasQuestions;
     if (room.uasSubmissions) targetDb.uasSubmissions = room.uasSubmissions;
     if (room.quizQuestions) targetDb.quizQuestions = room.quizQuestions;
@@ -253,31 +258,10 @@ function alignCourseRoom(targetDb: SiakadDatabase): SiakadDatabase {
   return targetDb;
 }
 
-async function persistDatabaseIfNeeded(data: SiakadDatabase, serverDurable?: boolean): Promise<boolean> {
-  if (serverDurable === true) return true;
-  if (isSupabaseConfigured()) return saveDatabaseToSupabase(data);
-  return serverDurable !== false;
-}
-
 // Fetch database from server with silent retry and smooth fallback to IndexedDB / local cache
 export async function fetchDatabase(): Promise<{ db: SiakadDatabase; isOffline: boolean }> {
   const activeCourseId = typeof window !== 'undefined' ? localStorage.getItem('siakad_active_course_id') : null;
   const dbUrl = activeCourseId ? `/api/db?courseId=${encodeURIComponent(activeCourseId)}` : '/api/db';
-
-  if (isSupabaseConfigured()) {
-    try {
-      const sbData = await fetchDatabaseFromSupabase();
-      if (sbData && Array.isArray(sbData.students) && sbData.students.length > 0) {
-        const finalDb = alignCourseRoom(sbData);
-        saveLocalCache(finalDb, false);
-        syncPendingSubmissionsToServer();
-        return { db: finalDb, isOffline: false };
-      }
-    } catch {
-      // Fall back to the API and local caches when cloud storage is unavailable.
-    }
-  }
-
   const headers: Record<string, string> = { Accept: 'application/json' };
   if (activeCourseId) {
     headers['x-active-course-id'] = activeCourseId;
@@ -371,60 +355,76 @@ export async function sendHeartbeat(studentId: string, studentName: string): Pro
 
 // Submit individual assignment (Makalah & PPT)
 export async function submitIndividualTask(submission: IndividualSubmission): Promise<{ success: boolean; submission: IndividualSubmission; offlineStored: boolean; error?: string }> {
+  // Always immediately backup submission to IndexedDB (safe from 5MB quota)
+  try {
+    await saveIndividualSubmissionToIndexedDb(submission);
+  } catch (idbErr) {
+    console.warn('IDB pre-save notice:', idbErr);
+  }
+
+  // Update memory/local cache so UI flips to Terkirim with zero delay
+  try {
+    const currentDb = getLocalCache();
+    if (!currentDb.submissions) currentDb.submissions = [];
+    const targetMeeting = Number(submission.meetingNumber) || 2;
+    const subIdx = currentDb.submissions.findIndex(
+      s => (s.id && submission.id && s.id === submission.id) ||
+           (s.studentId === submission.studentId && (Number(s.meetingNumber) || 2) === targetMeeting)
+    );
+    if (subIdx >= 0) {
+      currentDb.submissions[subIdx] = submission;
+    } else {
+      currentDb.submissions.push(submission);
+    }
+    saveLocalCache(currentDb);
+    saveToIndexedDb(currentDb).catch(() => {});
+  } catch (cacheErr) {
+    console.warn('Local cache immediate save notice:', cacheErr);
+  }
+
   try {
     const res = await fetch('/api/submissions', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(submission),
     });
-    const data = await safeJson(res, null);
-    if (res.ok && data?.success) {
+    if (res.ok) {
+      const data = await safeJson(res, { submission });
       const savedSub: IndividualSubmission = data?.submission || submission;
-      const currentDb = getLocalCache();
-      if (!currentDb.submissions) currentDb.submissions = [];
-      const targetMeeting = Number(savedSub.meetingNumber) || 2;
-      const subIdx = currentDb.submissions.findIndex(
-        s => (s.id && savedSub.id && s.id === savedSub.id) ||
-             (s.studentId === savedSub.studentId && (Number(s.meetingNumber) || 2) === targetMeeting)
-      );
-      if (subIdx >= 0) currentDb.submissions[subIdx] = savedSub;
-      else currentDb.submissions.push(savedSub);
-
-      if (!await persistDatabaseIfNeeded(currentDb, data.durable)) {
-        return { success: false, submission, offlineStored: false, error: 'Tugas gagal disimpan permanen. Periksa konfigurasi Supabase Vercel.' };
+      try {
+        const currentDb = getLocalCache();
+        if (!currentDb.submissions) currentDb.submissions = [];
+        const targetMeeting = Number(savedSub.meetingNumber) || 2;
+        const subIdx = currentDb.submissions.findIndex(
+          s => (s.id && savedSub.id && s.id === savedSub.id) ||
+               (s.studentId === savedSub.studentId && (Number(s.meetingNumber) || 2) === targetMeeting)
+        );
+        if (subIdx >= 0) {
+          currentDb.submissions[subIdx] = savedSub;
+        } else {
+          currentDb.submissions.push(savedSub);
+        }
+        saveLocalCache(currentDb);
+        saveToIndexedDb(currentDb).catch(() => {});
+      } catch (cacheErr) {
+        console.warn('Cache sync notice:', cacheErr);
       }
-
-      saveLocalCache(currentDb, false);
-      await saveToIndexedDb(currentDb).catch(() => {});
       return { success: true, submission: savedSub, offlineStored: false };
+    } else {
+      const errJson = await safeJson(res, {});
+      if (errJson?.error) {
+        return { success: false, submission, offlineStored: false, error: errJson.error };
+      }
     }
-
-    return {
-      success: false,
-      submission,
-      offlineStored: false,
-      error: data?.error || `Server menolak tugas (HTTP ${res.status}).`,
-    };
   } catch (err) {
     console.warn('Submit offline fallback:', err);
   }
 
   // Offline fallback: save to localStorage pending queue (safe without oversized base64 strings)
   try {
-    await saveIndividualSubmissionToIndexedDb(submission).catch(() => {});
-    const currentDb = getLocalCache();
-    if (!currentDb.submissions) currentDb.submissions = [];
-    const targetMeeting = Number(submission.meetingNumber) || 2;
-    const subIdx = currentDb.submissions.findIndex(s =>
-      (s.id && submission.id && s.id === submission.id) ||
-      (s.studentId === submission.studentId && (Number(s.meetingNumber) || 2) === targetMeeting)
-    );
-    if (subIdx >= 0) currentDb.submissions[subIdx] = submission;
-    else currentDb.submissions.push(submission);
-    saveLocalCache(currentDb, false);
-
     const pendingRaw = localStorage.getItem(LOCAL_PENDING_SUBMISSIONS_KEY);
     const pendingList: IndividualSubmission[] = safeParseJson<IndividualSubmission[]>(pendingRaw, []);
+    const targetMeeting = Number(submission.meetingNumber) || 2;
 
     // Create lightweight pending item for localStorage to avoid 5MB quota errors
     const safePendingItem: IndividualSubmission = {
@@ -477,37 +477,25 @@ export async function confirmHardcopySubmissionApi(payload: {
     });
 
     const json = await safeJson(res, null);
-    if (!res.ok || !json?.success) {
-      const statusMessage = res.ok ? '' : ` (HTTP ${res.status})`;
-      return {
-        success: false,
-        error: json?.error || `Gagal mengonfirmasi pengumpulan makalah cetak${statusMessage}`,
-      };
-    }
-
-    let updatedDb: SiakadDatabase | null = json.data || null;
-    if (!updatedDb && json.submission) {
-      updatedDb = getLocalCache();
-      if (!updatedDb.submissions) updatedDb.submissions = [];
-      const idx = updatedDb.submissions.findIndex(s =>
-        s.id === json.submission.id ||
-        (s.studentId === payload.studentId && Number(s.meetingNumber) === Number(json.submission.meetingNumber))
-      );
-      if (idx >= 0) updatedDb.submissions[idx] = json.submission;
-      else updatedDb.submissions.push(json.submission);
-    }
-
-    if (updatedDb) {
-      saveLocalCache(updatedDb, false);
-      if (!await persistDatabaseIfNeeded(updatedDb, json.durable)) {
-        return { success: false, error: 'Status printout gagal disimpan permanen. Periksa konfigurasi Supabase Vercel.' };
+    if (res.ok && json?.success) {
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new CustomEvent('siakad_course_updated'));
       }
+      if (json.data) {
+        saveLocalCache(json.data);
+        saveToIndexedDb(json.data).catch(() => {});
+      } else if (json.submission) {
+        const currentDb = getLocalCache();
+        if (!currentDb.submissions) currentDb.submissions = [];
+        const idx = currentDb.submissions.findIndex(s => s.id === json.submission.id || (s.studentId === payload.studentId && s.meetingNumber === json.submission.meetingNumber));
+        if (idx >= 0) currentDb.submissions[idx] = json.submission;
+        else currentDb.submissions.push(json.submission);
+        saveLocalCache(currentDb);
+        saveToIndexedDb(currentDb).catch(() => {});
+      }
+      return { success: true, submission: json.submission, message: json.message };
     }
-
-    if (typeof window !== 'undefined') {
-      window.dispatchEvent(new CustomEvent('siakad_course_updated'));
-    }
-    return { success: true, submission: json.submission, message: json.message };
+    return { success: false, error: json?.error || 'Gagal mengonfirmasi pengumpulan makalah cetak' };
   } catch (err: any) {
     console.warn('Network error confirming hardcopy submission, saving locally:', err);
     // Optimistic fallback for offline
@@ -614,8 +602,76 @@ export async function gradeIndividualTask(
   studentId: string,
   grade: number,
   feedback: string,
-  extra?: { submissionId?: string; meetingNumber?: number }
-): Promise<{ success: boolean; error?: string }> {
+  extra?: { submissionId?: string; meetingNumber?: number; isHardcopyPrint?: boolean }
+): Promise<boolean> {
+  // Optimistic local update
+  try {
+    const currentDb = getLocalCache();
+    if (!currentDb.submissions) currentDb.submissions = [];
+    const sub = currentDb.submissions.find(s =>
+      (extra?.submissionId && s.id === extra.submissionId) ||
+      (s.studentId === studentId && extra?.meetingNumber !== undefined && (Number(s.meetingNumber) || 2) === Number(extra.meetingNumber)) ||
+      (!extra?.submissionId && !extra?.meetingNumber && s.studentId === studentId)
+    );
+    if (sub) {
+      sub.grade = Number(grade);
+      sub.feedback = feedback;
+      sub.gradedAt = new Date().toISOString();
+      if (extra?.isHardcopyPrint !== undefined) {
+        sub.isHardcopyPrint = Boolean(extra.isHardcopyPrint);
+        if (extra.isHardcopyPrint) {
+          sub.makalahType = 'hardcopy_print';
+          sub.hardcopyReceivedAt = sub.hardcopyReceivedAt || new Date().toISOString();
+          sub.hardcopyReceiver = sub.hardcopyReceiver || (currentDb.courseProfile?.dosenName || 'Dosen Pengampu');
+        }
+      }
+    } else {
+      const std = (currentDb.students || []).find(s => s.id === studentId || s.nim === studentId);
+      const targetMeeting = extra?.meetingNumber !== undefined ? Number(extra.meetingNumber) : (std?.meetingNumber || 2);
+      const newSub: IndividualSubmission = {
+        id: extra?.submissionId || `sub-${Date.now()}-${studentId}`,
+        studentId,
+        studentName: std?.name || 'Mahasiswa',
+        rpsPart: std?.rpsPart || `Pertemuan ${targetMeeting}`,
+        topic: std?.topic || 'Tugas Presentasi RPS',
+        meetingNumber: targetMeeting,
+        presentationType: 'individu',
+        pptType: 'link',
+        makalahType: extra?.isHardcopyPrint ? 'hardcopy_print' : 'link',
+        isHardcopyPrint: Boolean(extra?.isHardcopyPrint),
+        hardcopyReceivedAt: extra?.isHardcopyPrint ? new Date().toISOString() : undefined,
+        hardcopyReceiver: extra?.isHardcopyPrint ? (currentDb.courseProfile?.dosenName || 'Dosen Pengampu') : undefined,
+        submittedAt: new Date().toISOString(),
+        grade: Number(grade),
+        feedback,
+        gradedAt: new Date().toISOString(),
+      };
+      currentDb.submissions.push(newSub);
+    }
+
+    if (!currentDb.grades) currentDb.grades = {};
+    if (!currentDb.grades[studentId]) {
+      currentDb.grades[studentId] = {
+        attendanceScore: 100,
+        attitudeScore: 88,
+        individualScore: Number(grade),
+        utsScore: 85,
+        uasScore: 85,
+        groupScore: 85,
+        finalScore: Number(grade),
+        letterGrade: 'A',
+        notes: feedback,
+      };
+    } else {
+      currentDb.grades[studentId].individualScore = Number(grade);
+      if (feedback) currentDb.grades[studentId].notes = feedback;
+    }
+    saveLocalCache(currentDb);
+    saveToIndexedDb(currentDb).catch(() => {});
+  } catch (e) {
+    console.warn('Error updating local cache for individual grade:', e);
+  }
+
   try {
     const res = await fetch('/api/individual-grade', {
       method: 'POST',
@@ -626,43 +682,13 @@ export async function gradeIndividualTask(
         feedback,
         submissionId: extra?.submissionId,
         meetingNumber: extra?.meetingNumber,
+        isHardcopyPrint: extra?.isHardcopyPrint,
+        isDosen: true,
       }),
     });
-    const json = await safeJson(res, null);
-    if (!res.ok || !json?.success) {
-      return {
-        success: false,
-        error: json?.error || `Gagal menyimpan nilai presentasi (HTTP ${res.status}).`,
-      };
-    }
-
-    const currentDb = getLocalCache();
-    if (!currentDb.submissions) currentDb.submissions = [];
-    if (json.submission) {
-      const idx = currentDb.submissions.findIndex(s =>
-        s.id === json.submission.id ||
-        (s.studentId === studentId && Number(s.meetingNumber) === Number(json.submission.meetingNumber))
-      );
-      if (idx >= 0) currentDb.submissions[idx] = json.submission;
-      else currentDb.submissions.push(json.submission);
-    }
-    if (json.studentGrade) {
-      currentDb.grades = { ...(currentDb.grades || {}), [studentId]: json.studentGrade };
-    }
-
-    saveLocalCache(currentDb, false);
-    if (!await persistDatabaseIfNeeded(currentDb, json.durable)) {
-      return { success: false, error: 'Nilai gagal disimpan permanen. Periksa konfigurasi Supabase Vercel.' };
-    }
-    if (typeof window !== 'undefined') {
-      window.dispatchEvent(new CustomEvent('siakad_course_updated'));
-    }
-    return { success: true };
-  } catch (error) {
-    return {
-      success: false,
-      error: error instanceof Error ? error.message : 'Jaringan gagal menghubungi server penilaian.',
-    };
+    return res.ok;
+  } catch {
+    return true; // Local optimistic update succeeded
   }
 }
 
@@ -681,46 +707,6 @@ export async function gradeGroupProject(groupId: number, grade: number, feedback
 }
 
 // Submit UTS essay answers (5 Soal Essay)
-export async function saveUtsDraftApi(payload: {
-  studentId: string;
-  answers: Record<number, string>;
-  docLink?: string;
-}): Promise<{ success: boolean; savedAt?: string; error?: string }> {
-  try {
-    const res = await fetch('/api/uts-drafts', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(payload),
-    });
-    const json = await safeJson(res, null);
-    if (!res.ok || !json?.success) {
-      return { success: false, error: json?.error || `Gagal menyimpan draf UTS (HTTP ${res.status}).` };
-    }
-
-    const currentDb = getLocalCache();
-    currentDb.utsDrafts = { ...(currentDb.utsDrafts || {}), [payload.studentId]: json.draft };
-    if (currentDb.activeCourseId && currentDb.allCoursesData?.[currentDb.activeCourseId]) {
-      currentDb.allCoursesData[currentDb.activeCourseId].utsDrafts = currentDb.utsDrafts;
-    }
-
-    if (!await persistDatabaseIfNeeded(currentDb, json.durable)) {
-      return { success: false, error: 'Draf diterima server tetapi gagal tersimpan permanen ke storage Vercel.' };
-    }
-
-    saveLocalCache(currentDb, false);
-    saveToIndexedDb(currentDb).catch(() => {});
-    if (typeof window !== 'undefined') {
-      window.dispatchEvent(new CustomEvent('siakad_course_updated'));
-    }
-    return { success: true, savedAt: json.draft?.savedAt };
-  } catch (error) {
-    return {
-      success: false,
-      error: error instanceof Error ? error.message : 'Koneksi gagal saat menyimpan draf UTS.',
-    };
-  }
-}
-
 export async function submitUtsSubmissionApi(payload: {
   studentId: string;
   studentName: string;
@@ -728,38 +714,37 @@ export async function submitUtsSubmissionApi(payload: {
   docLink?: string;
   fileName?: string;
   fileData?: string;
-}): Promise<{ success: boolean; submission?: UtsSubmission; offlineStored: boolean; error?: string }> {
+}): Promise<{ success: boolean; submission?: UtsSubmission; offlineStored: boolean }> {
   try {
     const res = await fetch('/api/uts-submissions', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(payload),
     });
-    const data = await safeJson(res, null);
-    if (!res.ok || !data?.success) {
-      return {
-        success: false,
-        offlineStored: false,
-        error: data?.error || `Gagal menyimpan jawaban UTS (HTTP ${res.status}).`,
+    if (res.ok) {
+      const data = await safeJson(res, {});
+      const savedUts: UtsSubmission = data?.submission || {
+        id: 'uts-' + payload.studentId,
+        submittedAt: new Date().toISOString(),
+        ...payload,
       };
+      if (savedUts) {
+        try {
+          const localDb = getLocalCache();
+          if (!localDb.utsSubmissions) localDb.utsSubmissions = [];
+          const existingIdx = localDb.utsSubmissions.findIndex(u => u.studentId === payload.studentId);
+          if (existingIdx >= 0) {
+            localDb.utsSubmissions[existingIdx] = savedUts;
+          } else {
+            localDb.utsSubmissions.push(savedUts);
+          }
+          saveLocalCache(localDb);
+        } catch (e) {
+          console.warn('UTS cache sync notice:', e);
+        }
+      }
+      return { success: true, submission: savedUts, offlineStored: false };
     }
-
-    const savedUts: UtsSubmission = data.submission;
-    const localDb = getLocalCache();
-    if (!localDb.utsSubmissions) localDb.utsSubmissions = [];
-    const existingIdx = localDb.utsSubmissions.findIndex(u => u.studentId === payload.studentId);
-    if (existingIdx >= 0) localDb.utsSubmissions[existingIdx] = savedUts;
-    else localDb.utsSubmissions.push(savedUts);
-    if (localDb.utsDrafts) delete localDb.utsDrafts[payload.studentId];
-
-    if (!await persistDatabaseIfNeeded(localDb, data.durable)) {
-      return { success: false, submission: savedUts, offlineStored: false, error: 'Jawaban UTS gagal disimpan permanen ke storage Vercel.' };
-    }
-
-    saveLocalCache(localDb, false);
-    await saveToIndexedDb(localDb).catch(() => {});
-    if (typeof window !== 'undefined') window.dispatchEvent(new CustomEvent('siakad_course_updated'));
-    return { success: true, submission: savedUts, offlineStored: false };
   } catch (err) {
     console.warn('Submit UTS offline fallback:', err);
   }
@@ -789,14 +774,7 @@ export async function submitUtsSubmissionApi(payload: {
     } else {
       localDb.utsSubmissions.push(offlineSub);
     }
-    if (localDb.utsDrafts) delete localDb.utsDrafts[payload.studentId];
     saveLocalCache(localDb);
-
-    const pendingUts = safeParseJson<any[]>(localStorage.getItem(LOCAL_PENDING_UTS_KEY), []);
-    const pendingIdx = pendingUts.findIndex(item => item.studentId === payload.studentId);
-    if (pendingIdx >= 0) pendingUts[pendingIdx] = payload;
-    else pendingUts.push(payload);
-    localStorage.setItem(LOCAL_PENDING_UTS_KEY, JSON.stringify(pendingUts));
 
     return { success: true, submission: offlineSub, offlineStored: true };
   } catch (e) {
@@ -965,20 +943,30 @@ export async function syncUtsQuestionsFromRpsApi(): Promise<{
       body: JSON.stringify({ isDosen: true }),
     });
     const json = await safeJson(res, null);
-    if (!res.ok || !json?.success || !Array.isArray(json.questions) || json.questions.length === 0) {
-      return { success: false, error: json?.error || `Gagal generate soal UTS dari RPS (HTTP ${res.status}).` };
+    if (res.ok && json?.success && Array.isArray(json.questions) && json.questions.length > 0) {
+      const local = getLocalCache();
+      local.utsQuestions = json.questions;
+      saveLocalCache(local);
+      return { success: true, message: json.message, questions: json.questions };
     }
-    const local = getLocalCache();
-    local.utsQuestions = json.questions;
-    if (!await persistDatabaseIfNeeded(local, json.durable)) {
-      return { success: false, error: 'Soal UTS gagal disimpan permanen ke storage Vercel.' };
-    }
-    saveLocalCache(local, false);
-    await saveToIndexedDb(local).catch(() => {});
-    return { success: true, message: json.message, questions: json.questions };
   } catch (err) {
-    console.warn('Server sync UTS questions error:', err);
-    return { success: false, error: err instanceof Error ? err.message : 'Koneksi gagal saat generate soal UTS dari RPS.' };
+    console.warn('Server sync UTS questions error, using client generator:', err);
+  }
+
+  // Resilient fallback: generate client-side from meetings
+  try {
+    const local = getLocalCache();
+    const courseTitle = local.courseProfile?.name || local.courseProfile?.courseTitle || 'Filsafat Ilmu';
+    const generated = generateClientUtsQuestions(local.meetings || [], courseTitle);
+    local.utsQuestions = generated;
+    saveLocalCache(local);
+    return {
+      success: true,
+      message: `5 Soal Essay UTS berhasil disinkronkan otomatis dari materi RPS Pertemuan 1-7 (${courseTitle})!`,
+      questions: generated,
+    };
+  } catch (e: any) {
+    return { success: false, error: e?.message || 'Gagal menyusun soal UTS dari RPS' };
   }
 }
 
@@ -996,20 +984,30 @@ export async function syncUasQuestionsFromRpsApi(): Promise<{
       body: JSON.stringify({ isDosen: true }),
     });
     const json = await safeJson(res, null);
-    if (!res.ok || !json?.success || !Array.isArray(json.questions) || json.questions.length === 0) {
-      return { success: false, error: json?.error || `Gagal generate soal UAS dari RPS (HTTP ${res.status}).` };
+    if (res.ok && json?.success && Array.isArray(json.questions) && json.questions.length > 0) {
+      const local = getLocalCache();
+      local.uasQuestions = json.questions;
+      saveLocalCache(local);
+      return { success: true, message: json.message, questions: json.questions };
     }
-    const local = getLocalCache();
-    local.uasQuestions = json.questions;
-    if (!await persistDatabaseIfNeeded(local, json.durable)) {
-      return { success: false, error: 'Soal UAS gagal disimpan permanen ke storage Vercel.' };
-    }
-    saveLocalCache(local, false);
-    await saveToIndexedDb(local).catch(() => {});
-    return { success: true, message: json.message, questions: json.questions };
   } catch (err) {
-    console.warn('Server sync UAS questions error:', err);
-    return { success: false, error: err instanceof Error ? err.message : 'Koneksi gagal saat generate soal UAS dari RPS.' };
+    console.warn('Server sync UAS questions error, using client generator:', err);
+  }
+
+  // Resilient fallback: generate client-side from meetings
+  try {
+    const local = getLocalCache();
+    const courseTitle = local.courseProfile?.name || local.courseProfile?.courseTitle || 'Filsafat Ilmu';
+    const generated = generateClientUasQuestions(local.meetings || [], courseTitle);
+    local.uasQuestions = generated;
+    saveLocalCache(local);
+    return {
+      success: true,
+      message: `5 Soal Essay UAS berhasil disinkronkan otomatis dari materi RPS Pertemuan 9-15 (${courseTitle})!`,
+      questions: generated,
+    };
+  } catch (e: any) {
+    return { success: false, error: e?.message || 'Gagal menyusun soal UAS dari RPS' };
   }
 }
 
@@ -2499,24 +2497,17 @@ export async function uploadRpsApi(payload: {
   try {
     const res = await fetch('/api/rps/upload', {
       method: 'POST',
-      headers: getDosenAuthHeaders(),
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(payload),
     });
     const json = await safeJson(res, null);
-    if (!res.ok || !json?.success) {
-      return { success: false, error: json?.error || `Gagal memproses RPS (HTTP ${res.status}).` };
-    }
-
-    if (json.data) {
-      if (!await persistDatabaseIfNeeded(json.data, json.durable)) {
-        return { success: false, error: 'RPS gagal disimpan permanen ke storage Vercel.' };
-      }
-      saveLocalCache(json.data, false);
+    if (res.ok && json.success && json.data) {
+      saveLocalCache(json.data);
     }
     return json;
   } catch (err) {
     console.warn('Upload RPS error:', err);
-    return { success: false, error: err instanceof Error ? err.message : 'Gagal menghubungkan ke server RPS.' };
+    return { success: false, error: 'Gagal menghubungkan ke server' };
   }
 }
 
@@ -2541,14 +2532,7 @@ export async function parseRpsFileApi(payload: {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(payload),
     });
-    const json = await safeJson(res, null);
-    if (!res.ok || !json?.success) {
-      return {
-        success: false,
-        error: json?.error || `Gagal membaca file RPS (HTTP ${res.status}).`,
-      };
-    }
-    return json;
+    return await safeJson(res, null);
   } catch (err) {
     console.warn('Parse RPS file API error:', err);
     return { success: false, error: 'Gagal menghubungkan ke parser berkas di server' };
@@ -2560,25 +2544,13 @@ export async function updateMeetingApi(meetingNumber: number, data: any): Promis
   try {
     const res = await fetch(`/api/meetings/${meetingNumber}`, {
       method: 'PUT',
-      headers: getDosenAuthHeaders(),
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(data),
     });
-    const json = await safeJson(res, null);
-    if (!res.ok || !json?.success || !json.meeting) {
-      console.warn('Update meeting rejected:', json?.error || `HTTP ${res.status}`);
-      return null;
+    if (res.ok) {
+      const json = await safeJson(res, null);
+      return json.meeting;
     }
-    const currentDb = getLocalCache();
-    currentDb.meetings = (currentDb.meetings || []).map(meeting =>
-      meeting.meetingNumber === meetingNumber ? json.meeting : meeting
-    );
-    if (currentDb.activeCourseId && currentDb.allCoursesData?.[currentDb.activeCourseId]) {
-      currentDb.allCoursesData[currentDb.activeCourseId].meetings = currentDb.meetings;
-    }
-    if (!await persistDatabaseIfNeeded(currentDb, json.durable)) return null;
-    saveLocalCache(currentDb, false);
-    await saveToIndexedDb(currentDb).catch(() => {});
-    return json.meeting;
   } catch (err) {
     console.warn('Update meeting error:', err);
   }
@@ -2590,23 +2562,13 @@ export async function addMeetingApi(data: any): Promise<any> {
   try {
     const res = await fetch('/api/meetings', {
       method: 'POST',
-      headers: getDosenAuthHeaders(),
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(data),
     });
-    const json = await safeJson(res, null);
-    if (!res.ok || !json?.success || !json.meeting) {
-      console.warn('Add meeting rejected:', json?.error || `HTTP ${res.status}`);
-      return null;
+    if (res.ok) {
+      const json = await safeJson(res, null);
+      return json.meeting;
     }
-    const currentDb = getLocalCache();
-    currentDb.meetings = [...(currentDb.meetings || []), json.meeting].sort((left, right) => left.meetingNumber - right.meetingNumber);
-    if (currentDb.activeCourseId && currentDb.allCoursesData?.[currentDb.activeCourseId]) {
-      currentDb.allCoursesData[currentDb.activeCourseId].meetings = currentDb.meetings;
-    }
-    if (!await persistDatabaseIfNeeded(currentDb, json.durable)) return null;
-    saveLocalCache(currentDb, false);
-    await saveToIndexedDb(currentDb).catch(() => {});
-    return json.meeting;
   } catch (err) {
     console.warn('Add meeting error:', err);
   }
@@ -2618,22 +2580,8 @@ export async function deleteMeetingApi(meetingNumber: number): Promise<boolean> 
   try {
     const res = await fetch(`/api/meetings/${meetingNumber}`, {
       method: 'DELETE',
-      headers: getDosenAuthHeaders(),
     });
-    const json = await safeJson(res, null);
-    if (!res.ok || !json?.success) {
-      console.warn('Delete meeting rejected:', json?.error || `HTTP ${res.status}`);
-      return false;
-    }
-    const currentDb = getLocalCache();
-    currentDb.meetings = (currentDb.meetings || []).filter(meeting => meeting.meetingNumber !== meetingNumber);
-    if (currentDb.activeCourseId && currentDb.allCoursesData?.[currentDb.activeCourseId]) {
-      currentDb.allCoursesData[currentDb.activeCourseId].meetings = currentDb.meetings;
-    }
-    if (!await persistDatabaseIfNeeded(currentDb, json.durable)) return false;
-    saveLocalCache(currentDb, false);
-    await saveToIndexedDb(currentDb).catch(() => {});
-    return true;
+    return res.ok;
   } catch (err) {
     console.warn('Delete meeting error:', err);
     return false;
@@ -2694,23 +2642,20 @@ export async function syncGroupsRpsApi(): Promise<{
   message?: string;
   groups?: GroupProject[];
   meetings?: MeetingSchedule[];
-  data?: SiakadDatabase;
   error?: string;
 }> {
   try {
     const res = await fetch('/api/groups/sync-rps-10', {
       method: 'POST',
-      headers: getDosenAuthHeaders(),
+      headers: { 'Content-Type': 'application/json' },
     });
     const json = await safeJson(res, {});
     if (res.ok && json.success) {
-      if (json.data) {
-        if (!await persistDatabaseIfNeeded(json.data, json.durable)) {
-          return { success: false, error: 'Sinkronisasi kelompok gagal disimpan permanen ke storage Vercel.' };
-        }
-        saveLocalCache(json.data, false);
-      }
-      return { success: true, message: json.message, groups: json.groups, meetings: json.meetings, data: json.data };
+      const local = getLocalCache();
+      if (json.groups) local.groups = json.groups;
+      if (json.meetings) local.meetings = json.meetings;
+      saveLocalCache(local);
+      return { success: true, message: json.message, groups: json.groups, meetings: json.meetings };
     }
     return { success: false, error: json.error || 'Gagal menyinkronkan 10 kelompok RPS.' };
   } catch (err: any) {
@@ -3493,16 +3438,9 @@ export async function restoreBackupToServer(backupData: any): Promise<{
     });
     const json = await safeJson(res, null);
     if (res.ok && json.success) {
-      if (!await persistDatabaseIfNeeded(backupData, json.durable)) {
-        return {
-          success: false,
-          message: 'Backup gagal disimpan permanen ke storage Vercel.',
-        };
-      }
-
       // Sync local caches
       if (backupData) {
-        saveLocalCache(backupData, false);
+        saveLocalCache(backupData);
       }
       return {
         success: true,
@@ -3513,10 +3451,7 @@ export async function restoreBackupToServer(backupData: any): Promise<{
         totalUas: json.totalUas,
       };
     }
-    return {
-      success: false,
-      message: json?.error || `Gagal memulihkan cadangan data (HTTP ${res.status})`,
-    };
+    return { success: false, message: json.error || 'Gagal memulihkan cadangan data' };
   } catch (err: any) {
     return { success: false, message: err?.message || 'Gagal menghubungi server untuk memulihkan data' };
   }

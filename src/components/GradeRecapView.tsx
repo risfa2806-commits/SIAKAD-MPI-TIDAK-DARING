@@ -515,15 +515,15 @@ export const GradeRecapView: React.FC<GradeRecapViewProps> = ({
             </div>
           )}
 
-          {/* Action Download Buttons */}
-          <div className="flex flex-wrap items-center justify-between gap-3 pt-1">
-            <div className="flex flex-wrap items-center gap-2">
+          {/* Action Download Buttons: Memanjang ke samping agar semua terlihat */}
+          <div className="flex flex-wrap xl:flex-nowrap items-center justify-between gap-2.5 pt-1 overflow-x-auto pb-1 scrollbar-thin">
+            <div className="flex items-center gap-2 flex-wrap sm:flex-nowrap shrink-0">
               {/* Word Button */}
               <button
                 type="button"
                 id="btn-export-word"
                 onClick={() => handleExportWord()}
-                className="flex items-center gap-1.5 px-3.5 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded-xl text-xs font-bold transition-all shadow-md active:scale-95"
+                className="flex items-center gap-1.5 px-3.5 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded-xl text-xs font-bold transition-all shadow-md active:scale-95 whitespace-nowrap cursor-pointer"
                 title="Unduh format Microsoft Word (.doc) lengkap tanda tangan dosen"
               >
                 <FileText size={15} />
@@ -535,7 +535,7 @@ export const GradeRecapView: React.FC<GradeRecapViewProps> = ({
                 type="button"
                 id="btn-export-excel"
                 onClick={() => handleExportExcel()}
-                className="flex items-center gap-1.5 px-3.5 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-xs font-bold transition-all shadow-md active:scale-95"
+                className="flex items-center gap-1.5 px-3.5 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-xs font-bold transition-all shadow-md active:scale-95 whitespace-nowrap cursor-pointer"
                 title="Unduh format Microsoft Excel (.xls) dengan rumus dan deskripsi mutiara"
               >
                 <FileSpreadsheet size={15} />
@@ -547,7 +547,7 @@ export const GradeRecapView: React.FC<GradeRecapViewProps> = ({
                 type="button"
                 id="btn-unduh-rekap-pdf"
                 onClick={() => handleUnduhRekapPdf()}
-                className="flex items-center gap-1.5 px-4 py-2 bg-gradient-to-r from-rose-600 to-red-600 hover:from-rose-500 hover:to-red-500 text-white rounded-xl text-xs font-bold transition-all shadow-md active:scale-95 ring-2 ring-rose-400/30 cursor-pointer"
+                className="flex items-center gap-1.5 px-4 py-2 bg-gradient-to-r from-rose-600 to-red-600 hover:from-rose-500 hover:to-red-500 text-white rounded-xl text-xs font-bold transition-all shadow-md active:scale-95 ring-2 ring-rose-400/30 whitespace-nowrap cursor-pointer"
                 title="Unduh Rekap PDF: Format resmi Nilai dan Status Pengumpulan Tugas menggunakan browser print dialog"
               >
                 <Printer size={15} />
@@ -559,7 +559,7 @@ export const GradeRecapView: React.FC<GradeRecapViewProps> = ({
                 type="button"
                 id="btn-print-recap"
                 onClick={() => handlePrint()}
-                className="flex items-center gap-1.5 px-4 py-2 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 text-white rounded-xl text-xs font-bold transition-all shadow-md active:scale-95 ring-2 ring-indigo-400/30 cursor-pointer"
+                className="flex items-center gap-1.5 px-4 py-2 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 text-white rounded-xl text-xs font-bold transition-all shadow-md active:scale-95 ring-2 ring-indigo-400/30 whitespace-nowrap cursor-pointer"
                 title="Cetak transkrip nilai atau rekapitulasi kolektif langsung ke PDF atau kertas fisik via browser print dialog"
               >
                 <Printer size={15} />
@@ -568,7 +568,7 @@ export const GradeRecapView: React.FC<GradeRecapViewProps> = ({
             </div>
 
             {/* UNDUH REKAPAN KUIS GAME BUTTON */}
-            <div className="flex items-center gap-1.5 bg-amber-400/10 border border-amber-400/30 rounded-xl p-1 text-xs">
+            <div className="flex items-center gap-1.5 bg-amber-400/10 border border-amber-400/30 rounded-xl p-1 text-xs shrink-0 whitespace-nowrap">
               <div className="px-2 font-bold text-amber-300 flex items-center gap-1 text-[11px]">
                 <Gamepad2 size={13} />
                 <span>Rekapan Kuis ({quizSubmissions.length}):</span>
@@ -576,7 +576,7 @@ export const GradeRecapView: React.FC<GradeRecapViewProps> = ({
               <button
                 type="button"
                 onClick={() => handleExportQuiz('word')}
-                className="px-2.5 py-1 bg-amber-400 hover:bg-amber-300 text-slate-950 font-black rounded-lg text-[11px] transition-all flex items-center gap-1"
+                className="px-2.5 py-1 bg-amber-400 hover:bg-amber-300 text-slate-950 font-black rounded-lg text-[11px] transition-all flex items-center gap-1 cursor-pointer"
                 title="Unduh hasil pengerjaan kuis cerdas cermat format Word (.doc)"
               >
                 <FileText size={12} />
@@ -585,7 +585,7 @@ export const GradeRecapView: React.FC<GradeRecapViewProps> = ({
               <button
                 type="button"
                 onClick={() => handleExportQuiz('excel')}
-                className="px-2.5 py-1 bg-emerald-400 hover:bg-emerald-300 text-slate-950 font-black rounded-lg text-[11px] transition-all flex items-center gap-1"
+                className="px-2.5 py-1 bg-emerald-400 hover:bg-emerald-300 text-slate-950 font-black rounded-lg text-[11px] transition-all flex items-center gap-1 cursor-pointer"
                 title="Unduh hasil pengerjaan kuis cerdas cermat format Excel (.xls)"
               >
                 <FileSpreadsheet size={12} />
@@ -702,9 +702,18 @@ export const GradeRecapView: React.FC<GradeRecapViewProps> = ({
                   letterGrade: 'A-',
                 };
 
-                const feedback = getStudentPersonalizedFeedback(std.name, std.nim, g.finalScore, std.topic, idx);
+                const att = Number(g.attendanceScore ?? 100);
+                const attit = Number(g.attitudeScore ?? 85);
+                const indiv = Number(g.individualScore ?? 85);
+                const uts = Number(g.utsScore ?? 85);
+                const uas = Number(g.uasScore ?? g.groupScore ?? 85);
+                const accurateFinal = Math.round(att * 0.15 + attit * 0.10 + indiv * 0.25 + uts * 0.25 + uas * 0.25);
+                const accurateLetter = getLetterGrade(accurateFinal);
                 const isEditing = editingStudentId === std.id;
-                const isPassed = g.finalScore >= 60;
+                const displayFinal = isEditing ? computedFinalScore : accurateFinal;
+                const displayLetter = isEditing ? getLetterGrade(computedFinalScore) : accurateLetter;
+                const isPassed = displayFinal >= 60;
+                const feedback = getStudentPersonalizedFeedback(std.name, std.nim, displayFinal, std.topic, idx);
 
                 return (
                   <tr key={std.id} className="hover:bg-slate-50 transition-colors">
@@ -731,7 +740,7 @@ export const GradeRecapView: React.FC<GradeRecapViewProps> = ({
                           className="w-12 px-1 py-0.5 text-center text-xs border rounded bg-white font-bold"
                         />
                       ) : (
-                        <span className="font-bold text-slate-800">{g.attendanceScore}</span>
+                        <span className="font-bold text-slate-800">{att}</span>
                       )}
                     </td>
 
@@ -747,7 +756,7 @@ export const GradeRecapView: React.FC<GradeRecapViewProps> = ({
                           className="w-12 px-1 py-0.5 text-center text-xs border rounded bg-white font-bold"
                         />
                       ) : (
-                        <span className="font-bold text-slate-800">{g.attitudeScore}</span>
+                        <span className="font-bold text-slate-800">{attit}</span>
                       )}
                     </td>
 
@@ -763,7 +772,7 @@ export const GradeRecapView: React.FC<GradeRecapViewProps> = ({
                           className="w-12 px-1 py-0.5 text-center text-xs border rounded bg-white font-bold"
                         />
                       ) : (
-                        <span className="font-bold text-slate-800">{g.individualScore}</span>
+                        <span className="font-bold text-slate-800">{indiv}</span>
                       )}
                     </td>
 
@@ -780,7 +789,7 @@ export const GradeRecapView: React.FC<GradeRecapViewProps> = ({
                         />
                       ) : (
                         <span className="font-bold text-emerald-800 bg-emerald-50 px-1.5 py-0.5 rounded">
-                          {g.utsScore ?? 85}
+                          {uts}
                         </span>
                       )}
                     </td>
@@ -798,28 +807,28 @@ export const GradeRecapView: React.FC<GradeRecapViewProps> = ({
                         />
                       ) : (
                         <span className="font-bold text-indigo-800 bg-indigo-50 px-1.5 py-0.5 rounded">
-                          {g.uasScore ?? g.groupScore ?? 85}
+                          {uas}
                         </span>
                       )}
                     </td>
 
-                    {/* Final Score */}
+                    {/* Final Score (100% Mathematically Exact) */}
                     <td className="py-3 px-3 text-center">
                       <span className="text-sm font-extrabold bg-emerald-50 text-emerald-900 px-2.5 py-1 rounded-md border border-emerald-200">
-                        {isEditing ? computedFinalScore : g.finalScore}
+                        {displayFinal}
                       </span>
                     </td>
 
                     {/* Letter Grade */}
                     <td className="py-3 px-2 text-center">
                       <span className={`px-2 py-0.5 rounded text-xs font-black ${
-                        (isEditing ? getLetterGrade(computedFinalScore) : g.letterGrade).startsWith('A')
+                        displayLetter.startsWith('A')
                           ? 'bg-emerald-100 text-emerald-800 border border-emerald-300'
-                          : (isEditing ? getLetterGrade(computedFinalScore) : g.letterGrade).startsWith('B')
+                          : displayLetter.startsWith('B')
                           ? 'bg-blue-100 text-blue-800 border border-blue-300'
                           : 'bg-amber-100 text-amber-800 border border-amber-300'
                       }`}>
-                        {isEditing ? getLetterGrade(computedFinalScore) : g.letterGrade}
+                        {displayLetter}
                       </span>
                     </td>
 
@@ -851,10 +860,10 @@ export const GradeRecapView: React.FC<GradeRecapViewProps> = ({
 
                     {/* Actions & Direct Individual Downloads */}
                     <td className="py-3 px-3 text-center">
-                      <div className="flex items-center justify-center gap-1">
+                      <div className="flex items-center justify-center gap-1.5 whitespace-nowrap">
                         <button
                           onClick={() => setSelectedGradeStudent(std)}
-                          className="p-1.5 text-slate-500 hover:text-emerald-700 hover:bg-emerald-50 rounded-lg transition-colors"
+                          className="p-1.5 text-slate-600 hover:text-emerald-700 hover:bg-emerald-50 rounded-lg transition-colors cursor-pointer"
                           title="Lihat Rincian Lengkap & Transkrip Mahasiswa"
                         >
                           <Eye size={14} />
@@ -862,7 +871,7 @@ export const GradeRecapView: React.FC<GradeRecapViewProps> = ({
 
                         <button
                           onClick={() => handleExportWord(std)}
-                          className="p-1.5 text-blue-600 hover:text-blue-800 hover:bg-blue-50 rounded-lg transition-colors"
+                          className="p-1.5 text-blue-600 hover:text-blue-800 hover:bg-blue-50 rounded-lg transition-colors cursor-pointer"
                           title={`Unduh Transkrip Individu Word (.doc + TTD Dosen) untuk ${std.name}`}
                         >
                           <FileText size={14} />
@@ -870,7 +879,7 @@ export const GradeRecapView: React.FC<GradeRecapViewProps> = ({
 
                         <button
                           onClick={() => handleExportExcel(std)}
-                          className="p-1.5 text-emerald-600 hover:text-emerald-800 hover:bg-emerald-50 rounded-lg transition-colors"
+                          className="p-1.5 text-emerald-600 hover:text-emerald-800 hover:bg-emerald-50 rounded-lg transition-colors cursor-pointer"
                           title={`Unduh Transkrip Individu Excel (.xls) untuk ${std.name}`}
                         >
                           <FileSpreadsheet size={14} />
@@ -886,27 +895,27 @@ export const GradeRecapView: React.FC<GradeRecapViewProps> = ({
 
                         {isDosen && (
                           isEditing ? (
-                            <>
+                            <div className="flex items-center gap-1">
                               <button
                                 onClick={() => handleSaveGrade(std.id)}
                                 disabled={isSaving}
-                                className="p-1.5 text-emerald-700 hover:bg-emerald-100 rounded-lg"
+                                className="p-1.5 text-emerald-700 hover:bg-emerald-100 rounded-lg cursor-pointer"
                                 title="Simpan Nilai"
                               >
                                 <Save size={15} />
                               </button>
                               <button
                                 onClick={() => setEditingStudentId(null)}
-                                className="p-1.5 text-slate-500 hover:bg-slate-200 rounded-lg"
+                                className="p-1.5 text-slate-500 hover:bg-slate-200 rounded-lg cursor-pointer"
                                 title="Batal"
                               >
                                 <X size={15} />
                               </button>
-                            </>
+                            </div>
                           ) : (
                             <button
                               onClick={() => startEdit(std)}
-                              className="p-1.5 text-slate-500 hover:text-indigo-700 hover:bg-indigo-50 rounded-lg transition-colors"
+                              className="p-1.5 text-slate-500 hover:text-indigo-700 hover:bg-indigo-50 rounded-lg transition-colors cursor-pointer"
                               title="Edit Komponen Nilai Mahasiswa"
                             >
                               <Edit2 size={14} />
@@ -983,8 +992,8 @@ export const GradeRecapView: React.FC<GradeRecapViewProps> = ({
         );
 
         return (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs overflow-y-auto">
-            <div className="bg-white rounded-2xl max-w-xl w-full p-6 shadow-2xl border border-slate-200 animate-in fade-in zoom-in-95 my-8">
+          <div className="fixed inset-0 z-50 overflow-y-auto bg-slate-900/60 backdrop-blur-xs p-3 sm:p-6 flex justify-center items-start min-h-screen">
+            <div className="bg-white rounded-2xl max-w-xl w-full p-6 shadow-2xl border border-slate-200 animate-in fade-in zoom-in-95 my-4 sm:my-8">
               <div className="flex items-center justify-between border-b border-slate-100 pb-3 mb-4">
                 <div className="flex items-center gap-2">
                   <div className="p-2 rounded-lg bg-emerald-100 text-emerald-700">

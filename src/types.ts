@@ -170,6 +170,7 @@ export interface DosenProfile {
   dosenTitle?: string;
   campusName?: string;
   nip: string;
+  dosenNidn?: string;
   courseTitle: string;
   courseCode: string;
   sks: number;
@@ -177,6 +178,7 @@ export interface DosenProfile {
   semesterNumber?: number;
   roomName?: string; // Kamar / Ruang Kelas (e.g. 'Kamar MPI 1', 'Kamar MPI 3', 'Ruang A')
   studyProgram: string;
+  programName?: string;
   classCode?: string;
   academicYear?: string;
   totalMeetings?: number;

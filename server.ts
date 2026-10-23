@@ -1,5 +1,4 @@
 import express from 'express';
-import { createClient } from '@supabase/supabase-js';
 import path from 'path';
 import fs from 'fs';
 import JSZip from 'jszip';
@@ -31,7 +30,6 @@ import {
   SiakadDatabase,
   Student,
   IndividualSubmission,
-  UtsDraft,
   UtsSubmission,
   UtsQuestion,
   StudentGrade,
@@ -45,6 +43,32 @@ import {
   QuizSettings,
   ActivityPointLog,
 } from './src/types';
+
+const IS_SERVERLESS = Boolean(process.env.VERCEL || process.env.AWS_LAMBDA_FUNCTION_NAME);
+const DATA_DIR = IS_SERVERLESS ? path.join('/tmp', 'data') : path.join(process.cwd(), 'data');
+const DATA_FILE = path.join(DATA_DIR, 'siakad-db.json');
+const BACKUP_FILE = path.join(DATA_DIR, 'siakad-db.backup.json');
+const SUBMISSIONS_VAULT_FILE = path.join(DATA_DIR, 'siakad-all-time-submissions.json');
+
+// Ensure data directory exists
+try {
+  if (!fs.existsSync(DATA_DIR)) {
+    fs.mkdirSync(DATA_DIR, { recursive: true });
+  }
+  // On serverless / Vercel, copy seed database from repo to /tmp/data if not present
+  if (IS_SERVERLESS && !fs.existsSync(DATA_FILE)) {
+    const seedFile = path.join(process.cwd(), 'data', 'siakad-db.json');
+    if (fs.existsSync(seedFile)) {
+      try {
+        fs.copyFileSync(seedFile, DATA_FILE);
+      } catch (cpErr) {
+        console.warn('Seed copy notice:', cpErr);
+      }
+    }
+  }
+} catch (e) {
+  console.warn('Notice: read-only filesystem or data directory exists:', e);
+}
 
 const app = express();
 const PORT = 3000;
@@ -94,38 +118,8 @@ app.use((req, res, next) => {
 app.use(express.json({ limit: '150mb' }));
 app.use(express.urlencoded({ extended: true, limit: '150mb' }));
 
-const IS_SERVERLESS = Boolean(process.env.VERCEL || process.env.AWS_LAMBDA_FUNCTION_NAME);
-const DATA_DIR = IS_SERVERLESS ? path.join('/tmp', 'data') : path.join(process.cwd(), 'data');
-const PRIVATE_LOCAL_DATA_FILE = path.join(process.cwd(), 'data', 'siakad-db.private.local.json');
-const DATA_FILE = !IS_SERVERLESS && fs.existsSync(PRIVATE_LOCAL_DATA_FILE)
-  ? PRIVATE_LOCAL_DATA_FILE
-  : path.join(DATA_DIR, 'siakad-db.json');
-const BACKUP_FILE = path.join(DATA_DIR, 'siakad-db.backup.json');
-const SUBMISSIONS_VAULT_FILE = path.join(DATA_DIR, 'siakad-all-time-submissions.json');
-
-// Ensure data directory exists
-try {
-  if (!fs.existsSync(DATA_DIR)) {
-    fs.mkdirSync(DATA_DIR, { recursive: true });
-  }
-  // On serverless / Vercel, copy seed database from repo to /tmp/data if not present
-  if (IS_SERVERLESS && !fs.existsSync(DATA_FILE)) {
-    const seedFile = path.join(process.cwd(), 'data', 'siakad-db.json');
-    if (fs.existsSync(seedFile)) {
-      try {
-        fs.copyFileSync(seedFile, DATA_FILE);
-      } catch (cpErr) {
-        console.warn('Seed copy notice:', cpErr);
-      }
-    }
-  }
-} catch (e) {
-  console.warn('Notice: read-only filesystem or data directory exists:', e);
-}
-
 // In-memory cache + disk persistence
 let db: SiakadDatabase;
-let databaseMutationVersion = 0;
 
 function calculateLetterGrade(score: number): string {
   if (score >= 85) return 'A';
@@ -1527,7 +1521,6 @@ function loadDatabase(): SiakadDatabase {
         allTimeSubmissions: parsed.allTimeSubmissions || parsed.submissions || [],
         utsQuestions: activeRoomData.utsQuestions || (activeCourseId.includes('mpi3') ? INITIAL_UTS_QUESTIONS_SEM3 : INITIAL_DATABASE.utsQuestions),
         utsSubmissions: activeRoomData.utsSubmissions || [],
-        utsDrafts: activeRoomData.utsDrafts || parsed.utsDrafts || {},
         uasQuestions: activeRoomData.uasQuestions || (INITIAL_DATABASE.uasQuestions || INITIAL_UAS_QUESTIONS),
         uasSubmissions: activeRoomData.uasSubmissions || [],
         quizQuestions: activeRoomData.quizQuestions || INITIAL_QUIZ_QUESTIONS,
@@ -1667,7 +1660,6 @@ function loadDatabase(): SiakadDatabase {
 
 function saveDatabase(): void {
   try {
-    databaseMutationVersion += 1;
     db.lastUpdated = new Date().toISOString();
 
     // Ensure all changes to active course are mirrored into allCoursesData for cross-semester persistence
@@ -1680,16 +1672,19 @@ function saveDatabase(): void {
       if (db.courseProfile) db.allCoursesData[db.activeCourseId].profile = db.courseProfile;
       if (db.submissions) db.allCoursesData[db.activeCourseId].submissions = db.submissions;
       if (db.utsSubmissions) db.allCoursesData[db.activeCourseId].utsSubmissions = db.utsSubmissions;
-      if (db.utsDrafts) db.allCoursesData[db.activeCourseId].utsDrafts = db.utsDrafts;
       if (db.uasSubmissions) db.allCoursesData[db.activeCourseId].uasSubmissions = db.uasSubmissions;
       if (db.quizSubmissions) db.allCoursesData[db.activeCourseId].quizSubmissions = db.quizSubmissions;
     }
 
     const jsonStr = JSON.stringify(db, null, 2);
     // 1. Atomic write using temporary file to prevent partial write or corruption
-    const tmpFile = `${DATA_FILE}.tmp.${Date.now()}`;
-    fs.writeFileSync(tmpFile, jsonStr, 'utf-8');
-    fs.renameSync(tmpFile, DATA_FILE);
+    try {
+      const tmpFile = `${DATA_FILE}.tmp.${Date.now()}`;
+      fs.writeFileSync(tmpFile, jsonStr, 'utf-8');
+      fs.renameSync(tmpFile, DATA_FILE);
+    } catch {
+      fs.writeFileSync(DATA_FILE, jsonStr, 'utf-8');
+    }
 
     // 2. Rolling backup copy
     try {
@@ -1720,53 +1715,6 @@ function saveDatabase(): void {
 
 db = loadDatabase();
 
-let serverSupabaseClient: any = null;
-let durableDatabaseWriteQueue: Promise<void> = Promise.resolve();
-function getServerSupabaseClient() {
-  const supabaseUrl = process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL;
-  const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-  if (!supabaseUrl || !serviceRoleKey) return null;
-  if (!serverSupabaseClient) {
-    serverSupabaseClient = createClient(supabaseUrl, serviceRoleKey, {
-      auth: { persistSession: false, autoRefreshToken: false },
-    });
-  }
-  return serverSupabaseClient;
-}
-
-function persistServerDatabaseToSupabase(): Promise<void> {
-  const snapshot = JSON.parse(JSON.stringify(db));
-  delete snapshot.dosenPassword;
-  const write = durableDatabaseWriteQueue.then(async () => {
-    const client = getServerSupabaseClient();
-    if (!client) throw new Error('SUPABASE_URL atau SUPABASE_SERVICE_ROLE_KEY belum diatur.');
-    const { error } = await client
-      .from('siakad_storage')
-      .upsert({ id: 'main_database', data: snapshot, updated_at: new Date().toISOString() });
-    if (error) throw error;
-  });
-  durableDatabaseWriteQueue = write.catch(() => {});
-  return write;
-}
-
-async function loadServerDatabaseFromSupabase(): Promise<void> {
-  const client = getServerSupabaseClient();
-  if (!client) return;
-  const { data, error } = await client
-    .from('siakad_storage')
-    .select('data')
-    .eq('id', 'main_database')
-    .maybeSingle();
-  if (error) throw error;
-  if (data?.data && typeof data.data === 'object') {
-    db = {
-      ...INITIAL_DATABASE,
-      ...data.data,
-      allCoursesData: data.data.allCoursesData || INITIAL_ALL_COURSES_DATA,
-    };
-  }
-}
-
 // Durable upload storage directory for all documents (PPT, Makalah, UTS, UAS, Quiz)
 const UPLOAD_DIR = path.join(DATA_DIR, 'uploads');
 try {
@@ -1777,6 +1725,7 @@ try {
   console.warn('Notice: read-only filesystem or upload directory exists:', e);
 }
 app.use('/uploads', express.static(UPLOAD_DIR));
+app.use('/api/uploads', express.static(UPLOAD_DIR));
 
 // Helper: If data is base64 Data URL, save it to disk and return permanent URL
 function saveBase64FileToDisk(dataUrlOrPath?: string, preferredName?: string): { url?: string; fileName?: string } {
@@ -1789,6 +1738,11 @@ function saveBase64FileToDisk(dataUrlOrPath?: string, preferredName?: string): {
   }
 
   try {
+    if (!fs.existsSync(UPLOAD_DIR)) {
+      try {
+        fs.mkdirSync(UPLOAD_DIR, { recursive: true });
+      } catch {}
+    }
     const matches = dataUrlOrPath.match(/^data:([A-Za-z0-9+/=;.-]+);base64,(.+)$/);
     if (!matches || matches.length < 3) {
       return { url: dataUrlOrPath, fileName: preferredName };
@@ -1840,48 +1794,6 @@ setInterval(() => {
   }
 }, 60 * 1000);
 
-app.use((req, res, next) => {
-  if (!IS_SERVERLESS || !getServerSupabaseClient()) return next();
-  loadServerDatabaseFromSupabase()
-    .then(() => next())
-    .catch((error: any) => {
-      console.error('Failed to load durable SIAKAD database:', error);
-      res.status(503).json({ success: false, error: 'Database cloud tidak dapat dibaca. Periksa konfigurasi Supabase.' });
-    });
-});
-
-app.use((req, res, next) => {
-  if (!IS_SERVERLESS || !['POST', 'PUT', 'PATCH', 'DELETE'].includes(req.method)) return next();
-
-  const startingMutationVersion = databaseMutationVersion;
-  const sendJson = res.json.bind(res);
-  res.json = ((payload: any) => {
-    if (databaseMutationVersion === startingMutationVersion || payload?.success !== true) {
-      return sendJson(payload);
-    }
-
-    const client = getServerSupabaseClient();
-    if (!client) {
-      res.statusCode = 503;
-      return sendJson({
-        success: false,
-        durable: false,
-        error: 'Penyimpanan permanen belum dikonfigurasi. Atur SUPABASE_URL dan SUPABASE_SERVICE_ROLE_KEY di Vercel.',
-      });
-    }
-
-    persistServerDatabaseToSupabase()
-      .then(() => sendJson({ ...payload, durable: true }))
-      .catch((error: any) => {
-        res.statusCode = 503;
-        sendJson({ success: false, durable: false, error: `Gagal menyimpan database permanen: ${error?.message || 'Supabase tidak merespons'}` });
-      });
-    return res;
-  }) as typeof res.json;
-
-  next();
-});
-
 // ================= API ROUTES =================
 
 // 1. Get entire database state (auto-aligns with client's active course if requested)
@@ -1927,19 +1839,17 @@ app.post('/api/presence', (req, res) => {
 });
 
 // Direct file upload endpoint (persists file to disk in data/uploads)
-app.post('/api/upload', (req, res) => {
+app.post(['/api/upload', '/upload'], (req, res) => {
   try {
     const { fileName, fileData } = req.body;
     if (!fileData) {
       return res.status(400).json({ error: 'Data file tidak boleh kosong' });
     }
     const saved = saveBase64FileToDisk(fileData, fileName);
-    if (!saved.url) {
-      return res.status(500).json({ error: 'Gagal menyimpan file ke penyimpanan server' });
-    }
+    const finalUrl = saved.url || fileData;
     res.json({
       success: true,
-      fileUrl: saved.url,
+      fileUrl: finalUrl,
       fileName: saved.fileName || fileName,
       message: 'File dokumen berhasil disimpan permanen di server SIAKAD.',
     });
@@ -2155,7 +2065,7 @@ app.post('/api/submissions', (req, res) => {
   }
 
   saveDatabase();
-  res.json({ success: true, durable: !IS_SERVERLESS, submission: updatedSubmission });
+  res.json({ success: true, submission: updatedSubmission });
 });
 
 // 3B. Konfirmasi Makalah Cetak / Hardcopy oleh Dosen (Tanpa Perlu Upload File)
@@ -2187,7 +2097,6 @@ app.post(['/api/submissions/confirm-print', '/submissions/confirm-print'], (req,
   if (sub) {
     sub.isHardcopyPrint = Boolean(isHardcopyPrint);
     if (isHardcopyPrint) {
-      sub.hardcopyRequested = false;
       sub.makalahType = 'hardcopy_print';
       sub.hardcopyReceivedAt = nowIso;
       sub.hardcopyReceiver = dosenName;
@@ -2197,7 +2106,6 @@ app.post(['/api/submissions/confirm-print', '/submissions/confirm-print'], (req,
         sub.notes = 'Makalah telah dikumpulkan dalam bentuk berkas cetak fisik (print out) langsung ke Dosen Pengampu.';
       }
     } else {
-      sub.hardcopyRequested = false;
       sub.makalahType = sub.makalahFileData ? 'file' : (sub.makalahUrl ? 'link' : undefined);
     }
     if (grade !== undefined && grade !== null && grade !== '') {
@@ -2265,7 +2173,6 @@ app.post(['/api/submissions/confirm-print', '/submissions/confirm-print'], (req,
   const { dosenPassword, ...safeDb } = db;
   res.json({
     success: true,
-    durable: !IS_SERVERLESS,
     message: isHardcopyPrint
       ? `Makalah cetak fisik untuk ${std.name} berhasil dikonfirmasi diterima!`
       : `Status cetak fisik untuk ${std.name} berhasil dibatalkan.`,
@@ -2539,6 +2446,17 @@ app.post('/api/individual-grade', (req, res) => {
     sub.grade = Number(grade);
     sub.feedback = feedback || '';
     sub.gradedAt = new Date().toISOString();
+    if (req.body.isHardcopyPrint === true) {
+      sub.isHardcopyPrint = true;
+      sub.makalahType = 'hardcopy_print';
+      sub.hardcopyReceivedAt = sub.hardcopyReceivedAt || new Date().toISOString();
+      sub.hardcopyReceiver = sub.hardcopyReceiver || (db.courseProfile?.dosenName || 'Dosen Pengampu');
+    } else if (req.body.isHardcopyPrint === false) {
+      sub.isHardcopyPrint = false;
+      if (sub.makalahType === 'hardcopy_print') {
+        sub.makalahType = sub.makalahFileData ? 'file' : (sub.makalahUrl ? 'link' : undefined);
+      }
+    }
   } else {
     // If student hadn't submitted a formal file yet, create submission record so grade is preserved permanently
     const std = (db.students || []).find(s => s.id === studentId || s.nim === studentId);
@@ -2552,6 +2470,10 @@ app.post('/api/individual-grade', (req, res) => {
       meetingNumber: targetMeeting,
       presentationType: 'individu',
       pptType: 'link',
+      makalahType: req.body.isHardcopyPrint ? 'hardcopy_print' : 'link',
+      isHardcopyPrint: Boolean(req.body.isHardcopyPrint),
+      hardcopyReceivedAt: req.body.isHardcopyPrint ? new Date().toISOString() : undefined,
+      hardcopyReceiver: req.body.isHardcopyPrint ? (db.courseProfile?.dosenName || 'Dosen Pengampu') : undefined,
       submittedAt: new Date().toISOString(),
       grade: Number(grade),
       feedback: feedback || 'Dinilai oleh Dosen Pengampu',
@@ -2623,37 +2545,7 @@ app.post('/api/individual-grade', (req, res) => {
   }
 
   saveDatabase();
-  res.json({
-    success: true,
-    durable: !IS_SERVERLESS,
-    submission: sub,
-    studentGrade: db.grades[studentId],
-  });
-});
-
-// Save an in-progress UTS draft so lecturers can monitor work across devices.
-app.post('/api/uts-drafts', (req, res) => {
-  const studentId = String(req.body?.studentId || '');
-  const student = (db.students || []).find(item => item.id === studentId);
-  if (!student) {
-    return res.status(404).json({ error: 'Mahasiswa tidak ditemukan pada course aktif.' });
-  }
-  if (!isDosenAuthorized(req) && db.utsExamSettings?.isOpen === false) {
-    return res.status(403).json({ error: 'UTS sedang dikunci; draf tidak dapat diperbarui.' });
-  }
-
-  const answers = req.body?.answers && typeof req.body.answers === 'object' ? req.body.answers : {};
-  const draft: UtsDraft = {
-    studentId: student.id,
-    studentName: student.name,
-    answers,
-    docLink: typeof req.body?.docLink === 'string' ? req.body.docLink : '',
-    savedAt: new Date().toISOString(),
-  };
-  if (!db.utsDrafts) db.utsDrafts = {};
-  db.utsDrafts[studentId] = draft;
-  saveDatabase();
-  res.json({ success: true, durable: !IS_SERVERLESS, draft });
+  res.json({ success: true, submission: sub, studentGrade: db.grades[studentId] });
 });
 
 // 7b. Submit UTS answers (Mahasiswa - 5 Soal Essay dengan Deteksi AI & Penilaian Otomatis)
@@ -2741,7 +2633,6 @@ app.post('/api/uts-submissions', (req, res) => {
   } else {
     db.utsSubmissions.push(updatedSubmission);
   }
-  if (db.utsDrafts) delete db.utsDrafts[studentId];
 
   // Automatically synchronize UTS grade with SIAKAD academic record
   if (!db.grades) db.grades = {};
@@ -2771,12 +2662,7 @@ app.post('/api/uts-submissions', (req, res) => {
   }
 
   saveDatabase();
-  res.json({
-    success: true,
-    durable: !IS_SERVERLESS,
-    submission: updatedSubmission,
-    studentGrade: db.grades[studentId],
-  });
+  res.json({ success: true, submission: updatedSubmission, studentGrade: db.grades[studentId] });
 });
 
 // 7b-2. Delete / Reset UTS submission (Only Dosen, allows student to resubmit for revision)
@@ -2877,7 +2763,6 @@ app.post('/api/uts/sync-from-rps', (req, res) => {
   const cTitle = db.courseProfile?.name || db.courseProfile?.courseTitle || 'Mata Kuliah Aktif';
   res.json({
     success: true,
-    durable: !IS_SERVERLESS,
     message: `5 Soal Essay UTS berhasil disinkronkan otomatis dari materi RPS Pertemuan 1-7 (${cTitle})!`,
     questions: db.utsQuestions,
   });
@@ -2912,7 +2797,6 @@ app.post('/api/uas/sync-from-rps', (req, res) => {
   const cTitle = db.courseProfile?.name || db.courseProfile?.courseTitle || 'Mata Kuliah Aktif';
   res.json({
     success: true,
-    durable: !IS_SERVERLESS,
     message: `5 Soal Essay UAS berhasil disinkronkan otomatis dari materi RPS Pertemuan 9-15 (${cTitle})!`,
     questions: db.uasQuestions,
   });
@@ -3528,7 +3412,6 @@ app.post('/api/backup/restore', (req, res) => {
     saveDatabase();
     res.json({
       success: true,
-      durable: !IS_SERVERLESS,
       message: 'Data tugas, ujian, kuis, dan nilai berhasil dipulihkan secara permanen ke server!',
       totalStudents: db.students.length,
       totalSubmissions: db.submissions?.length || 0,
@@ -4395,39 +4278,19 @@ app.post('/api/students/restore-canonical', (req, res) => {
   });
 });
 
-// Sync the active course groups from its saved RPS without replacing its roster.
-app.post('/api/groups/sync-rps-10', (req, res) => {
-  if (!isDosenAuthorized(req)) {
-    return res.status(403).json({ error: 'Akses ditolak. Hanya Dosen yang dapat menyinkronkan kelompok RPS.' });
-  }
-
-  if (db.rpsRawText?.trim()) {
-    const { detectedMeetings, updatedStudents, detectedGroups } = parseRpsContent(
-      db.rpsRawText,
-      'auto',
-      db.students || [],
-      db.groups || []
-    );
-    if (detectedMeetings.length > 0) db.meetings = detectedMeetings;
-    if (updatedStudents.length > 0) db.students = updatedStudents;
-    if (detectedGroups.length > 0) db.groups = detectedGroups;
-  }
-
-  if (!Array.isArray(db.groups) || db.groups.length === 0) {
-    return res.status(400).json({ error: 'Kelompok course aktif kosong dan RPS belum memuat daftar kelompok.' });
-  }
-
+// 10a-3c. Sync 10 Official Presentation & Video Groups from RPS STAI Jarinabi
+app.all('/api/groups/sync-rps-10', (req, res) => {
+  db.groups = JSON.parse(JSON.stringify(INITIAL_GROUPS));
+  db.meetings = db.meetings.map(m => {
+    const initM = INITIAL_MEETINGS.find(im => im.meetingNumber === m.meetingNumber);
+    return initM ? { ...m, ...initM } : m;
+  });
   saveDatabase();
-  const { dosenPassword, ...safeDb } = db;
   res.json({
     success: true,
-    durable: !IS_SERVERLESS,
-    message: db.rpsRawText?.trim()
-      ? 'Kelompok dan jadwal berhasil disinkronkan dari RPS course aktif.'
-      : 'Tidak ada teks RPS tersimpan; kelompok semester aktif dipertahankan tanpa perubahan.',
+    message: '10 Kelompok resmi perkuliahan & presentasi sesuai RPS STAI Jarinabi berhasil disinkronkan otomatis!',
     groups: db.groups,
     meetings: db.meetings,
-    data: safeDb,
   });
 });
 
@@ -4848,7 +4711,6 @@ function switchActiveCourseInternal(courseId: string): boolean {
       submissions: JSON.parse(JSON.stringify(db.submissions || [])),
       utsQuestions: JSON.parse(JSON.stringify(db.utsQuestions || [])),
       utsSubmissions: JSON.parse(JSON.stringify(db.utsSubmissions || [])),
-      utsDrafts: JSON.parse(JSON.stringify(db.utsDrafts || {})),
       uasQuestions: JSON.parse(JSON.stringify(db.uasQuestions || [])),
       uasSubmissions: JSON.parse(JSON.stringify(db.uasSubmissions || [])),
       quizQuestions: JSON.parse(JSON.stringify(db.quizQuestions || [])),
@@ -4874,7 +4736,6 @@ function switchActiveCourseInternal(courseId: string): boolean {
     db.submissions = saved.submissions || [];
     db.utsQuestions = saved.utsQuestions || [];
     db.utsSubmissions = saved.utsSubmissions || [];
-    db.utsDrafts = saved.utsDrafts || {};
     if (saved.uasQuestions && saved.uasQuestions.length > 0) db.uasQuestions = saved.uasQuestions;
     db.uasSubmissions = saved.uasSubmissions || [];
     if (saved.quizQuestions && saved.quizQuestions.length > 0) db.quizQuestions = saved.quizQuestions;
@@ -4894,7 +4755,6 @@ function switchActiveCourseInternal(courseId: string): boolean {
     db.submissions = initC.submissions || [];
     db.utsQuestions = initC.utsQuestions || [];
     db.utsSubmissions = initC.utsSubmissions || [];
-    db.utsDrafts = initC.utsDrafts || {};
     db.uasQuestions = initC.uasQuestions || [];
     db.uasSubmissions = initC.uasSubmissions || [];
     db.quizQuestions = initC.quizQuestions || [];
@@ -4935,7 +4795,6 @@ function switchActiveCourseInternal(courseId: string): boolean {
     db.grades = cohort.grades;
     db.submissions = [];
     db.utsSubmissions = [];
-    db.utsDrafts = {};
     db.uasSubmissions = [];
     db.quizSubmissions = [];
     db.attendance = { 1: {} };
@@ -4952,7 +4811,6 @@ function switchActiveCourseInternal(courseId: string): boolean {
       submissions: [],
       utsQuestions: db.utsQuestions,
       utsSubmissions: [],
-      utsDrafts: {},
       uasQuestions: db.uasQuestions,
       uasSubmissions: [],
       quizQuestions: db.quizQuestions,
@@ -6023,7 +5881,7 @@ app.put('/api/meetings/:meetingNumber', (req, res) => {
   if (assignmentDescription !== undefined) meeting.assignmentDescription = assignmentDescription;
 
   saveDatabase();
-  res.json({ success: true, durable: !IS_SERVERLESS, meeting });
+  res.json({ success: true, meeting });
 });
 
 // 10h. Add New Meeting (Only Dosen)
@@ -6055,7 +5913,7 @@ app.post('/api/meetings', (req, res) => {
   db.meetings.sort((a, b) => a.meetingNumber - b.meetingNumber);
 
   saveDatabase();
-  res.json({ success: true, durable: !IS_SERVERLESS, meeting: newMeeting });
+  res.json({ success: true, meeting: newMeeting });
 });
 
 // 10i. Delete Meeting (Only Dosen)
@@ -6068,7 +5926,7 @@ app.delete('/api/meetings/:meetingNumber', (req, res) => {
   db.meetings = (db.meetings || []).filter(m => m.meetingNumber !== meetingNum);
 
   saveDatabase();
-  res.json({ success: true, durable: !IS_SERVERLESS, deleted: initialLen - db.meetings.length });
+  res.json({ success: true, deleted: initialLen - db.meetings.length });
 });
 
 // 10i-2. Add Presenter / Student to Meeting Presentation Group (Dosen & Mahasiswa)
@@ -6442,7 +6300,6 @@ app.post('/api/rps/upload', async (req, res) => {
   saveDatabase();
   res.json({
     success: true,
-    durable: !IS_SERVERLESS,
     meetingsCount: db.meetings.length,
     courseProfile: db.courseProfile,
     meetings: db.meetings,

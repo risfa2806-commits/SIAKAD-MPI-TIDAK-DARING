@@ -564,7 +564,8 @@ export const AttendanceView: React.FC<AttendanceViewProps> = ({
             </p>
           </div>
 
-          <div className="flex flex-wrap items-center gap-2">
+          {/* Action Download Buttons: Memanjang ke samping agar semua terlihat */}
+          <div className="flex flex-wrap lg:flex-nowrap items-center gap-2 overflow-x-auto pb-1 scrollbar-thin shrink-0">
             <button
               type="button"
               onClick={() => setIsRecapModalOpen(true)}

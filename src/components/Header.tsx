@@ -92,9 +92,9 @@ export const Header: React.FC<HeaderProps> = ({
 }) => {
   const [isCompactMenu, setIsCompactMenu] = React.useState<boolean>(() => {
     try {
-      return localStorage.getItem('siakad_compact_menu') === 'true';
+      return localStorage.getItem('siakad_compact_menu') !== 'false';
     } catch {
-      return false;
+      return true;
     }
   });
 
@@ -115,7 +115,7 @@ export const Header: React.FC<HeaderProps> = ({
     <header className="sticky top-0 z-40 bg-white/95 backdrop-blur-md border-b border-slate-200 shadow-xs">
       {/* Top Banner */}
       <div className="bg-gradient-to-r from-emerald-900 via-teal-900 to-slate-900 text-white px-4 py-2 text-xs">
-        <div className="max-w-7xl mx-auto flex flex-wrap items-center justify-between gap-2">
+        <div className="max-w-[1920px] mx-auto flex flex-wrap items-center justify-between gap-2">
           <div className="flex items-center gap-2 flex-wrap">
             <span className="bg-emerald-500/30 text-emerald-200 font-bold px-2 py-0.5 rounded-full border border-emerald-400/40 text-[11px] tracking-wide flex items-center gap-1">
               <School size={12} />
@@ -172,7 +172,7 @@ export const Header: React.FC<HeaderProps> = ({
       </div>
 
       {/* Main Header bar */}
-      <div className={`max-w-7xl mx-auto px-4 transition-all duration-200 ${isCompactMenu ? 'py-1.5 sm:py-2' : 'py-3 sm:py-3.5'}`}>
+      <div className={`max-w-[1920px] mx-auto px-4 transition-all duration-200 ${isCompactMenu ? 'py-1.5 sm:py-2' : 'py-3 sm:py-3.5'}`}>
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-3">
           
           {/* Logo & Course Info */}
@@ -256,21 +256,21 @@ export const Header: React.FC<HeaderProps> = ({
             {/* View RPS Document Modal Button */}
             <button
               onClick={onOpenRpsModal}
-              className="flex items-center gap-1.5 text-xs font-semibold px-3 py-2 rounded-lg bg-teal-50 hover:bg-teal-100 text-teal-800 border border-teal-200 transition-colors shadow-xs"
+              className="flex items-center gap-1.5 text-xs font-semibold px-2.5 py-1.5 rounded-lg bg-teal-50 hover:bg-teal-100 text-teal-800 border border-teal-200 transition-colors shadow-2xs"
               title="Lihat Rencana Pembelajaran Semester (RPS) lengkap dan unduh ke Microsoft Word"
             >
-              <FileText size={14} className="text-teal-700" />
-              <span>Lihat RPS</span>
+              <FileText size={13} className="text-teal-700" />
+              <span>RPS</span>
             </button>
 
             {/* Dosen Specific Quick Controls */}
             {isDosen && onOpenProfileModal && (
               <button
                 onClick={onOpenProfileModal}
-                className="flex items-center gap-1.5 text-xs font-semibold px-3 py-2 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-200 transition-colors"
+                className="flex items-center gap-1.5 text-xs font-semibold px-2.5 py-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-200 transition-colors"
                 title="Edit nama kampus (STAI Jarinabi) dan gelar akademik dosen"
               >
-                <Settings size={14} className="text-slate-600" />
+                <Settings size={13} className="text-slate-600" />
                 <span className="hidden sm:inline">Kampus & Gelar</span>
               </button>
             )}
@@ -278,10 +278,10 @@ export const Header: React.FC<HeaderProps> = ({
             {isDosen && onOpenSemesterTransition && (
               <button
                 onClick={onOpenSemesterTransition}
-                className="flex items-center gap-1.5 text-xs font-semibold px-3 py-2 rounded-lg bg-amber-50 hover:bg-amber-100 text-amber-900 border border-amber-300 transition-colors shadow-xs"
+                className="flex items-center gap-1.5 text-xs font-semibold px-2.5 py-1.5 rounded-lg bg-amber-50 hover:bg-amber-100 text-amber-900 border border-amber-300 transition-colors shadow-2xs"
                 title="Pindah ke semester baru, simpan arsip nilai Word/Excel, dan upload RPS terbaru"
               >
-                <Archive size={14} className="text-amber-700" />
+                <Archive size={13} className="text-amber-700" />
                 <span>Pindah Semester</span>
               </button>
             )}
@@ -289,10 +289,10 @@ export const Header: React.FC<HeaderProps> = ({
             {isDosen && onOpenBiodataModal && (
               <button
                 onClick={onOpenBiodataModal}
-                className="flex items-center gap-1.5 text-xs font-semibold px-3 py-2 rounded-lg bg-indigo-50 hover:bg-indigo-100 text-indigo-900 border border-indigo-200 transition-colors shadow-xs"
+                className="flex items-center gap-1.5 text-xs font-semibold px-2.5 py-1.5 rounded-lg bg-indigo-50 hover:bg-indigo-100 text-indigo-900 border border-indigo-200 transition-colors shadow-2xs"
                 title="Kelola data & biodata mahasiswa (NIM, Tempat/Tgl Lahir, Alamat, Upload Dokumen)"
               >
-                <Users size={14} className="text-indigo-700" />
+                <Users size={13} className="text-indigo-700" />
                 <span>Data Mahasiswa</span>
               </button>
             )}
@@ -302,7 +302,7 @@ export const Header: React.FC<HeaderProps> = ({
               <button
                 id="btn-open-notifications"
                 onClick={onOpenNotificationCenter}
-                className={`relative flex items-center gap-1.5 text-xs font-semibold px-3 py-2 rounded-lg transition-colors border shadow-xs ${
+                className={`relative flex items-center gap-1.5 text-xs font-semibold px-2.5 py-1.5 rounded-lg transition-colors border shadow-2xs ${
                   hasUrgentDeadline
                     ? 'bg-amber-50 hover:bg-amber-100 text-amber-900 border-amber-300 ring-2 ring-amber-400/40'
                     : unreadNotificationCount > 0
@@ -312,7 +312,7 @@ export const Header: React.FC<HeaderProps> = ({
                 title="Pusat Notifikasi: Pengingat Deadline (< 24 Jam) & Riwayat Pengumpulan Tugas"
               >
                 <div className="relative">
-                  <Bell size={15} className={hasUrgentDeadline ? 'text-amber-600 animate-bounce' : 'text-emerald-700'} />
+                  <Bell size={14} className={hasUrgentDeadline ? 'text-amber-600 animate-bounce' : 'text-emerald-700'} />
                   {hasUrgentDeadline && (
                     <span className="absolute -top-1.5 -right-1.5 flex h-2.5 w-2.5">
                       <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-rose-400 opacity-75"></span>
@@ -340,17 +340,17 @@ export const Header: React.FC<HeaderProps> = ({
               <button
                 id="btn-toggle-theme"
                 onClick={onToggleTheme}
-                className="flex items-center gap-1.5 text-xs font-semibold px-2.5 py-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-800 dark:text-slate-100 transition-colors shadow-xs cursor-pointer"
+                className="flex items-center gap-1.5 text-xs font-semibold px-2.5 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-800 dark:text-slate-100 transition-colors shadow-2xs cursor-pointer"
                 title={theme === 'dark' ? 'Beralih ke Mode Terang (Light Mode)' : 'Beralih ke Mode Gelap (Dark Mode)'}
               >
                 {theme === 'dark' ? (
                   <>
-                    <Sun size={15} className="text-amber-400" />
+                    <Sun size={14} className="text-amber-400" />
                     <span className="hidden sm:inline">Terang</span>
                   </>
                 ) : (
                   <>
-                    <Moon size={15} className="text-indigo-600" />
+                    <Moon size={14} className="text-indigo-600" />
                     <span className="hidden sm:inline">Gelap</span>
                   </>
                 )}
@@ -361,11 +361,11 @@ export const Header: React.FC<HeaderProps> = ({
             <button
               id="btn-share-wa"
               onClick={onOpenShareModal}
-              className="flex items-center gap-1.5 text-xs font-semibold px-3 py-2 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white shadow-xs transition-colors"
+              className="flex items-center gap-1.5 text-xs font-semibold px-2.5 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white shadow-2xs transition-colors"
               title="Bagikan tautan portal perkuliahan tatap muka ke grup WhatsApp mahasiswa"
             >
-              <Share2 size={14} />
-              <span className="hidden sm:inline">Share ke WA</span>
+              <Share2 size={13} />
+              <span className="hidden sm:inline">Share WA</span>
             </button>
 
             {/* Student Role Identification */}
@@ -434,14 +434,14 @@ export const Header: React.FC<HeaderProps> = ({
           </div>
         </div>
 
-        {/* Navigation Tabs */}
-        <div className={`flex items-center gap-1 overflow-x-auto pb-1 scrollbar-none border-t border-slate-100 transition-all duration-200 ${
-          isCompactMenu ? 'mt-1.5 pt-1.5' : 'mt-3 sm:mt-3.5 pt-2.5'
+        {/* Navigation Tabs: Memanjang ke samping agar semua menu terlihat */}
+        <div className={`flex flex-wrap items-center gap-1 sm:gap-1.5 border-t border-slate-100 transition-all duration-200 overflow-x-auto pb-1 scrollbar-thin ${
+          isCompactMenu ? 'mt-1 pt-1' : 'mt-2.5 sm:mt-3 pt-2'
         }`}>
           <button
             onClick={() => setActiveTab('jadwal')}
-            className={`flex items-center gap-1.5 font-semibold rounded-lg transition-all whitespace-nowrap cursor-pointer ${
-              isCompactMenu ? 'px-2.5 py-1 text-xs' : 'px-3.5 py-1.5 text-xs sm:text-sm'
+            className={`flex items-center gap-1.5 font-semibold rounded-lg transition-all cursor-pointer ${
+              isCompactMenu ? 'px-2 sm:px-2.5 py-1 text-[11px] sm:text-xs' : 'px-3.5 py-1.5 text-xs sm:text-sm'
             } ${
               activeTab === 'jadwal'
                 ? 'bg-emerald-800 text-white shadow-xs'
@@ -454,8 +454,8 @@ export const Header: React.FC<HeaderProps> = ({
 
           <button
             onClick={() => setActiveTab('tugas-individu')}
-            className={`flex items-center gap-1.5 font-semibold rounded-lg transition-all whitespace-nowrap cursor-pointer ${
-              isCompactMenu ? 'px-2.5 py-1 text-xs' : 'px-3.5 py-1.5 text-xs sm:text-sm'
+            className={`flex items-center gap-1.5 font-semibold rounded-lg transition-all cursor-pointer ${
+              isCompactMenu ? 'px-2 sm:px-2.5 py-1 text-[11px] sm:text-xs' : 'px-3.5 py-1.5 text-xs sm:text-sm'
             } ${
               activeTab === 'tugas-individu'
                 ? 'bg-emerald-800 text-white shadow-xs'
@@ -469,8 +469,8 @@ export const Header: React.FC<HeaderProps> = ({
           <button
             id="nav-tugas-uts"
             onClick={() => setActiveTab('tugas-uts')}
-            className={`flex items-center gap-1.5 font-semibold rounded-lg transition-all whitespace-nowrap cursor-pointer ${
-              isCompactMenu ? 'px-2.5 py-1 text-xs' : 'px-3.5 py-1.5 text-xs sm:text-sm'
+            className={`flex items-center gap-1.5 font-semibold rounded-lg transition-all cursor-pointer ${
+              isCompactMenu ? 'px-2 sm:px-2.5 py-1 text-[11px] sm:text-xs' : 'px-3.5 py-1.5 text-xs sm:text-sm'
             } ${
               activeTab === 'tugas-uts'
                 ? 'bg-emerald-800 text-white shadow-xs'
@@ -484,8 +484,8 @@ export const Header: React.FC<HeaderProps> = ({
           <button
             id="nav-tugas-uas"
             onClick={() => setActiveTab('tugas-kelompok')}
-            className={`flex items-center gap-1.5 font-semibold rounded-lg transition-all whitespace-nowrap cursor-pointer ${
-              isCompactMenu ? 'px-2.5 py-1 text-xs' : 'px-3.5 py-1.5 text-xs sm:text-sm'
+            className={`flex items-center gap-1.5 font-semibold rounded-lg transition-all cursor-pointer ${
+              isCompactMenu ? 'px-2 sm:px-2.5 py-1 text-[11px] sm:text-xs' : 'px-3.5 py-1.5 text-xs sm:text-sm'
             } ${
               activeTab === 'tugas-kelompok'
                 ? 'bg-emerald-800 text-white shadow-xs'
@@ -499,8 +499,8 @@ export const Header: React.FC<HeaderProps> = ({
           <button
             id="nav-kuis-interaktif"
             onClick={() => setActiveTab('kuis-interaktif')}
-            className={`flex items-center gap-1.5 font-semibold rounded-lg transition-all whitespace-nowrap cursor-pointer ${
-              isCompactMenu ? 'px-2.5 py-1 text-xs' : 'px-3.5 py-1.5 text-xs sm:text-sm'
+            className={`flex items-center gap-1.5 font-semibold rounded-lg transition-all cursor-pointer ${
+              isCompactMenu ? 'px-2 sm:px-2.5 py-1 text-[11px] sm:text-xs' : 'px-3.5 py-1.5 text-xs sm:text-sm'
             } ${
               activeTab === 'kuis-interaktif'
                 ? 'bg-amber-600 text-white shadow-xs font-bold'
@@ -513,8 +513,8 @@ export const Header: React.FC<HeaderProps> = ({
 
           <button
             onClick={() => setActiveTab('absensi')}
-            className={`flex items-center gap-1.5 font-semibold rounded-lg transition-all whitespace-nowrap cursor-pointer ${
-              isCompactMenu ? 'px-2.5 py-1 text-xs' : 'px-3.5 py-1.5 text-xs sm:text-sm'
+            className={`flex items-center gap-1.5 font-semibold rounded-lg transition-all cursor-pointer ${
+              isCompactMenu ? 'px-2 sm:px-2.5 py-1 text-[11px] sm:text-xs' : 'px-3.5 py-1.5 text-xs sm:text-sm'
             } ${
               activeTab === 'absensi'
                 ? 'bg-emerald-800 text-white shadow-xs'
@@ -522,14 +522,14 @@ export const Header: React.FC<HeaderProps> = ({
             }`}
           >
             <Calendar size={isCompactMenu ? 13 : 15} />
-            <span>Presensi (16 Pertemuan)</span>
+            <span>Presensi</span>
           </button>
 
           <button
             id="nav-leaderboard"
             onClick={() => setActiveTab('leaderboard')}
-            className={`flex items-center gap-1.5 font-semibold rounded-lg transition-all whitespace-nowrap cursor-pointer ${
-              isCompactMenu ? 'px-2.5 py-1 text-xs' : 'px-3.5 py-1.5 text-xs sm:text-sm'
+            className={`flex items-center gap-1.5 font-semibold rounded-lg transition-all cursor-pointer ${
+              isCompactMenu ? 'px-2 sm:px-2.5 py-1 text-[11px] sm:text-xs' : 'px-3.5 py-1.5 text-xs sm:text-sm'
             } ${
               activeTab === 'leaderboard'
                 ? 'bg-amber-600 text-white shadow-xs font-bold'
@@ -542,8 +542,8 @@ export const Header: React.FC<HeaderProps> = ({
 
           <button
             onClick={() => setActiveTab('nilai')}
-            className={`flex items-center gap-1.5 font-semibold rounded-lg transition-all whitespace-nowrap cursor-pointer ${
-              isCompactMenu ? 'px-2.5 py-1 text-xs' : 'px-3.5 py-1.5 text-xs sm:text-sm'
+            className={`flex items-center gap-1.5 font-semibold rounded-lg transition-all cursor-pointer ${
+              isCompactMenu ? 'px-2 sm:px-2.5 py-1 text-[11px] sm:text-xs' : 'px-3.5 py-1.5 text-xs sm:text-sm'
             } ${
               activeTab === 'nilai'
                 ? 'bg-emerald-800 text-white shadow-xs'
@@ -557,8 +557,8 @@ export const Header: React.FC<HeaderProps> = ({
           {isDosen && (
             <button
               onClick={() => setActiveTab('portal-dosen')}
-              className={`flex items-center gap-1.5 font-bold rounded-lg transition-all whitespace-nowrap cursor-pointer ${
-                isCompactMenu ? 'px-2.5 py-1 text-xs' : 'px-3.5 py-1.5 text-xs sm:text-sm'
+              className={`flex items-center gap-1.5 font-bold rounded-lg transition-all cursor-pointer ${
+                isCompactMenu ? 'px-2 sm:px-2.5 py-1 text-[11px] sm:text-xs' : 'px-3.5 py-1.5 text-xs sm:text-sm'
               } ${
                 activeTab === 'portal-dosen'
                   ? 'bg-indigo-700 text-white shadow-xs'
@@ -574,11 +574,11 @@ export const Header: React.FC<HeaderProps> = ({
           <button
             type="button"
             onClick={toggleCompactMenu}
-            className="ml-auto flex items-center gap-1 text-[11px] font-bold px-2.5 py-1 rounded-lg text-slate-600 hover:text-emerald-900 hover:bg-emerald-50 bg-slate-100 transition-colors shrink-0 border border-slate-300 cursor-pointer shadow-2xs"
-            title={isCompactMenu ? 'Perluas tampilan menu navigasi' : 'Perkecil tampilan menu navigasi'}
+            className="ml-auto flex items-center gap-1 text-[10px] sm:text-[11px] font-bold px-2 py-0.5 sm:py-1 rounded-md text-slate-600 hover:text-emerald-900 hover:bg-emerald-50 bg-slate-100 transition-colors shrink-0 border border-slate-300 cursor-pointer shadow-2xs"
+            title={isCompactMenu ? 'Perluas tampilan menu navigasi' : 'Perkecil tampilan menu navigasi agar lebih hemat ruang'}
           >
-            {isCompactMenu ? <Maximize2 size={12} className="text-emerald-700" /> : <Minimize2 size={12} className="text-slate-600" />}
-            <span className="hidden md:inline">{isCompactMenu ? 'Perluas Menu' : 'Perkecil Menu'}</span>
+            {isCompactMenu ? <Maximize2 size={11} className="text-emerald-700" /> : <Minimize2 size={11} className="text-slate-600" />}
+            <span className="hidden sm:inline">{isCompactMenu ? 'Perbesar Menu' : 'Perkecil Menu'}</span>
           </button>
         </div>
 

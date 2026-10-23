@@ -444,22 +444,38 @@ export function exportGradesToExcel(options: {
       letterGrade: 'A-',
     };
 
-    const feedback = getStudentPersonalizedFeedback(std.name, std.nim, g.finalScore, std.topic, idx);
+    const att = Number(g.attendanceScore ?? 100);
+    const attit = Number(g.attitudeScore ?? 85);
+    const indiv = Number(g.individualScore ?? 85);
+    const uts = Number(g.utsScore ?? 85);
+    const uas = Number(g.uasScore ?? g.groupScore ?? 85);
+    const accurateFinal = Math.round(att * 0.15 + attit * 0.10 + indiv * 0.25 + uts * 0.25 + uas * 0.25);
+    let letterGrade = 'D';
+    if (accurateFinal >= 85) letterGrade = 'A';
+    else if (accurateFinal >= 80) letterGrade = 'A-';
+    else if (accurateFinal >= 75) letterGrade = 'B+';
+    else if (accurateFinal >= 70) letterGrade = 'B';
+    else if (accurateFinal >= 65) letterGrade = 'B-';
+    else if (accurateFinal >= 60) letterGrade = 'C+';
+    else if (accurateFinal >= 55) letterGrade = 'C';
+    else letterGrade = 'D';
+
+    const feedback = getStudentPersonalizedFeedback(std.name, std.nim, accurateFinal, std.topic, idx);
 
     return `
       <tr>
         <td style="text-align:center; mso-number-format:'0';">${idx + 1}</td>
         <td style="text-align:center; mso-number-format:'\\@';">${std.nim}</td>
         <td style="font-weight:bold;">${std.name}</td>
-        <td style="text-align:center;">${g.attendanceScore}</td>
-        <td style="text-align:center;">${g.attitudeScore}</td>
-        <td style="text-align:center;">${g.individualScore}</td>
-        <td style="text-align:center;">${g.utsScore ?? 85}</td>
-        <td style="text-align:center;">${g.uasScore ?? g.groupScore ?? 85}</td>
-        <td style="text-align:center; font-weight:bold; background-color:#E8F5E9;">${g.finalScore}</td>
-        <td style="text-align:center; font-weight:bold;">${g.letterGrade}</td>
-        <td style="text-align:center; font-weight:bold; color:${g.finalScore >= 60 ? '#1B5E20' : '#B71C1C'};">
-          ${g.finalScore >= 60 ? 'LULUS' : 'TIDAK LULUS'}
+        <td style="text-align:center;">${att}</td>
+        <td style="text-align:center;">${attit}</td>
+        <td style="text-align:center;">${indiv}</td>
+        <td style="text-align:center;">${uts}</td>
+        <td style="text-align:center;">${uas}</td>
+        <td style="text-align:center; font-weight:bold; background-color:#E8F5E9;">${accurateFinal}</td>
+        <td style="text-align:center; font-weight:bold;">${letterGrade}</td>
+        <td style="text-align:center; font-weight:bold; color:${accurateFinal >= 60 ? '#1B5E20' : '#B71C1C'};">
+          ${accurateFinal >= 60 ? 'LULUS' : 'TIDAK LULUS'}
         </td>
         <td style="font-size:10pt;">${feedback.personalizedDescription}</td>
         <td style="font-size:10pt; font-style:italic;">"${feedback.quote}" (${feedback.scholar})</td>
@@ -2341,22 +2357,38 @@ export function generateGradesCollectivePrintHtml(options: ExportGradesOptions):
       letterGrade: 'A-',
     };
 
-    const feedback = getStudentPersonalizedFeedback(std.name, std.nim, g.finalScore, std.topic, idx);
+    const att = Number(g.attendanceScore ?? 100);
+    const attit = Number(g.attitudeScore ?? 85);
+    const indiv = Number(g.individualScore ?? 85);
+    const uts = Number(g.utsScore ?? 85);
+    const uas = Number(g.uasScore ?? g.groupScore ?? 85);
+    const accurateFinal = Math.round(att * 0.15 + attit * 0.10 + indiv * 0.25 + uts * 0.25 + uas * 0.25);
+    let letterGrade = 'D';
+    if (accurateFinal >= 85) letterGrade = 'A';
+    else if (accurateFinal >= 80) letterGrade = 'A-';
+    else if (accurateFinal >= 75) letterGrade = 'B+';
+    else if (accurateFinal >= 70) letterGrade = 'B';
+    else if (accurateFinal >= 65) letterGrade = 'B-';
+    else if (accurateFinal >= 60) letterGrade = 'C+';
+    else if (accurateFinal >= 55) letterGrade = 'C';
+    else letterGrade = 'D';
+
+    const feedback = getStudentPersonalizedFeedback(std.name, std.nim, accurateFinal, std.topic, idx);
 
     return `
       <tr style="background-color: ${idx % 2 === 0 ? '#ffffff' : '#f8fafc'};">
         <td style="text-align:center; padding:5px 3px; border:1px solid #94a3b8; font-weight:bold;">${idx + 1}</td>
         <td style="text-align:center; padding:5px 3px; border:1px solid #94a3b8; font-family:monospace; font-size:8pt;">${std.nim}</td>
         <td style="padding:5px 6px; border:1px solid #94a3b8; font-weight:bold; color:#0f172a;">${std.name}</td>
-        <td style="text-align:center; padding:5px 2px; border:1px solid #94a3b8;">${g.attendanceScore}</td>
-        <td style="text-align:center; padding:5px 2px; border:1px solid #94a3b8;">${g.attitudeScore}</td>
-        <td style="text-align:center; padding:5px 2px; border:1px solid #94a3b8;">${g.individualScore}</td>
-        <td style="text-align:center; padding:5px 2px; border:1px solid #94a3b8;">${g.utsScore ?? 85}</td>
-        <td style="text-align:center; padding:5px 2px; border:1px solid #94a3b8;">${g.uasScore ?? g.groupScore ?? 85}</td>
-        <td style="text-align:center; padding:5px 2px; border:1px solid #94a3b8; font-weight:bold; background-color:#dcfce7; color:#166534;">${g.finalScore}</td>
-        <td style="text-align:center; padding:5px 2px; border:1px solid #94a3b8; font-weight:bold; color:#0f172a;">${g.letterGrade}</td>
-        <td style="text-align:center; padding:5px 2px; border:1px solid #94a3b8; font-weight:bold; font-size:7.5pt; color:${g.finalScore >= 60 ? '#15803d' : '#b91c1c'};">
-          ${g.finalScore >= 60 ? 'LULUS' : 'TIDAK LULUS'}
+        <td style="text-align:center; padding:5px 2px; border:1px solid #94a3b8;">${att}</td>
+        <td style="text-align:center; padding:5px 2px; border:1px solid #94a3b8;">${attit}</td>
+        <td style="text-align:center; padding:5px 2px; border:1px solid #94a3b8;">${indiv}</td>
+        <td style="text-align:center; padding:5px 2px; border:1px solid #94a3b8;">${uts}</td>
+        <td style="text-align:center; padding:5px 2px; border:1px solid #94a3b8;">${uas}</td>
+        <td style="text-align:center; padding:5px 2px; border:1px solid #94a3b8; font-weight:bold; background-color:#dcfce7; color:#166534;">${accurateFinal}</td>
+        <td style="text-align:center; padding:5px 2px; border:1px solid #94a3b8; font-weight:bold; color:#0f172a;">${letterGrade}</td>
+        <td style="text-align:center; padding:5px 2px; border:1px solid #94a3b8; font-weight:bold; font-size:7.5pt; color:${accurateFinal >= 60 ? '#15803d' : '#b91c1c'};">
+          ${accurateFinal >= 60 ? 'LULUS' : 'TIDAK LULUS'}
         </td>
         <td style="padding:5px 6px; border:1px solid #94a3b8; font-size:7.5pt; line-height:1.2; color:#1e293b;">
           "${feedback.quote}" <br><strong style="color:#0369a1;">— ${feedback.scholar}</strong>
@@ -3058,18 +3090,35 @@ export function exportAllTasksToExcel(db: SiakadDatabase) {
       finalScore: 88,
       letterGrade: 'A-',
     };
+
+    const att = Number(g.attendanceScore ?? 100);
+    const attit = Number(g.attitudeScore ?? 85);
+    const indiv = Number(g.individualScore ?? 85);
+    const uts = Number(g.utsScore ?? 85);
+    const uas = Number(g.uasScore ?? g.groupScore ?? 85);
+    const accurateFinal = Math.round(att * 0.15 + attit * 0.10 + indiv * 0.25 + uts * 0.25 + uas * 0.25);
+    let letterGrade = 'D';
+    if (accurateFinal >= 85) letterGrade = 'A';
+    else if (accurateFinal >= 80) letterGrade = 'A-';
+    else if (accurateFinal >= 75) letterGrade = 'B+';
+    else if (accurateFinal >= 70) letterGrade = 'B';
+    else if (accurateFinal >= 65) letterGrade = 'B-';
+    else if (accurateFinal >= 60) letterGrade = 'C+';
+    else if (accurateFinal >= 55) letterGrade = 'C';
+    else letterGrade = 'D';
+
     return {
       'No': idx + 1,
       'NIM': std.nim,
       'Nama Mahasiswa': std.name,
-      'Kehadiran (10%)': g.attendanceScore,
-      'Sikap / Kuis (10%)': g.attitudeScore,
-      'Tugas Presentasi (20%)': g.individualScore,
-      'UTS (30%)': g.utsScore ?? 85,
-      'UAS (30%)': g.uasScore ?? g.groupScore ?? 85,
-      'Nilai Akhir (100%)': g.finalScore,
-      'Huruf Mutu': g.letterGrade,
-      'Status Kelulusan': g.finalScore >= 60 ? 'LULUS' : 'TIDAK LULUS',
+      'Kehadiran (15%)': att,
+      'Sikap & Keaktifan (10%)': attit,
+      'Tugas PPT & Makalah (25%)': indiv,
+      'UTS (25%)': uts,
+      'UAS (25%)': uas,
+      'Nilai Akhir (100%)': accurateFinal,
+      'Huruf Mutu': letterGrade,
+      'Status Kelulusan': accurateFinal >= 60 ? 'LULUS' : 'TIDAK LULUS',
       'Catatan Dosen': g.notes || '-',
     };
   });
@@ -4187,7 +4236,10 @@ export function printQuizRecapPdf(options: {
  * Generate & Print Official Receipt for Hardcopy / Physical Printout Paper Submission
  * Mahasiswa/Dosen dapat mencetak surat tanda terima resmi penyerahan makalah cetak fisik
  */
-export function printHardcopySubmissionReceiptPdf(options: {
+/**
+ * Helper to construct the official HTML receipt layout
+ */
+export function generateHardcopyReceiptHtml(options: {
   campusName?: string;
   studyProgram?: string;
   courseTitle?: string;
@@ -4205,7 +4257,7 @@ export function printHardcopySubmissionReceiptPdf(options: {
   grade?: number;
   feedback?: string;
   notes?: string;
-}): void {
+}): { html: string; title: string; docTitle: string } {
   const campus = options.campusName || 'INSTITUT AGAMA ISLAM TARBIYATUT THOLABAH';
   const prodi = options.studyProgram || 'MANAJEMEN PENDIDIKAN ISLAM (MPI)';
   const course = options.courseTitle || 'Filsafat Ilmu';
@@ -4231,14 +4283,15 @@ export function printHardcopySubmissionReceiptPdf(options: {
         year: 'numeric',
       });
 
-  const receiptNo = `TT-MKL/${new Date().getFullYear()}/${meeting.toString().padStart(2, '0')}/${options.studentNim.slice(-4)}`;
+  const receiptNo = `TT-MKL/${new Date().getFullYear()}/${meeting.toString().padStart(2, '0')}/${(options.studentNim || '0000').slice(-4)}`;
+  const docTitle = `Tanda_Terima_Makalah_${(options.studentName || 'Mahasiswa').replace(/\s+/g, '_')}`;
 
   const html = `
     <!DOCTYPE html>
     <html lang="id">
     <head>
       <meta charset="utf-8">
-      <title>Tanda_Terima_Makalah_Cetak_${options.studentName.replace(/\\s+/g, '_')}</title>
+      <title>${docTitle}</title>
       <style>
         @page {
           size: A4 portrait;
@@ -4392,7 +4445,7 @@ export function printHardcopySubmissionReceiptPdf(options: {
         <tr>
           <td class="label">Nomor Induk Mahasiswa (NIM)</td>
           <td class="sep">:</td>
-          <td>${options.studentNim}</td>
+          <td>${options.studentNim || '-'}</td>
         </tr>
         <tr>
           <td class="label">Mata Kuliah / SKS</td>
@@ -4452,7 +4505,7 @@ export function printHardcopySubmissionReceiptPdf(options: {
             Mahasiswa Penyerah,
             <div class="sign-space"></div>
             <strong>${options.studentName}</strong><br/>
-            NIM. ${options.studentNim}
+            NIM. ${options.studentNim || '-'}
           </td>
           <td>
             Diterima & Diverifikasi Oleh,<br/>
@@ -4468,12 +4521,369 @@ export function printHardcopySubmissionReceiptPdf(options: {
 
       <div class="watermark">
         Dokumen ini diterbitkan secara otomatis oleh SIAKAD Cloud Engine sebagai bukti sah penyerahan tugas akademik.<br/>
-        Validasi Kode Sistem: SIAKAD-VAL-${Date.now().toString(36).toUpperCase()}-${options.studentNim}
+        Validasi Kode Sistem: SIAKAD-VAL-${Date.now().toString(36).toUpperCase()}-${options.studentNim || 'MHS'}
       </div>
     </body>
     </html>
   `;
 
-  printViaHiddenIframe(html, `Tanda_Terima_Makalah_${options.studentName.replace(/\\s+/g, '_')}`);
+  return { html, title: docTitle, docTitle };
 }
+
+/**
+ * Generate & Print Official Receipt for Hardcopy / Physical Printout Paper Submission
+ * Mahasiswa/Dosen dapat mencetak surat tanda terima resmi penyerahan makalah cetak fisik
+ */
+export function printHardcopySubmissionReceiptPdf(options: {
+  campusName?: string;
+  studyProgram?: string;
+  courseTitle?: string;
+  courseCode?: string;
+  semester?: string;
+  dosenFullName?: string;
+  dosenNidn?: string;
+  studentName: string;
+  studentNim: string;
+  rpsPart?: string;
+  meetingNumber?: number;
+  topic?: string;
+  submittedAt?: string;
+  receiverName?: string;
+  grade?: number;
+  feedback?: string;
+  notes?: string;
+}): void {
+  const { html, docTitle } = generateHardcopyReceiptHtml(options);
+  printViaHiddenIframe(html, docTitle);
+}
+
+/**
+ * Direct PDF Download: Unduh Surat Tanda Terima Makalah Cetak Fisik langsung sebagai file .PDF resmi (100% Berisi & Tajam)
+ */
+export async function downloadHardcopySubmissionReceiptPdf(options: {
+  campusName?: string;
+  studyProgram?: string;
+  courseTitle?: string;
+  courseCode?: string;
+  semester?: string;
+  dosenFullName?: string;
+  dosenNidn?: string;
+  studentName: string;
+  studentNim: string;
+  rpsPart?: string;
+  meetingNumber?: number;
+  topic?: string;
+  submittedAt?: string;
+  receiverName?: string;
+  grade?: number;
+  feedback?: string;
+  notes?: string;
+}): Promise<boolean> {
+  if (typeof window === 'undefined') {
+    return false;
+  }
+
+  try {
+    const campus = (options.campusName || 'INSTITUT AGAMA ISLAM TARBIYATUT THOLABAH').toUpperCase();
+    const prodi = (options.studyProgram || 'MANAJEMEN PENDIDIKAN ISLAM (MPI)').toUpperCase();
+    const course = options.courseTitle || 'Filsafat Ilmu';
+    const courseCode = options.courseCode || 'STI 105';
+    const rps = options.rpsPart || 'Part RPS';
+    const meeting = options.meetingNumber || 2;
+    const topic = options.topic || 'Filsafat Ilmu dan Manajemen Pendidikan Islam';
+    const receiver = options.receiverName || options.dosenFullName || 'Risfa Tri Ulfa, S.Pd., M.Pd., Gr.';
+    const dosen = options.dosenFullName || 'Risfa Tri Ulfa, S.Pd., M.Pd., Gr.';
+    const nidn = options.dosenNidn || '2118029201';
+    const safeStudentName = (options.studentName || 'Mahasiswa').replace(/[^a-zA-Z0-9_-]/g, '_');
+    const filename = `Tanda_Terima_Makalah_${safeStudentName}.pdf`;
+
+    const subDate = options.submittedAt ? new Date(options.submittedAt) : new Date();
+    const dateFormatted = subDate.toLocaleDateString('id-ID', {
+      weekday: 'long',
+      day: 'numeric',
+      month: 'long',
+      year: 'numeric',
+    });
+    const timeFormatted = subDate.toLocaleTimeString('id-ID', {
+      hour: '2-digit',
+      minute: '2-digit',
+    });
+    const dateStr = `${dateFormatted} pukul ${timeFormatted}`;
+    const receiptNo = `SIAKAD-TT/${subDate.getFullYear()}/${(subDate.getMonth() + 1).toString().padStart(2, '0')}/${(options.studentNim || '001').slice(-4)}`;
+
+    const pdf = new jsPDF({
+      orientation: 'portrait',
+      unit: 'mm',
+      format: 'a4',
+    });
+
+    const pageWidth = pdf.internal.pageSize.getWidth(); // 210mm
+    const margin = 18;
+    const contentWidth = pageWidth - (margin * 2); // 174mm
+
+    // 1. KOP SURAT RESMI
+    pdf.setFont('helvetica', 'bold');
+    pdf.setFontSize(13);
+    pdf.setTextColor(15, 23, 42); // slate-900
+    pdf.text(campus, pageWidth / 2, 18, { align: 'center' });
+
+    pdf.setFont('helvetica', 'bold');
+    pdf.setFontSize(10.5);
+    pdf.setTextColor(6, 95, 70); // emerald-800
+    pdf.text(`PROGRAM STUDI ${prodi}`, pageWidth / 2, 24, { align: 'center' });
+
+    pdf.setFont('helvetica', 'normal');
+    pdf.setFontSize(8);
+    pdf.setTextColor(100, 116, 139); // slate-500
+    pdf.text('Sistem Informasi Akademik Terpadu (SIAKAD) • Arsip Bukti Penyerahan Dokumen Tugas', pageWidth / 2, 29, { align: 'center' });
+
+    // Garis Ganda Kop
+    pdf.setDrawColor(15, 23, 42);
+    pdf.setLineWidth(0.8);
+    pdf.line(margin, 32, margin + contentWidth, 32);
+
+    pdf.setDrawColor(100, 116, 139);
+    pdf.setLineWidth(0.3);
+    pdf.line(margin, 33.2, margin + contentWidth, 33.2);
+
+    // 2. KOTAK JUDUL DOKUMEN & BADGE VERIFIKASI
+    let curY = 38;
+    pdf.setFillColor(241, 245, 249); // slate-100
+    pdf.setDrawColor(203, 213, 225); // slate-300
+    pdf.setLineWidth(0.3);
+    pdf.roundedRect(margin, curY, contentWidth, 18, 2, 2, 'FD');
+
+    pdf.setFont('helvetica', 'bold');
+    pdf.setFontSize(11);
+    pdf.setTextColor(15, 23, 42);
+    pdf.text('SURAT TANDA TERIMA MAKALAH CETAK FISIK (HARDCOPY)', pageWidth / 2, curY + 7, { align: 'center' });
+
+    pdf.setFont('helvetica', 'bold');
+    pdf.setFontSize(8.5);
+    pdf.setTextColor(4, 120, 87); // emerald-700
+    pdf.text(`Nomor Bukti: ${receiptNo}   |   STATUS: SAH & BEBAS UPLOAD FILE DIGITAL`, pageWidth / 2, curY + 13.5, { align: 'center' });
+
+    // 3. PARAGRAF PENGANTAR
+    curY += 24;
+    pdf.setFont('helvetica', 'normal');
+    pdf.setFontSize(9);
+    pdf.setTextColor(30, 41, 59);
+    const introText = 'Menerangkan dengan sebenarnya bahwa mahasiswa di bawah ini telah menyerahkan naskah karya tulis ilmiah / makalah perkuliahan dalam bentuk berkas cetak fisik (print out) langsung kepada Dosen Pengampu:';
+    const splitIntro = pdf.splitTextToSize(introText, contentWidth);
+    pdf.text(splitIntro, margin, curY);
+    curY += (splitIntro.length * 4.5) + 3;
+
+    // 4. TABEL DETAIL MAHASISWA & PENYERAHAN
+    const tableData: Array<{ label: string; value: string; isBold?: boolean; highlight?: boolean }> = [
+      { label: 'Nama Mahasiswa', value: options.studentName, isBold: true },
+      { label: 'Nomor Induk Mahasiswa (NIM)', value: options.studentNim || '-' },
+      { label: 'Program Studi / Semester', value: `${prodi} / ${options.semester || 'Semester Ganjil'}` },
+      { label: 'Mata Kuliah / SKS', value: `${course} (${courseCode}) - 3 SKS` },
+      { label: 'Pertemuan / Part RPS', value: `Pertemuan ${meeting} (${rps})`, isBold: true },
+      { label: 'Topik Bahasan Makalah', value: `"${topic}"` },
+      { label: 'Format Penyerahan', value: 'Naskah Cetak Fisik / Hardcopy Print Out (Jilid Rapi)', isBold: true },
+      { label: 'Waktu Diterima Dosen', value: `${dateStr} WIB` },
+      { label: 'Dosen Penerima', value: receiver, isBold: true },
+      {
+        label: 'Nilai Akademik Makalah',
+        value: options.grade !== undefined ? `${options.grade} / 100` : 'Telah Terverifikasi (Menunggu Penilaian)',
+        isBold: true,
+        highlight: options.grade !== undefined,
+      },
+    ];
+
+    if (options.feedback) {
+      tableData.push({ label: 'Catatan / Evaluasi Dosen', value: options.feedback });
+    }
+
+    const col1Width = 52;
+    const col2Width = contentWidth - col1Width;
+
+    tableData.forEach((row, idx) => {
+      pdf.setFont('helvetica', 'normal');
+      pdf.setFontSize(8.5);
+      const wrappedVal = pdf.splitTextToSize(row.value, col2Width - 6);
+      const rowHeight = Math.max(7, (wrappedVal.length * 4.2) + 2.5);
+
+      // Zebra background
+      if (idx % 2 === 0) {
+        pdf.setFillColor(248, 250, 252); // slate-50
+      } else {
+        pdf.setFillColor(255, 255, 255);
+      }
+      pdf.setDrawColor(226, 232, 240); // slate-200
+      pdf.setLineWidth(0.2);
+      pdf.rect(margin, curY, contentWidth, rowHeight, 'FD');
+
+      // Label
+      pdf.setFont('helvetica', 'bold');
+      pdf.setTextColor(51, 65, 85);
+      pdf.text(row.label, margin + 3, curY + 4.8);
+
+      // Separator titik dua
+      pdf.text(':', margin + col1Width - 3, curY + 4.8);
+
+      // Value
+      if (row.highlight) {
+        pdf.setFont('helvetica', 'bold');
+        pdf.setTextColor(6, 95, 70); // emerald-800
+      } else if (row.isBold) {
+        pdf.setFont('helvetica', 'bold');
+        pdf.setTextColor(15, 23, 42);
+      } else {
+        pdf.setFont('helvetica', 'normal');
+        pdf.setTextColor(30, 41, 59);
+      }
+      pdf.text(wrappedVal, margin + col1Width + 2, curY + 4.8);
+
+      curY += rowHeight;
+    });
+
+    curY += 5;
+
+    // 5. KOTAK KETENTUAN VALIDASI SISTEM
+    pdf.setFillColor(240, 253, 244); // emerald-50
+    pdf.setDrawColor(134, 239, 172); // emerald-300
+    pdf.setLineWidth(0.4);
+    pdf.roundedRect(margin, curY, contentWidth, 18, 2, 2, 'FD');
+
+    pdf.setFont('helvetica', 'bold');
+    pdf.setFontSize(8);
+    pdf.setTextColor(6, 95, 70);
+    pdf.text('Ketentuan Validasi Sistem:', margin + 4, curY + 5.5);
+
+    pdf.setFont('helvetica', 'normal');
+    pdf.setFontSize(7.5);
+    pdf.setTextColor(20, 83, 45);
+    const noticeText = 'Dengan diterbitkannya lembar tanda terima ini, mahasiswa bersangkutan dibebaskan dari kewajiban mengunggah berkas file digital pada portal SIAKAD. Status tugas pada sistem secara otomatis tercatat sebagai "Sudah Mengumpulkan (Cetak Fisik Terverifikasi)" dan tersimpan permanen di basis data server.';
+    const splitNotice = pdf.splitTextToSize(noticeText, contentWidth - 8);
+    pdf.text(splitNotice, margin + 4, curY + 10.5);
+
+    curY += 23;
+
+    // 6. LEMBAR PENGESAHAN & TANDA TANGAN
+    const sigLeftX = margin + 15;
+    const sigRightX = margin + 115;
+
+    pdf.setFont('helvetica', 'normal');
+    pdf.setFontSize(8.5);
+    pdf.setTextColor(30, 41, 59);
+    pdf.text('Mahasiswa Penyerah,', sigLeftX, curY);
+    pdf.text('Diterima & Diverifikasi Oleh,', sigRightX, curY);
+    pdf.text('Dosen Pengampu Perkuliahan,', sigRightX, curY + 4);
+
+    // Tempelkan Tanda Tangan Resmi Dosen Base64
+    try {
+      if (DOSEN_SIGNATURE_BASE64) {
+        pdf.addImage(DOSEN_SIGNATURE_BASE64, 'PNG', sigRightX - 5, curY + 5, 38, 18);
+      }
+    } catch (e) {
+      console.warn('Signature image embed notice:', e);
+    }
+
+    const nameY = curY + 25;
+    pdf.setFont('helvetica', 'bold');
+    pdf.text(options.studentName, sigLeftX, nameY);
+    pdf.setFont('helvetica', 'normal');
+    pdf.setFontSize(8);
+    pdf.setTextColor(100, 116, 139);
+    pdf.text(`NIM. ${options.studentNim || '-'}`, sigLeftX, nameY + 4);
+
+    pdf.setFont('helvetica', 'bold');
+    pdf.setFontSize(8.5);
+    pdf.setTextColor(15, 23, 42);
+    pdf.text(dosen, sigRightX, nameY);
+    pdf.setFont('helvetica', 'normal');
+    pdf.setFontSize(8);
+    pdf.setTextColor(100, 116, 139);
+    pdf.text(`NIDN. ${nidn}`, sigRightX, nameY + 4);
+
+    // 7. WATERMARK KEAMANAN & KODE VERIFIKASI RESMI
+    const footerY = 282;
+    pdf.setDrawColor(226, 232, 240);
+    pdf.setLineWidth(0.3);
+    pdf.line(margin, footerY - 3, margin + contentWidth, footerY - 3);
+
+    pdf.setFont('helvetica', 'normal');
+    pdf.setFontSize(7);
+    pdf.setTextColor(148, 163, 184);
+    pdf.text('Dokumen ini diterbitkan secara otomatis oleh SIAKAD Cloud Engine sebagai bukti sah penyerahan tugas akademik.', pageWidth / 2, footerY, { align: 'center' });
+    pdf.text(`Validasi Kode Sistem: SIAKAD-VAL-${Date.now().toString(36).toUpperCase()}-${(options.studentNim || 'MHS').slice(-5)} • Dicetak pada ${new Date().toLocaleString('id-ID')}`, pageWidth / 2, footerY + 3.5, { align: 'center' });
+
+    try {
+      const blob = pdf.output('blob');
+      const blobUrl = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = blobUrl;
+      link.download = filename;
+      document.body.appendChild(link);
+      link.click();
+      setTimeout(() => {
+        if (document.body.contains(link)) {
+          document.body.removeChild(link);
+        }
+        URL.revokeObjectURL(blobUrl);
+      }, 1000);
+      return true;
+    } catch {
+      pdf.save(filename);
+      return true;
+    }
+  } catch (err) {
+    console.error('Error generating direct PDF receipt:', err);
+    return false;
+  }
+}
+
+/**
+ * Download formatted Microsoft Word (.doc) for Hardcopy Receipt
+ */
+export function exportHardcopyReceiptWord(options: {
+  campusName?: string;
+  studyProgram?: string;
+  courseTitle?: string;
+  courseCode?: string;
+  semester?: string;
+  dosenFullName?: string;
+  dosenNidn?: string;
+  studentName: string;
+  studentNim: string;
+  rpsPart?: string;
+  meetingNumber?: number;
+  topic?: string;
+  submittedAt?: string;
+  receiverName?: string;
+  grade?: number;
+  feedback?: string;
+  notes?: string;
+}): void {
+  const { html } = generateHardcopyReceiptHtml(options);
+  const wordDocument = `
+    <html xmlns:o='urn:schemas-microsoft-com:office:office' xmlns:w='urn:schemas-microsoft-com:office:word' xmlns='http://www.w3.org/TR/REC-html40'>
+    <head>
+      <meta charset='utf-8'>
+      <title>Tanda Terima Makalah Fisik</title>
+      <style>
+        body { font-family: 'Times New Roman', serif; font-size: 11pt; margin: 15mm 20mm; }
+        table { border-collapse: collapse; width: 100%; }
+      </style>
+    </head>
+    <body>
+      ${html}
+    </body>
+    </html>
+  `;
+  const blob = new Blob([wordDocument], { type: 'application/msword;charset=utf-8' });
+  const url = URL.createObjectURL(blob);
+  const safeName = (options.studentName || 'Mahasiswa').replace(/[^a-zA-Z0-9_-]/g, '_');
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `Tanda_Terima_Makalah_${safeName}.doc`;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
+
+export const downloadHardcopyReceiptPdf = downloadHardcopySubmissionReceiptPdf;
 

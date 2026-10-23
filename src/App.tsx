@@ -62,6 +62,7 @@ import {
   Film,
   MessageSquare,
   Trophy,
+  ArrowUp,
 } from 'lucide-react';
 
 export default function App() {
@@ -94,6 +95,25 @@ export default function App() {
 
   const [activeTab, setActiveTab] = useState<string>('jadwal');
   const [selectedStudentForTask, setSelectedStudentForTask] = useState<Student | null>(null);
+  const [showScrollTop, setShowScrollTop] = useState(false);
+
+  // Auto scroll to top when changing tabs so the screen is never cut off or stuck below
+  useEffect(() => {
+    window.scrollTo({ top: 0, left: 0, behavior: 'smooth' });
+  }, [activeTab]);
+
+  // Monitor scroll position to show quick "Back to Top" floating button
+  useEffect(() => {
+    const handleScroll = () => {
+      setShowScrollTop(window.scrollY > 220);
+    };
+    window.addEventListener('scroll', handleScroll, { passive: true });
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, []);
+
+  const handleScrollToTop = () => {
+    window.scrollTo({ top: 0, left: 0, behavior: 'smooth' });
+  };
 
   // Audio state
   const [soundEnabled, setSoundEnabled] = useState<boolean>(() => {
@@ -454,8 +474,8 @@ export default function App() {
         setActiveTab={setActiveTab}
       />
 
-      {/* Main Content Area */}
-      <main className="flex-1 max-w-7xl w-full mx-auto px-4 py-5 sm:py-6 space-y-6">
+      {/* Main Content Area: Memanjang ke samping agar semua menu dan tabel leluasa terlihat */}
+      <main className="flex-1 max-w-[1920px] w-full mx-auto px-2 sm:px-4 lg:px-6 py-4 sm:py-6 space-y-6">
         
         {/* Banner Pemberitahuan Tugas Telah Dinilai Dosen */}
         {studentGradedInfo && (
@@ -941,6 +961,19 @@ export default function App() {
           Aplikasi ini dibuat oleh <span className="font-semibold text-emerald-800">Risfa Tri Ulfa, S.Pd., M.Pd., Gr.</span>
         </p>
       </footer>
+
+      {/* Floating Quick Scroll-to-Top Button */}
+      {showScrollTop && (
+        <button
+          type="button"
+          onClick={handleScrollToTop}
+          className="fixed bottom-6 right-6 z-50 px-3.5 py-2.5 bg-emerald-700 hover:bg-emerald-800 text-white rounded-full shadow-2xl transition-all duration-300 flex items-center justify-center gap-1.5 font-bold text-xs ring-4 ring-emerald-400/40 cursor-pointer animate-bounce"
+          title="Kembali ke atas layar tampilan"
+        >
+          <ArrowUp size={16} />
+          <span className="hidden sm:inline">Ke Atas</span>
+        </button>
+      )}
 
     </div>
   );

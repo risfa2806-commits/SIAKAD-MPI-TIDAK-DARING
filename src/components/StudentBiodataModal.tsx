@@ -460,8 +460,8 @@ export const StudentBiodataModal: React.FC<StudentBiodataModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-900/60 backdrop-blur-xs">
-      <div className="bg-white rounded-2xl max-w-5xl w-full max-h-[92vh] flex flex-col shadow-2xl overflow-hidden border border-slate-200 animate-in fade-in zoom-in-95 duration-200">
+    <div className="fixed inset-0 z-50 overflow-y-auto bg-slate-900/60 backdrop-blur-xs p-3 sm:p-6 flex justify-center items-start min-h-screen">
+      <div className="bg-white rounded-2xl max-w-5xl w-full max-h-[92vh] flex flex-col shadow-2xl overflow-hidden border border-slate-200 my-auto sm:my-6 animate-in fade-in zoom-in-95 duration-200">
         
         {/* MODAL HEADER */}
         <div className="px-5 py-4 bg-linear-to-r from-emerald-800 to-teal-900 text-white flex items-center justify-between shrink-0">

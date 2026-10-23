@@ -47,6 +47,8 @@ import {
   exportAllTasksToZip,
   printViaHiddenIframe,
   printHardcopySubmissionReceiptPdf,
+  downloadHardcopySubmissionReceiptPdf,
+  exportHardcopyReceiptWord,
 } from '../utils/documentExport';
 import { DOSEN_SIGNATURE_BASE64 } from '../assets/dosenSignature';
 import { DocumentPreviewModal, DocumentPreviewData } from './DocumentPreviewModal';
@@ -149,6 +151,13 @@ export const DosenPortal: React.FC<DosenPortalProps> = ({
   onOpenRpsModal,
 }) => {
   const [subTab, setSubTab] = useState<'monitoring' | 'poin-keaktifan' | 'pesan-mhs' | 'rps-sync' | 'kelompok-ppt' | 'nilai-ppt' | 'nilai-uts' | 'nilai-video' | 'keamanan' | 'cadangan-data'>('monitoring');
+  const [isCompactDosenSubTabs, setIsCompactDosenSubTabs] = useState<boolean>(() => {
+    try {
+      return localStorage.getItem('siakad_compact_dosen_tabs') !== 'false';
+    } catch {
+      return true;
+    }
+  });
   const [searchTerm, setSearchTerm] = useState('');
 
   // Activity Points (Poin Keaktifan) State
@@ -391,7 +400,7 @@ export const DosenPortal: React.FC<DosenPortalProps> = ({
       if (res.success) {
         setRestoreFeedback({
           type: 'success',
-          text: `Pemulihan backup sukses! ${res.totalStudents || backupData.students.length} data mahasiswa, ${res.totalSubmissions || backupData.submissions?.length || 0} tugas presentasi, ${res.totalUts || backupData.utsSubmissions?.length || 0} naskah UTS, dan ${res.totalUas || backupData.uasSubmissions?.length || 0} naskah UAS berhasil dipulihkan ke server SIAKAD.`,
+          text: `Pemulihan arsip ZIP sukses! ${res.totalStudents || backupData.students.length} data mahasiswa, ${res.totalSubmissions || backupData.submissions?.length || 0} tugas presentasi, ${res.totalUts || backupData.utsSubmissions?.length || 0} naskah UTS, dan ${res.totalUas || backupData.uasSubmissions?.length || 0} naskah UAS berhasil dipulihkan secara permanen ke server SIAKAD.`,
         });
         await onRefreshData();
       } else {
@@ -712,19 +721,10 @@ export const DosenPortal: React.FC<DosenPortalProps> = ({
   };
 
   // Grading state for individual PPT
-  const [submissionActionStudentId, setSubmissionActionStudentId] = useState('');
   const [gradingStudentId, setGradingStudentId] = useState<string | null>(null);
   const [indivScoreInput, setIndivScoreInput] = useState<number>(85);
   const [indivFeedbackInput, setIndivFeedbackInput] = useState<string>('');
   const [isGradingIndiv, setIsGradingIndiv] = useState(false);
-  const submissionActionStudent = (students || []).find(student => student.id === submissionActionStudentId) || null;
-  const submissionActionSubmissions = submissionActionStudent
-    ? (submissions || []).filter(sub => sub.studentId === submissionActionStudent.id)
-    : [];
-  const submissionActionSubmission = submissionActionStudent
-    ? submissionActionSubmissions.find(sub => (Number(sub.meetingNumber) || 2) === (Number(submissionActionStudent.meetingNumber) || 2))
-      || submissionActionSubmissions[0]
-    : undefined;
 
   // Grading state for UTS 5 essay
   const [gradingUtsStudentId, setGradingUtsStudentId] = useState<string | null>(null);
@@ -767,6 +767,8 @@ export const DosenPortal: React.FC<DosenPortalProps> = ({
 
   // Review & Auto-grading modals for Tugas Individu, UTS, and UAS
   const [reviewIndivSub, setReviewIndivSub] = useState<IndividualSubmission | null>(null);
+  const [reviewIsHardcopy, setReviewIsHardcopy] = useState<boolean>(false);
+  const [inlineIsHardcopy, setInlineIsHardcopy] = useState<boolean>(false);
   const [reviewUtsStudentId, setReviewUtsStudentId] = useState<string | null>(null);
   const [reviewGroupId, setReviewGroupId] = useState<number | null>(null);
   const [autoGradingInfo, setAutoGradingInfo] = useState<{ type: 'indiv' | 'uts' | 'uas'; breakdown: string[] } | null>(null);
@@ -777,7 +779,7 @@ export const DosenPortal: React.FC<DosenPortalProps> = ({
     sub?: IndividualSubmission;
     meetingNumber: number;
   } | null>(null);
-  const [hardcopyScoreInput, setHardcopyScoreInput] = useState<number | ''>('');
+  const [hardcopyScoreInput, setHardcopyScoreInput] = useState<number | ''>(85);
   const [hardcopyNotesInput, setHardcopyNotesInput] = useState<string>(
     'Makalah telah dikumpulkan dalam bentuk berkas cetak fisik (print out) langsung ke Dosen Pengampu.'
   );
@@ -790,7 +792,7 @@ export const DosenPortal: React.FC<DosenPortalProps> = ({
       sub,
       meetingNumber: targetMeeting,
     });
-    setHardcopyScoreInput(sub?.grade !== undefined ? sub.grade : '');
+    setHardcopyScoreInput(sub?.grade !== undefined ? sub.grade : 85);
     setHardcopyNotesInput(
       sub?.notes || 'Makalah telah dikumpulkan dalam bentuk berkas cetak fisik (print out) langsung ke Dosen Pengampu.'
     );
@@ -845,12 +847,35 @@ export const DosenPortal: React.FC<DosenPortalProps> = ({
     const std = student || (students || []).find(s => s.id === sub.studentId);
     printHardcopySubmissionReceiptPdf({
       campusName: currentFullDb.courseProfile?.campusName,
-      studyProgram: currentFullDb.courseProfile?.studyProgram,
+      studyProgram: currentFullDb.courseProfile?.programName,
       courseTitle: currentFullDb.courseProfile?.courseTitle,
       courseCode: currentFullDb.courseProfile?.courseCode,
       semester: currentFullDb.courseProfile?.semester,
       dosenFullName: currentFullDb.courseProfile?.dosenName,
-      dosenNidn: currentFullDb.courseProfile?.nip,
+      dosenNidn: currentFullDb.courseProfile?.dosenNidn,
+      studentName: sub.studentName || std?.name || 'Mahasiswa',
+      studentNim: std?.nim || sub.studentId || '-',
+      rpsPart: sub.rpsPart,
+      meetingNumber: sub.meetingNumber,
+      topic: sub.topic,
+      submittedAt: sub.hardcopyReceivedAt || sub.submittedAt,
+      receiverName: sub.hardcopyReceiver || currentFullDb.courseProfile?.dosenName,
+      grade: sub.grade,
+      feedback: sub.feedback,
+      notes: sub.notes,
+    });
+  };
+
+  const handleDownloadHardcopyReceipt = async (sub: IndividualSubmission, student?: Student) => {
+    const std = student || (students || []).find(s => s.id === sub.studentId);
+    await downloadHardcopySubmissionReceiptPdf({
+      campusName: currentFullDb.courseProfile?.campusName,
+      studyProgram: currentFullDb.courseProfile?.programName || currentFullDb.courseProfile?.studyProgram,
+      courseTitle: currentFullDb.courseProfile?.courseTitle,
+      courseCode: currentFullDb.courseProfile?.courseCode,
+      semester: currentFullDb.courseProfile?.semester,
+      dosenFullName: currentFullDb.courseProfile?.dosenName,
+      dosenNidn: currentFullDb.courseProfile?.dosenNidn,
       studentName: sub.studentName || std?.name || 'Mahasiswa',
       studentNim: std?.nim || sub.studentId || '-',
       rpsPart: sub.rpsPart,
@@ -879,6 +904,7 @@ export const DosenPortal: React.FC<DosenPortalProps> = ({
   // Open Review Individual Submission
   const handleOpenReviewIndiv = (sub: IndividualSubmission) => {
     setReviewIndivSub(sub);
+    setReviewIsHardcopy(Boolean(sub.isHardcopyPrint || sub.makalahType === 'hardcopy_print'));
     setIndivScoreInput(sub.grade !== undefined ? sub.grade : 85);
     setIndivFeedbackInput(sub.feedback || '');
     setAutoGradingInfo(null);
@@ -900,28 +926,17 @@ export const DosenPortal: React.FC<DosenPortalProps> = ({
     if (!reviewIndivSub) return;
     setIsGradingIndiv(true);
     try {
-      const result = await gradeIndividualTask(reviewIndivSub.studentId, indivScoreInput, indivFeedbackInput, {
+      await gradeIndividualTask(reviewIndivSub.studentId, indivScoreInput, indivFeedbackInput, {
         submissionId: reviewIndivSub.id,
         meetingNumber: reviewIndivSub.meetingNumber,
+        isHardcopyPrint: reviewIsHardcopy,
       });
-      if (!result.success) {
-        setActionAlertMsg({
-          type: 'error',
-          text: result.error || 'Nilai gagal disimpan. Periksa akses dosen dan konfigurasi storage Vercel.',
-        });
-        return;
-      }
       setActionAlertMsg({
         type: 'success',
-        text: `Nilai tugas Pertemuan ${reviewIndivSub.meetingNumber} mahasiswa ${reviewIndivSub.studentName} (${indivScoreInput}) berhasil disimpan!`,
+        text: `Nilai tugas Pertemuan ${reviewIndivSub.meetingNumber} mahasiswa ${reviewIndivSub.studentName} (${indivScoreInput}) ${reviewIsHardcopy ? '[Makalah Cetak Fisik Terverifikasi]' : ''} berhasil disimpan!`,
       });
       setReviewIndivSub(null);
       await onRefreshData();
-    } catch {
-      setActionAlertMsg({
-        type: 'error',
-        text: 'Terjadi kesalahan saat menyimpan nilai. Silakan coba lagi.',
-      });
     } finally {
       setIsGradingIndiv(false);
     }
@@ -1272,25 +1287,19 @@ export const DosenPortal: React.FC<DosenPortalProps> = ({
   const handleSaveIndivGrade = async (studentId: string) => {
     setIsGradingIndiv(true);
     try {
-      const result = await gradeIndividualTask(studentId, indivScoreInput, indivFeedbackInput);
-      if (!result.success) {
-        setActionAlertMsg({
-          type: 'error',
-          text: result.error || 'Nilai gagal disimpan. Periksa akses dosen dan konfigurasi storage Vercel.',
-        });
-        return;
-      }
+      const existingSub = (submissions || []).find(s => s.studentId === studentId);
+      const studentObj = (students || []).find(s => s.id === studentId);
+      await gradeIndividualTask(studentId, indivScoreInput, indivFeedbackInput, {
+        submissionId: existingSub?.id,
+        meetingNumber: existingSub?.meetingNumber || studentObj?.meetingNumber || 2,
+        isHardcopyPrint: inlineIsHardcopy,
+      });
       setActionAlertMsg({
         type: 'success',
-        text: `Nilai presentasi mahasiswa berhasil disimpan (${indivScoreInput}).`,
+        text: `Nilai tugas Pertemuan ${existingSub?.meetingNumber || studentObj?.meetingNumber || 2} mahasiswa ${studentObj?.name || 'Mahasiswa'} (${indivScoreInput}) ${inlineIsHardcopy ? '[Makalah Cetak Fisik]' : ''} berhasil disimpan!`,
       });
       setGradingStudentId(null);
       await onRefreshData();
-    } catch {
-      setActionAlertMsg({
-        type: 'error',
-        text: 'Terjadi kesalahan saat menyimpan nilai presentasi.',
-      });
     } finally {
       setIsGradingIndiv(false);
     }
@@ -1469,31 +1478,39 @@ export const DosenPortal: React.FC<DosenPortalProps> = ({
           </div>
         </div>
 
-        {/* Sub Navigation */}
-        <div className="flex items-center gap-2 mt-5 pt-4 border-t border-indigo-800/60 overflow-x-auto pb-1 scrollbar-none">
+        {/* Sub Navigation: Memanjang ke samping agar seluruh 10 menu terlihat */}
+        <div className="flex flex-wrap items-center gap-1.5 sm:gap-2 mt-4 pt-3.5 border-t border-indigo-800/60 overflow-x-auto pb-1 scrollbar-thin">
           <button
             onClick={() => setSubTab('monitoring')}
-            className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all whitespace-nowrap ${
+            className={`flex items-center gap-1.5 transition-all cursor-pointer ${
+              isCompactDosenSubTabs
+                ? 'px-2.5 py-1 text-[11px] sm:text-xs rounded-lg font-bold'
+                : 'px-3.5 py-1.5 text-xs rounded-lg font-bold'
+            } ${
               subTab === 'monitoring'
                 ? 'bg-indigo-600 text-white shadow-xs'
                 : 'bg-white/10 text-indigo-200 hover:bg-white/20'
             }`}
           >
-            <Users size={14} />
-            <span>Monitoring Mahasiswa Online ({onlineStudentsCount})</span>
+            <Users size={isCompactDosenSubTabs ? 13 : 14} />
+            <span>Monitoring ({onlineStudentsCount})</span>
           </button>
 
           <button
             id="subtab-poin-keaktifan"
             onClick={() => setSubTab('poin-keaktifan')}
-            className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all whitespace-nowrap cursor-pointer ${
+            className={`flex items-center gap-1.5 transition-all cursor-pointer ${
+              isCompactDosenSubTabs
+                ? 'px-2.5 py-1 text-[11px] sm:text-xs rounded-lg font-bold'
+                : 'px-3.5 py-1.5 text-xs rounded-lg font-bold'
+            } ${
               subTab === 'poin-keaktifan'
                 ? 'bg-amber-500 text-slate-950 shadow-md font-black ring-2 ring-amber-300'
                 : 'bg-amber-500/20 text-amber-200 hover:bg-amber-500/30 border border-amber-400/40'
             }`}
           >
-            <Zap size={14} className={subTab === 'poin-keaktifan' ? 'fill-slate-950 text-slate-950' : 'fill-amber-400 text-amber-400'} />
-            <span>Poin Keaktifan Mahasiswa</span>
+            <Zap size={isCompactDosenSubTabs ? 13 : 14} className={subTab === 'poin-keaktifan' ? 'fill-slate-950 text-slate-950' : 'fill-amber-400 text-amber-400'} />
+            <span>Poin Keaktifan</span>
             <span className={`ml-1 px-1.5 py-0.2 rounded-full text-[10px] font-bold ${
               subTab === 'poin-keaktifan' ? 'bg-slate-950 text-amber-300' : 'bg-amber-400 text-slate-950'
             }`}>
@@ -1504,21 +1521,21 @@ export const DosenPortal: React.FC<DosenPortalProps> = ({
           <button
             id="subtab-pesan-mhs"
             onClick={() => setSubTab('pesan-mhs')}
-            className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all whitespace-nowrap ${
+            className={`flex items-center gap-1.5 transition-all cursor-pointer ${
+              isCompactDosenSubTabs
+                ? 'px-2.5 py-1 text-[11px] sm:text-xs rounded-lg font-bold'
+                : 'px-3.5 py-1.5 text-xs rounded-lg font-bold'
+            } ${
               subTab === 'pesan-mhs'
                 ? 'bg-amber-600 text-white shadow-xs'
                 : 'bg-white/10 text-amber-200 hover:bg-white/20'
             }`}
           >
-            <MessageSquare size={14} />
-            <span>Pesan & Lapor Tugas Mhs</span>
-            {messages.filter(m => !m.read).length > 0 ? (
+            <MessageSquare size={isCompactDosenSubTabs ? 13 : 14} />
+            <span>Pesan ({messages.length})</span>
+            {messages.filter(m => !m.read).length > 0 && (
               <span className="ml-1 px-1.5 py-0.2 rounded-full bg-rose-500 text-white text-[10px] font-extrabold animate-pulse">
                 {messages.filter(m => !m.read).length} Baru
-              </span>
-            ) : (
-              <span className="ml-1 px-1.5 py-0.2 rounded-full bg-white/20 text-white text-[10px]">
-                {messages.length}
               </span>
             )}
           </button>
@@ -1526,90 +1543,136 @@ export const DosenPortal: React.FC<DosenPortalProps> = ({
           <button
             id="subtab-rps-sync"
             onClick={() => setSubTab('rps-sync')}
-            className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all whitespace-nowrap ${
+            className={`flex items-center gap-1.5 transition-all cursor-pointer ${
+              isCompactDosenSubTabs
+                ? 'px-2.5 py-1 text-[11px] sm:text-xs rounded-lg font-bold'
+                : 'px-3.5 py-1.5 text-xs rounded-lg font-bold'
+            } ${
               subTab === 'rps-sync'
                 ? 'bg-emerald-600 text-white shadow-xs'
                 : 'bg-white/10 text-emerald-200 hover:bg-white/20'
             }`}
           >
-            <Sparkles size={14} />
-            <span>Kelola RPS & MK Otomatis</span>
+            <Sparkles size={isCompactDosenSubTabs ? 13 : 14} />
+            <span>RPS & MK</span>
           </button>
 
           <button
             id="subtab-kelompok-ppt"
             onClick={() => setSubTab('kelompok-ppt')}
-            className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all whitespace-nowrap ${
+            className={`flex items-center gap-1.5 transition-all cursor-pointer ${
+              isCompactDosenSubTabs
+                ? 'px-2.5 py-1 text-[11px] sm:text-xs rounded-lg font-bold'
+                : 'px-3.5 py-1.5 text-xs rounded-lg font-bold'
+            } ${
               subTab === 'kelompok-ppt'
                 ? 'bg-indigo-600 text-white shadow-xs'
                 : 'bg-white/10 text-indigo-200 hover:bg-white/20'
             }`}
           >
-            <Users size={14} />
-            <span>Kelompok PPT & Makalah (Ditentukan Dosen)</span>
+            <Users size={isCompactDosenSubTabs ? 13 : 14} />
+            <span>Kelompok PPT</span>
           </button>
 
           <button
             onClick={() => setSubTab('nilai-ppt')}
-            className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all whitespace-nowrap ${
+            className={`flex items-center gap-1.5 transition-all cursor-pointer ${
+              isCompactDosenSubTabs
+                ? 'px-2.5 py-1 text-[11px] sm:text-xs rounded-lg font-bold'
+                : 'px-3.5 py-1.5 text-xs rounded-lg font-bold'
+            } ${
               subTab === 'nilai-ppt'
                 ? 'bg-indigo-600 text-white shadow-xs'
                 : 'bg-white/10 text-indigo-200 hover:bg-white/20'
             }`}
           >
-            <FileText size={14} />
-            <span>Penilaian Tugas PPT & Makalah ({submissions.length})</span>
+            <FileText size={isCompactDosenSubTabs ? 13 : 14} />
+            <span>Nilai PPT & Makalah ({submissions.length})</span>
           </button>
 
           <button
             id="subtab-nilai-uts"
             onClick={() => setSubTab('nilai-uts')}
-            className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all whitespace-nowrap ${
+            className={`flex items-center gap-1.5 transition-all cursor-pointer ${
+              isCompactDosenSubTabs
+                ? 'px-2.5 py-1 text-[11px] sm:text-xs rounded-lg font-bold'
+                : 'px-3.5 py-1.5 text-xs rounded-lg font-bold'
+            } ${
               subTab === 'nilai-uts'
                 ? 'bg-indigo-600 text-white shadow-xs'
                 : 'bg-white/10 text-indigo-200 hover:bg-white/20'
             }`}
           >
-            <FileQuestion size={14} />
-            <span>Penilaian UTS 5 Essay ({utsSubmissions.length}/{students.length})</span>
+            <FileQuestion size={isCompactDosenSubTabs ? 13 : 14} />
+            <span>Nilai UTS ({utsSubmissions.length}/{students.length})</span>
           </button>
 
           <button
             id="subtab-nilai-video"
             onClick={() => setSubTab('nilai-video')}
-            className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all whitespace-nowrap ${
+            className={`flex items-center gap-1.5 transition-all cursor-pointer ${
+              isCompactDosenSubTabs
+                ? 'px-2.5 py-1 text-[11px] sm:text-xs rounded-lg font-bold'
+                : 'px-3.5 py-1.5 text-xs rounded-lg font-bold'
+            } ${
               subTab === 'nilai-video'
                 ? 'bg-indigo-600 text-white shadow-xs'
                 : 'bg-white/10 text-indigo-200 hover:bg-white/20'
             }`}
           >
-            <Video size={14} />
-            <span>Penilaian UAS: Video Kelompok AI ({groups.length || 10} Kelompok)</span>
+            <Video size={isCompactDosenSubTabs ? 13 : 14} />
+            <span>Nilai UAS ({groups.length || 10})</span>
           </button>
 
           <button
             onClick={() => setSubTab('keamanan')}
-            className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all whitespace-nowrap ${
+            className={`flex items-center gap-1.5 transition-all cursor-pointer ${
+              isCompactDosenSubTabs
+                ? 'px-2.5 py-1 text-[11px] sm:text-xs rounded-lg font-bold'
+                : 'px-3.5 py-1.5 text-xs rounded-lg font-bold'
+            } ${
               subTab === 'keamanan'
                 ? 'bg-indigo-600 text-white shadow-xs'
                 : 'bg-white/10 text-indigo-200 hover:bg-white/20'
             }`}
           >
-            <Key size={14} />
-            <span>Sandi & Keamanan Dosen</span>
+            <Key size={isCompactDosenSubTabs ? 13 : 14} />
+            <span>Keamanan</span>
           </button>
 
           <button
             id="subtab-cadangan-data"
             onClick={() => setSubTab('cadangan-data')}
-            className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all whitespace-nowrap ${
+            className={`flex items-center gap-1.5 transition-all cursor-pointer ${
+              isCompactDosenSubTabs
+                ? 'px-2.5 py-1 text-[11px] sm:text-xs rounded-lg font-bold'
+                : 'px-3.5 py-1.5 text-xs rounded-lg font-bold'
+            } ${
               subTab === 'cadangan-data'
                 ? 'bg-emerald-600 text-white shadow-xs'
                 : 'bg-white/10 text-emerald-200 hover:bg-white/20'
             }`}
           >
-            <Database size={14} />
-            <span>Ekspor & Cadangan Permanen</span>
+            <Database size={isCompactDosenSubTabs ? 13 : 14} />
+            <span>Cadangan (.ZIP)</span>
+          </button>
+
+          {/* Toggle Perkecil / Normal Subtabs */}
+          <button
+            type="button"
+            onClick={() => {
+              setIsCompactDosenSubTabs(prev => {
+                const next = !prev;
+                try {
+                  localStorage.setItem('siakad_compact_dosen_tabs', String(next));
+                } catch {}
+                return next;
+              });
+            }}
+            className="ml-auto text-[10px] font-bold px-2 py-1 rounded bg-white/10 hover:bg-white/20 text-indigo-200 transition-colors border border-white/10 cursor-pointer shadow-2xs"
+            title={isCompactDosenSubTabs ? 'Perbesar tampilan menu tab' : 'Perkecil tampilan menu tab agar lebih padat'}
+          >
+            {isCompactDosenSubTabs ? 'Tampilan: Padat' : 'Tampilan: Normal'}
           </button>
         </div>
       </div>
@@ -1958,24 +2021,30 @@ export const DosenPortal: React.FC<DosenPortalProps> = ({
                                   <span className="inline-flex items-center gap-1 text-[10px] font-bold text-purple-900 bg-purple-100 border border-purple-300 px-2 py-0.5 rounded-full" title="Makalah Cetak Fisik Terverifikasi Dosen (Bebas Upload File)">
                                     <Printer size={10} className="text-purple-700" /> {sub.grade !== undefined ? `Cetak: ${sub.grade}` : 'Cetak Fisik'}
                                   </span>
-                                ) : sub.hardcopyRequested ? (
-                                  <span className="inline-flex items-center gap-1 text-[10px] font-bold text-amber-900 bg-amber-100 border border-amber-300 px-2 py-0.5 rounded-full">
-                                    <Printer size={10} /> Menunggu verifikasi printout
-                                  </span>
                                 ) : (
                                   <span className="inline-flex items-center gap-1 text-[10px] font-bold text-emerald-700 bg-emerald-100 px-2 py-0.5 rounded-full">
                                     <CheckCircle2 size={11} /> {sub.grade !== undefined ? `Nilai: ${sub.grade}` : 'Terkirim'}
                                   </span>
                                 )}
                                 {(sub.isHardcopyPrint || sub.makalahType === 'hardcopy_print') && (
-                                  <button
-                                    type="button"
-                                    onClick={() => handlePrintHardcopyReceipt(sub, std)}
-                                    className="p-1 text-purple-700 hover:text-purple-900 hover:bg-purple-50 rounded transition-colors"
-                                    title="Cetak Bukti Surat Tanda Terima Makalah Fisik (PDF Resmi)"
-                                  >
-                                    <Printer size={13} />
-                                  </button>
+                                  <div className="flex items-center gap-0.5">
+                                    <button
+                                      type="button"
+                                      onClick={() => handleDownloadHardcopyReceipt(sub, std)}
+                                      className="p-1 text-emerald-700 hover:text-emerald-900 hover:bg-emerald-50 rounded transition-colors"
+                                      title="Unduh Berkas Surat Tanda Terima Makalah Fisik (.PDF)"
+                                    >
+                                      <Download size={13} />
+                                    </button>
+                                    <button
+                                      type="button"
+                                      onClick={() => handlePrintHardcopyReceipt(sub, std)}
+                                      className="p-1 text-purple-700 hover:text-purple-900 hover:bg-purple-50 rounded transition-colors"
+                                      title="Cetak Bukti Surat Tanda Terima Makalah Fisik (Browser Print / Save As PDF)"
+                                    >
+                                      <Printer size={13} />
+                                    </button>
+                                  </div>
                                 )}
                                 <button
                                   type="button"
@@ -3647,73 +3716,24 @@ export const DosenPortal: React.FC<DosenPortalProps> = ({
                 Tugas presentasi yang sudah dikirim (individu atau kelompok sesuai pembagian dosen). Dosen dapat mengunduh PPT, membuka Canva, dan memberikan nilai serta catatan evaluasi.
               </p>
             </div>
-            <div className="flex flex-col sm:flex-row sm:items-center gap-2 self-start sm:self-auto">
+            <div className="flex items-center gap-2 self-start sm:self-auto flex-wrap">
               <span className="text-xs font-bold px-3 py-1.5 bg-indigo-100 text-indigo-900 rounded-xl">
                 Total Terkirim: {submissions?.length || 0} / {students?.length || 0}
               </span>
-              <select
-                value={submissionActionStudentId}
-                onChange={event => setSubmissionActionStudentId(event.target.value)}
-                className="min-w-56 px-3 py-2 text-xs font-semibold rounded-lg border border-slate-300 bg-white text-slate-800"
-                aria-label="Pilih mahasiswa dan status pengumpulan"
-              >
-                <option value="">Pilih mahasiswa...</option>
-                {(students || []).map(student => {
-                  const studentSub = (submissions || []).find(sub => sub.studentId === student.id);
-                  const isPrintout = Boolean(studentSub?.isHardcopyPrint || (studentSub?.makalahType === 'hardcopy_print' && !studentSub?.hardcopyRequested));
-                  const hasDigitalFile = Boolean(studentSub && (
-                    studentSub.pptFileData || studentSub.pptUrl || studentSub.makalahFileData || studentSub.makalahUrl
-                  ));
-                  const status = isPrintout
-                    ? 'Printout terverifikasi'
-                    : studentSub?.hardcopyRequested
-                    ? 'Printout menunggu verifikasi'
-                    : hasDigitalFile
-                    ? 'File diunggah'
-                    : studentSub
-                    ? 'Terkirim'
-                    : 'Belum terkumpul';
-                  return (
-                    <option key={student.id} value={student.id}>
-                      {student.name} - {status}
-                    </option>
-                  );
-                })}
-              </select>
               <button
                 type="button"
-                disabled={!submissionActionSubmission}
                 onClick={() => {
-                  if (!submissionActionSubmission) return;
-                  if (submissionActionSubmission.hardcopyRequested && submissionActionStudent) {
-                    handleOpenHardcopyModal(submissionActionStudent, submissionActionSubmission, submissionActionSubmission.meetingNumber);
-                  } else {
-                    handleOpenReviewIndiv(submissionActionSubmission);
+                  const first = students[0];
+                  if (first) {
+                    const existingSub = (submissions || []).find(s => s.studentId === first.id);
+                    handleOpenHardcopyModal(first, existingSub, existingSub?.meetingNumber || first.meetingNumber || 2);
                   }
                 }}
-                className="flex items-center justify-center gap-1.5 px-3 py-2 bg-indigo-700 hover:bg-indigo-800 text-white rounded-lg text-xs font-bold disabled:bg-slate-300 disabled:cursor-not-allowed"
-                title="Buka kiriman digital atau nilai makalah printout yang sudah dicatat"
-              >
-                <Eye size={13} />
-                <span>{submissionActionSubmission?.hardcopyRequested
-                  ? 'Verifikasi Printout'
-                  : submissionActionSubmission?.isHardcopyPrint || submissionActionSubmission?.makalahType === 'hardcopy_print'
-                  ? 'Nilai Printout'
-                  : 'Review Unggahan'}</span>
-              </button>
-              <button
-                type="button"
-                disabled={!submissionActionStudent}
-                onClick={() => submissionActionStudent && handleOpenHardcopyModal(
-                  submissionActionStudent,
-                  submissionActionSubmission,
-                  submissionActionSubmission?.meetingNumber || submissionActionStudent.meetingNumber || 2
-                )}
-                className="flex items-center justify-center gap-1.5 px-3 py-2 bg-purple-700 hover:bg-purple-800 text-white rounded-lg text-xs font-bold disabled:bg-slate-300 disabled:cursor-not-allowed"
+                className="flex items-center gap-1.5 px-3.5 py-1.5 bg-purple-700 hover:bg-purple-800 text-white rounded-xl text-xs font-bold transition-all shadow-xs cursor-pointer"
                 title="Tandai mahasiswa telah mengumpulkan makalah cetak fisik langsung ke dosen (Bebas upload file)"
               >
                 <Printer size={13} />
-                <span>Konfirmasi Printout</span>
+                <span>+ Konfirmasi Makalah Cetak Fisik</span>
               </button>
             </div>
           </div>
@@ -3758,6 +3778,49 @@ export const DosenPortal: React.FC<DosenPortalProps> = ({
                   Tutup Form
                 </button>
               </div>
+              {/* Format Penyerahan Makalah Choice */}
+              <div className="p-2.5 bg-white rounded-lg border border-indigo-200 space-y-1.5">
+                <label className="block text-xs font-bold text-slate-800">
+                  Format Penyerahan Makalah Mahasiswa:
+                </label>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setInlineIsHardcopy(true)}
+                    className={`px-3 py-2 rounded-lg text-xs font-bold text-left transition-all border flex items-center gap-2 cursor-pointer ${
+                      inlineIsHardcopy
+                        ? 'bg-purple-700 text-white border-purple-800 shadow-xs'
+                        : 'bg-slate-50 text-purple-900 border-purple-200 hover:bg-purple-100/40'
+                    }`}
+                  >
+                    <Printer size={14} className={inlineIsHardcopy ? 'text-white' : 'text-purple-600'} />
+                    <div>
+                      <div>Kumpul Cetak Fisik / Printout</div>
+                      <div className={`text-[10px] font-normal ${inlineIsHardcopy ? 'text-purple-200' : 'text-slate-500'}`}>
+                        Tidak perlu upload file digital
+                      </div>
+                    </div>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setInlineIsHardcopy(false)}
+                    className={`px-3 py-2 rounded-lg text-xs font-bold text-left transition-all border flex items-center gap-2 cursor-pointer ${
+                      !inlineIsHardcopy
+                        ? 'bg-indigo-700 text-white border-indigo-800 shadow-xs'
+                        : 'bg-slate-50 text-indigo-900 border-indigo-200 hover:bg-indigo-100/40'
+                    }`}
+                  >
+                    <FileText size={14} className={!inlineIsHardcopy ? 'text-white' : 'text-indigo-600'} />
+                    <div>
+                      <div>File Dokumen / Link Digital</div>
+                      <div className={`text-[10px] font-normal ${!inlineIsHardcopy ? 'text-indigo-200' : 'text-slate-500'}`}>
+                        Upload file PDF/Doc/Link
+                      </div>
+                    </div>
+                  </button>
+                </div>
+              </div>
+
               <div className="grid grid-cols-1 sm:grid-cols-4 gap-3">
                 <div>
                   <label className="block text-xs font-bold text-slate-700 mb-1">Nilai (0 - 100):</label>
@@ -3814,8 +3877,7 @@ export const DosenPortal: React.FC<DosenPortalProps> = ({
                 );
                 const hasMakalah = Boolean(
                   (sub.makalahType === 'link' && sub.makalahUrl) ||
-                  (sub.makalahType === 'file' && (sub.makalahFileData || sub.makalahFileName)) ||
-                  sub.hardcopyRequested
+                  (sub.makalahType === 'file' && (sub.makalahFileData || sub.makalahFileName))
                 );
 
                 return (
@@ -3883,11 +3945,6 @@ export const DosenPortal: React.FC<DosenPortalProps> = ({
                             <Printer size={13} className="text-purple-700" />
                             <span>Makalah: Cetak Fisik (Hardcopy) Diterima • Bebas Upload File</span>
                           </span>
-                        ) : sub.hardcopyRequested ? (
-                          <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-lg text-xs font-bold bg-amber-100 text-amber-900 border border-amber-300">
-                            <Printer size={13} />
-                            <span>Makalah: Printout diminta • Menunggu verifikasi dosen</span>
-                          </span>
                         ) : hasMakalah ? (
                           <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-bold bg-purple-50 text-purple-800 border border-purple-200">
                             <FileText size={13} className="text-purple-600" />
@@ -3952,17 +4009,26 @@ export const DosenPortal: React.FC<DosenPortalProps> = ({
                         <>
                           <button
                             type="button"
+                            onClick={() => handleDownloadHardcopyReceipt(sub, std)}
+                            className="flex items-center gap-1.5 px-3 py-1.5 bg-emerald-700 hover:bg-emerald-800 text-white rounded-lg text-xs font-bold transition-colors shadow-xs cursor-pointer whitespace-nowrap"
+                            title="Unduh Berkas Surat Tanda Terima Makalah Fisik Langsung (.PDF)"
+                          >
+                            <Download size={13} />
+                            <span>Unduh PDF</span>
+                          </button>
+                          <button
+                            type="button"
                             onClick={() => handlePrintHardcopyReceipt(sub, std)}
-                            className="flex items-center gap-1.5 px-3 py-1.5 bg-purple-700 hover:bg-purple-800 text-white rounded-lg text-xs font-bold transition-colors shadow-xs cursor-pointer"
-                            title="Cetak Surat Bukti Tanda Terima Makalah Fisik (Resmi PDF)"
+                            className="flex items-center gap-1.5 px-3 py-1.5 bg-purple-700 hover:bg-purple-800 text-white rounded-lg text-xs font-bold transition-colors shadow-xs cursor-pointer whitespace-nowrap"
+                            title="Cetak Surat Bukti Tanda Terima Makalah Fisik (Resmi PDF / Print)"
                           >
                             <Printer size={13} />
-                            <span>Tanda Terima Cetak</span>
+                            <span>Cetak Tanda Terima</span>
                           </button>
                           <button
                             type="button"
                             onClick={() => handleOpenHardcopyModal(std || { id: sub.studentId, name: sub.studentName, nim: '', lastActive: '', meetingNumber: sub.meetingNumber }, sub, sub.meetingNumber)}
-                            className="flex items-center gap-1.5 px-2.5 py-1.5 bg-purple-50 hover:bg-purple-100 text-purple-800 border border-purple-200 rounded-lg text-xs font-bold transition-colors cursor-pointer"
+                            className="flex items-center gap-1.5 px-2.5 py-1.5 bg-purple-50 hover:bg-purple-100 text-purple-800 border border-purple-200 rounded-lg text-xs font-bold transition-colors cursor-pointer whitespace-nowrap"
                             title="Kelola Nilai / Catatan Makalah Cetak"
                           >
                             <Edit size={13} />
@@ -3985,7 +4051,18 @@ export const DosenPortal: React.FC<DosenPortalProps> = ({
                           {/* Unduh File Makalah */}
                           <button
                             type="button"
-                            onClick={() => handleOpenDocPreview(sub, 'makalah')}
+                            onClick={() => {
+                              if (sub.makalahFileData) {
+                                const a = document.createElement('a');
+                                a.href = sub.makalahFileData;
+                                a.download = sub.makalahFileName || `Makalah_${sub.studentName.replace(/\s+/g, '_')}_${sub.rpsPart}.pdf`;
+                                document.body.appendChild(a);
+                                a.click();
+                                document.body.removeChild(a);
+                              } else {
+                                handleOpenDocPreview(sub, 'makalah');
+                              }
+                            }}
                             className="flex items-center gap-1.5 px-2.5 py-1.5 bg-slate-50 hover:bg-slate-100 text-slate-700 border border-slate-200 rounded-lg text-xs font-semibold transition-colors shadow-2xs cursor-pointer"
                             title="Unduh berkas dokumen makalah (.doc / .pdf)"
                           >
@@ -4006,10 +4083,34 @@ export const DosenPortal: React.FC<DosenPortalProps> = ({
                         </>
                       )}
 
+                      {/* Nilai Cepat Button */}
+                      <button
+                        type="button"
+                        onClick={() => {
+                          if (gradingStudentId === sub.studentId) {
+                            setGradingStudentId(null);
+                          } else {
+                            setGradingStudentId(sub.studentId);
+                            setInlineIsHardcopy(Boolean(sub.isHardcopyPrint || sub.makalahType === 'hardcopy_print'));
+                            setIndivScoreInput(sub.grade !== undefined ? sub.grade : 85);
+                            setIndivFeedbackInput(sub.feedback || '');
+                          }
+                        }}
+                        className={`flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-bold transition-colors cursor-pointer border ${
+                          gradingStudentId === sub.studentId
+                            ? 'bg-indigo-700 text-white border-indigo-800'
+                            : 'bg-indigo-50 hover:bg-indigo-100 text-indigo-900 border-indigo-200'
+                        }`}
+                        title="Buka form input nilai & format pengumpulan makalah (Cepat)"
+                      >
+                        <Edit size={13} />
+                        <span>{gradingStudentId === sub.studentId ? 'Tutup Form' : 'Nilai Cepat'}</span>
+                      </button>
+
                       {/* Review & Nilai Button */}
                       <button
                         onClick={() => handleOpenReviewIndiv(sub)}
-                        className="flex items-center gap-1.5 px-3.5 py-1.5 bg-indigo-700 hover:bg-indigo-800 text-white rounded-lg text-xs font-bold transition-all shadow-xs"
+                        className="flex items-center gap-1.5 px-3.5 py-1.5 bg-indigo-700 hover:bg-indigo-800 text-white rounded-lg text-xs font-bold transition-all shadow-xs cursor-pointer"
                         title="Review lengkap berkas tugas & berikan nilai"
                       >
                         <Eye size={13} />
@@ -4022,7 +4123,7 @@ export const DosenPortal: React.FC<DosenPortalProps> = ({
                           handleOpenReviewIndiv(sub);
                           handleAutoGradeIndiv(sub);
                         }}
-                        className="flex items-center gap-1 px-2.5 py-1.5 bg-amber-50 hover:bg-amber-100 text-amber-900 border border-amber-300 rounded-lg text-xs font-bold transition-colors shadow-2xs"
+                        className="flex items-center gap-1 px-2.5 py-1.5 bg-amber-50 hover:bg-amber-100 text-amber-900 border border-amber-300 rounded-lg text-xs font-bold transition-colors shadow-2xs cursor-pointer"
                         title="Otomatis beri rekomendasi nilai & catatan evaluasi berbasis rubrik akademik"
                       >
                         <Zap size={13} className="text-amber-600 fill-amber-500" />
@@ -4966,7 +5067,7 @@ export const DosenPortal: React.FC<DosenPortalProps> = ({
                 </div>
                 <div>
                   <h4 className="font-bold text-sm text-slate-900">
-                    3. Pulihkan Data dari Backup (.ZIP / .JSON)
+                    3. Pulihkan Data dari Berkas Arsip (.ZIP / .RAR)
                   </h4>
                   <p className="text-[11px] text-slate-500">
                     Pulihkan seluruh dokumen tugas mahasiswa dan riwayat nilai dari berkas arsip cadangan
@@ -4975,14 +5076,14 @@ export const DosenPortal: React.FC<DosenPortalProps> = ({
               </div>
 
               <p className="text-xs text-slate-600 leading-relaxed">
-                    Jika Anda berpindah perangkat, sistem berganti semester, atau ingin mengembalikan data sebelumnya, pilih file cadangan <code className="bg-slate-100 px-1.5 py-0.5 rounded text-indigo-700 font-bold">.zip</code> atau <code className="bg-slate-100 px-1.5 py-0.5 rounded text-indigo-700 font-bold">.json</code>. Data akan divalidasi sebelum dipulihkan ke database.
+                Jika Anda berpindah perangkat (laptop/komputer), sistem berganti semester, atau ingin mengembalikan kondisi data sebelumnya, pilih berkas arsip berformat <code className="bg-slate-100 px-1.5 py-0.5 rounded text-indigo-700 font-bold">.zip</code> atau <code className="bg-slate-100 px-1.5 py-0.5 rounded text-indigo-700 font-bold">.rar</code> yang pernah diunduh. Sistem akan otomatis memvalidasi keutuhan arsip, merekonstruksi data tugas mahasiswa ke Brankas Permanen (Vault Engine), dan menyinkronkannya kembali ke server database.
               </p>
 
               <div className="border-2 border-dashed border-slate-300 hover:border-emerald-500 rounded-2xl p-6 text-center transition-colors bg-slate-50/50">
                 <input
                   type="file"
                   id="backup-file-input"
-                  accept=".zip,.json,application/zip,application/x-zip-compressed,application/json"
+                  accept=".zip,.rar,application/zip,application/x-zip-compressed"
                   onChange={handleRestoreBackupFile}
                   disabled={isRestoring}
                   className="hidden"
@@ -4997,7 +5098,7 @@ export const DosenPortal: React.FC<DosenPortalProps> = ({
                     <UploadCloud size={24} />
                   </div>
                   <div className="font-bold text-xs text-slate-900">
-                    {isRestoring ? 'Memproses dan Memulihkan Data dari Backup...' : 'Klik di sini untuk Memilih Backup (.ZIP / .JSON)'}
+                    {isRestoring ? 'Memproses dan Memulihkan Data dari Arsip...' : 'Klik di sini untuk Memilih Berkas Arsip Backup (.ZIP / .RAR)'}
                   </div>
                   <div className="text-[11px] text-slate-500">
                     Format berkas arsip .zip / .rar resmi SIAKAD Pascasarjana (Vault Engine Terpadu)
@@ -5012,8 +5113,8 @@ export const DosenPortal: React.FC<DosenPortalProps> = ({
 
       {/* MODAL KONFIRMASI HAPUS TUGAS OLEH DOSEN */}
       {deleteModalData && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs animate-in fade-in">
-          <div className="bg-white rounded-2xl max-w-lg w-full p-6 shadow-2xl border border-slate-200 space-y-4">
+        <div className="fixed inset-0 z-50 overflow-y-auto bg-slate-900/60 backdrop-blur-xs p-3 sm:p-6 flex justify-center items-start min-h-screen">
+          <div className="bg-white rounded-2xl max-w-lg w-full p-6 shadow-2xl border border-slate-200 my-4 sm:my-8 space-y-4">
             {/* Modal Header */}
             <div className="flex items-start justify-between">
               <div className="flex items-center gap-3">
@@ -5179,8 +5280,8 @@ export const DosenPortal: React.FC<DosenPortalProps> = ({
 
       {/* MODAL KONFIRMASI RESET / HAPUS UJIAN OLEH DOSEN (UTS & UAS) */}
       {deleteExamModalData && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs animate-in fade-in">
-          <div className="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl border border-slate-200 space-y-4">
+        <div className="fixed inset-0 z-50 overflow-y-auto bg-slate-900/60 backdrop-blur-xs p-3 sm:p-6 flex justify-center items-start min-h-screen">
+          <div className="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl border border-slate-200 my-4 sm:my-8 space-y-4">
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 rounded-xl bg-rose-100 text-rose-700 flex items-center justify-center flex-shrink-0">
                 <Trash2 size={20} />
@@ -5237,10 +5338,10 @@ export const DosenPortal: React.FC<DosenPortalProps> = ({
 
       {/* 1. MODAL REVIEW & PENILAIAN TUGAS PRESENTASI (INDIVIDU/KELOMPOK) (PPT & MAKALAH) */}
       {reviewIndivSub && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-900/60 backdrop-blur-xs animate-in fade-in overflow-y-auto">
-          <div className="bg-white rounded-2xl max-w-3xl w-full p-5 sm:p-6 shadow-2xl border border-slate-200 my-8 space-y-5">
-            {/* Modal Header */}
-            <div className="flex items-start justify-between border-b border-slate-100 pb-3">
+        <div className="fixed inset-0 z-50 overflow-y-auto bg-slate-900/60 backdrop-blur-xs p-2 sm:p-4 md:p-6 flex justify-center items-center">
+          <div className="bg-white rounded-2xl max-w-4xl w-full max-h-[92vh] flex flex-col shadow-2xl border border-slate-200 overflow-hidden my-auto animate-in fade-in zoom-in-95">
+            {/* Modal Header (Fixed at top - always visible, never clipped) */}
+            <div className="flex items-start justify-between border-b border-slate-200 px-5 py-4 bg-white shrink-0">
               <div className="flex items-center gap-3">
                 <div className="h-10 w-10 rounded-xl bg-indigo-100 text-indigo-700 flex items-center justify-center font-bold">
                   <Eye size={20} />
@@ -5260,15 +5361,18 @@ export const DosenPortal: React.FC<DosenPortalProps> = ({
                 </div>
               </div>
               <button
+                type="button"
                 onClick={() => setReviewIndivSub(null)}
-                className="p-1 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-100"
+                className="p-1 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-100 cursor-pointer"
               >
                 <X size={18} />
               </button>
             </div>
 
-            {/* Grid Layout: Left Content Review, Right Grading */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+            {/* Modal Body (Scrollable from top to bottom) */}
+            <div className="p-5 sm:p-6 overflow-y-auto flex-1 space-y-5">
+              {/* Grid Layout: Left Content Review, Right Grading */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
               
               {/* Kolom Kiri: Pemeriksaan Berkas & Tindakan Koreksi */}
               <div className="space-y-4">
@@ -5361,25 +5465,24 @@ export const DosenPortal: React.FC<DosenPortalProps> = ({
                         </div>
                       </div>
 
-                      <div className="flex items-center gap-2">
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                         <button
                           type="button"
-                          onClick={() => handlePrintHardcopyReceipt(reviewIndivSub)}
-                          className="flex-1 flex items-center justify-center gap-1.5 py-2 px-3 bg-purple-700 hover:bg-purple-800 text-white rounded-lg text-xs font-bold transition-colors shadow-xs cursor-pointer"
-                          title="Cetak Surat Bukti Tanda Terima Penyerahan Makalah Fisik (Resmi PDF)"
+                          onClick={() => handleDownloadHardcopyReceipt(reviewIndivSub)}
+                          className="w-full flex items-center justify-center gap-1.5 py-2 px-2.5 bg-emerald-700 hover:bg-emerald-800 text-white rounded-lg text-xs font-bold transition-colors shadow-xs cursor-pointer text-center"
+                          title="Unduh Berkas PDF Surat Tanda Terima Makalah Fisik Resmi (100% Berisi & Tajam)"
                         >
-                          <Printer size={14} />
-                          <span>Cetak Tanda Terima Fisik (PDF)</span>
+                          <Download size={14} className="shrink-0" />
+                          <span>Unduh PDF Tanda Terima</span>
                         </button>
                         <button
                           type="button"
-                          onClick={() => {
-                            const std = (students || []).find(s => s.id === reviewIndivSub.studentId);
-                            handleOpenHardcopyModal(std || { id: reviewIndivSub.studentId, name: reviewIndivSub.studentName, nim: '', lastActive: '', meetingNumber: reviewIndivSub.meetingNumber }, reviewIndivSub, reviewIndivSub.meetingNumber);
-                          }}
-                          className="px-3 py-2 bg-white hover:bg-slate-100 text-slate-700 border border-slate-300 rounded-lg text-xs font-semibold"
+                          onClick={() => handlePrintHardcopyReceipt(reviewIndivSub)}
+                          className="w-full flex items-center justify-center gap-1.5 py-2 px-2.5 bg-purple-700 hover:bg-purple-800 text-white rounded-lg text-xs font-bold transition-colors shadow-xs cursor-pointer text-center"
+                          title="Cetak Surat Bukti Tanda Terima Penyerahan Makalah Fisik (Resmi PDF / Browser Print)"
                         >
-                          Kelola
+                          <Printer size={14} className="shrink-0" />
+                          <span>Cetak Tanda Terima</span>
                         </button>
                       </div>
                     </div>
@@ -5394,26 +5497,14 @@ export const DosenPortal: React.FC<DosenPortalProps> = ({
                         <span>Buka & Pratinjau Naskah Dokumen Makalah</span>
                       </button>
 
-                      {reviewIndivSub.makalahFileData || reviewIndivSub.makalahUrl ? (
-                        <a
-                          href={reviewIndivSub.makalahFileData || reviewIndivSub.makalahUrl}
-                          download={reviewIndivSub.makalahUrl?.startsWith('http') ? undefined : (reviewIndivSub.makalahFileName || 'Makalah.doc')}
-                          target={reviewIndivSub.makalahUrl?.startsWith('http') && !reviewIndivSub.makalahFileData ? '_blank' : undefined}
-                          rel={reviewIndivSub.makalahUrl?.startsWith('http') && !reviewIndivSub.makalahFileData ? 'noreferrer' : undefined}
-                          className="w-full flex items-center justify-center gap-2 py-1.5 px-3 bg-slate-800 hover:bg-slate-900 text-white rounded-lg text-xs font-bold transition-colors shadow-xs cursor-pointer"
-                        >
-                          {reviewIndivSub.makalahUrl?.startsWith('http') && !reviewIndivSub.makalahFileData
-                            ? <ExternalLink size={14} />
-                            : <Download size={14} />}
-                          <span>{reviewIndivSub.makalahUrl?.startsWith('http') && !reviewIndivSub.makalahFileData
-                            ? 'Buka Tautan Dokumen'
-                            : `Unduh File Dokumen (${reviewIndivSub.makalahFileName || 'Makalah'})`}</span>
-                        </a>
-                      ) : (
-                        <div className="text-center text-[11px] text-slate-500 py-1.5">
-                          Tidak ada file digital untuk diunduh.
-                        </div>
-                      )}
+                      <button
+                        type="button"
+                        onClick={() => handleOpenDocPreview(reviewIndivSub, 'makalah')}
+                        className="w-full flex items-center justify-center gap-2 py-1.5 px-3 bg-slate-800 hover:bg-slate-900 text-white rounded-lg text-xs font-bold transition-colors shadow-xs cursor-pointer"
+                      >
+                        <Download size={14} />
+                        <span>Unduh File Dokumen ({reviewIndivSub.makalahFileName || 'Makalah.doc'})</span>
+                      </button>
 
                       <button
                         type="button"
@@ -5616,6 +5707,62 @@ export const DosenPortal: React.FC<DosenPortalProps> = ({
                     </div>
                   )}
 
+                  {/* Pilihan Format Naskah Makalah oleh Dosen */}
+                  <div className="p-3 bg-purple-50/80 rounded-xl border border-purple-200 space-y-2">
+                    <label className="block text-xs font-bold text-purple-950 flex items-center justify-between">
+                      <span>Pilihan Format Pengumpulan Makalah:</span>
+                      <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-purple-200 text-purple-900">
+                        {reviewIsHardcopy ? '🖨️ Cetak Fisik Terpilih' : '📁 File Digital'}
+                      </span>
+                    </label>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                      <button
+                        type="button"
+                        onClick={() => setReviewIsHardcopy(true)}
+                        className={`p-2.5 rounded-lg text-xs font-bold text-left transition-all border flex items-center gap-2 cursor-pointer ${
+                          reviewIsHardcopy
+                            ? 'bg-purple-700 text-white border-purple-800 shadow-xs'
+                            : 'bg-white text-purple-900 border-purple-200 hover:bg-purple-100/50'
+                        }`}
+                      >
+                        <Printer size={15} className={reviewIsHardcopy ? 'text-white' : 'text-purple-600'} />
+                        <div>
+                          <div>Kumpul Cetak Fisik / Printout</div>
+                          <div className={`text-[10px] font-normal ${reviewIsHardcopy ? 'text-purple-100' : 'text-purple-700'}`}>
+                            Tidak perlu upload file digital
+                          </div>
+                        </div>
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => setReviewIsHardcopy(false)}
+                        className={`p-2.5 rounded-lg text-xs font-bold text-left transition-all border flex items-center gap-2 cursor-pointer ${
+                          !reviewIsHardcopy
+                            ? 'bg-indigo-700 text-white border-indigo-800 shadow-xs'
+                            : 'bg-white text-indigo-900 border-indigo-200 hover:bg-indigo-50'
+                        }`}
+                      >
+                        <FileText size={15} className={!reviewIsHardcopy ? 'text-white' : 'text-indigo-600'} />
+                        <div>
+                          <div>File Dokumen / Link Digital</div>
+                          <div className={`text-[10px] font-normal ${!reviewIsHardcopy ? 'text-indigo-100' : 'text-indigo-700'}`}>
+                            Upload file PDF/Doc/Link
+                          </div>
+                        </div>
+                      </button>
+                    </div>
+
+                    {reviewIsHardcopy && (
+                      <div className="p-2 bg-emerald-50 rounded-lg border border-emerald-200 text-[11px] text-emerald-900 flex items-center gap-1.5 leading-relaxed">
+                        <CheckCircle2 size={14} className="text-emerald-600 shrink-0" />
+                        <span>
+                          Mahasiswa mengumpulkan naskah cetak fisik langsung ke Dosen. <strong>Tidak perlu upload file</strong>, status tugas dicatat sah & lengkap.
+                        </span>
+                      </div>
+                    )}
+                  </div>
+
                   {/* Score Input */}
                   <div>
                     <div className="flex items-center justify-between mb-1">
@@ -5659,28 +5806,35 @@ export const DosenPortal: React.FC<DosenPortalProps> = ({
                   </div>
                 </div>
 
-                {/* Action buttons */}
-                <div className="pt-3 border-t border-slate-100 flex items-center justify-end gap-2">
-                  <button
-                    type="button"
-                    onClick={() => setReviewIndivSub(null)}
-                    disabled={isGradingIndiv}
-                    className="px-4 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-100 rounded-xl transition-colors"
-                  >
-                    Batal
-                  </button>
-                  <button
-                    type="button"
-                    onClick={handleSaveIndivFromReview}
-                    disabled={isGradingIndiv}
-                    className="px-5 py-2.5 bg-indigo-700 hover:bg-indigo-800 text-white rounded-xl text-xs font-bold transition-colors shadow-md flex items-center gap-1.5 disabled:opacity-50"
-                  >
-                    <Check size={14} />
-                    <span>{isGradingIndiv ? 'Menyimpan...' : 'Simpan Nilai & Selesai Review'}</span>
-                  </button>
                 </div>
-              </div>
 
+              </div>
+            </div>
+
+            {/* Modal Footer (Fixed at bottom - always visible and accessible) */}
+            <div className="px-5 py-3.5 bg-slate-50 border-t border-slate-200 flex items-center justify-between gap-3 shrink-0">
+              <div className="text-xs text-slate-500">
+                Nilai Terpilih: <strong className="text-indigo-900 text-sm font-black">{indivScoreInput} / 100</strong>
+              </div>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => setReviewIndivSub(null)}
+                  disabled={isGradingIndiv}
+                  className="px-4 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-200/80 rounded-xl transition-colors cursor-pointer"
+                >
+                  Batal
+                </button>
+                <button
+                  type="button"
+                  onClick={handleSaveIndivFromReview}
+                  disabled={isGradingIndiv}
+                  className="px-5 py-2.5 bg-indigo-700 hover:bg-indigo-800 text-white rounded-xl text-xs font-bold transition-colors shadow-md flex items-center gap-1.5 disabled:opacity-50 cursor-pointer"
+                >
+                  <Check size={14} />
+                  <span>{isGradingIndiv ? 'Menyimpan...' : 'Simpan Nilai & Selesai Review'}</span>
+                </button>
+              </div>
             </div>
           </div>
         </div>
@@ -5692,10 +5846,10 @@ export const DosenPortal: React.FC<DosenPortalProps> = ({
         const targetSub = (utsSubmissions || []).find(sub => sub.studentId === reviewUtsStudentId);
 
         return (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-900/60 backdrop-blur-xs animate-in fade-in overflow-y-auto">
-            <div className="bg-white rounded-2xl max-w-4xl w-full p-5 sm:p-6 shadow-2xl border border-slate-200 my-8 space-y-5">
-              {/* Header */}
-              <div className="flex items-start justify-between border-b border-slate-100 pb-3">
+          <div className="fixed inset-0 z-50 overflow-y-auto bg-slate-900/60 backdrop-blur-xs p-2 sm:p-4 md:p-6 flex justify-center items-center">
+            <div className="bg-white rounded-2xl max-w-4xl w-full max-h-[92vh] flex flex-col shadow-2xl border border-slate-200 overflow-hidden my-auto animate-in fade-in zoom-in-95">
+              {/* Header (Fixed at top) */}
+              <div className="flex items-start justify-between border-b border-slate-200 px-5 py-4 bg-white shrink-0">
                 <div className="flex items-center gap-3">
                   <div className="h-10 w-10 rounded-xl bg-indigo-100 text-indigo-700 flex items-center justify-center font-bold">
                     <FileQuestion size={20} />
@@ -5719,20 +5873,24 @@ export const DosenPortal: React.FC<DosenPortalProps> = ({
                   <button
                     type="button"
                     onClick={() => handleAutoGradeUts(reviewUtsStudentId)}
-                    className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-white rounded-xl text-xs font-black transition-all shadow-xs"
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-white rounded-xl text-xs font-black transition-all shadow-xs cursor-pointer"
                     title="Analisis jawaban tertulis 5 essay & tentukan skor serta feedback otomatis"
                   >
                     <Zap size={13} className="fill-white" />
                     <span>Nilai Otomatis (Rekomendasi AI)</span>
                   </button>
                   <button
+                    type="button"
                     onClick={() => setReviewUtsStudentId(null)}
-                    className="p-1 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-100"
+                    className="p-1 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-100 cursor-pointer"
                   >
                     <X size={18} />
                   </button>
                 </div>
               </div>
+
+              {/* Body (Scrollable from top to bottom) */}
+              <div className="p-5 sm:p-6 overflow-y-auto flex-1 space-y-5">
 
               {/* Rubric Breakdown if Auto-Graded */}
               {autoGradingInfo && autoGradingInfo.type === 'uts' && (
@@ -5867,49 +6025,50 @@ export const DosenPortal: React.FC<DosenPortalProps> = ({
                   />
                 </div>
               </div>
+            </div>
 
-              {/* Modal Actions */}
-              <div className="pt-2 border-t border-slate-100 flex items-center justify-between gap-2">
-                {targetSub ? (
-                  <button
-                    type="button"
-                    onClick={() => setDeleteExamModalData({
-                      type: 'uts',
-                      studentId: targetStudent?.id,
-                      studentName: targetStudent?.name || 'Mahasiswa',
-                    })}
-                    className="px-3.5 py-2 bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 rounded-xl text-xs font-bold transition-colors flex items-center gap-1.5 cursor-pointer"
-                    title="Reset lembar jawaban UTS mahasiswa ini untuk membuka kembali akses perbaikan/revisi"
-                  >
-                    <Trash2 size={13} />
-                    <span>Reset Lembar UTS (Buka Revisi)</span>
-                  </button>
-                ) : <div />}
+            {/* Modal Footer (Fixed at bottom) */}
+            <div className="px-5 py-3.5 bg-slate-50 border-t border-slate-200 flex items-center justify-between gap-2 shrink-0">
+              {targetSub ? (
+                <button
+                  type="button"
+                  onClick={() => setDeleteExamModalData({
+                    type: 'uts',
+                    studentId: targetStudent?.id,
+                    studentName: targetStudent?.name || 'Mahasiswa',
+                  })}
+                  className="px-3.5 py-2 bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 rounded-xl text-xs font-bold transition-colors flex items-center gap-1.5 cursor-pointer"
+                  title="Reset lembar jawaban UTS mahasiswa ini untuk membuka kembali akses perbaikan/revisi"
+                >
+                  <Trash2 size={13} />
+                  <span>Reset Lembar UTS (Buka Revisi)</span>
+                </button>
+              ) : <div />}
 
-                <div className="flex items-center gap-2">
-                  <button
-                    type="button"
-                    onClick={() => setReviewUtsStudentId(null)}
-                    disabled={isGradingUts}
-                    className="px-4 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-100 rounded-xl transition-colors cursor-pointer"
-                  >
-                    Batal
-                  </button>
-                  <button
-                    type="button"
-                    onClick={handleSaveUtsFromReview}
-                    disabled={isGradingUts}
-                    className="px-5 py-2.5 bg-indigo-700 hover:bg-indigo-800 text-white rounded-xl text-xs font-bold transition-colors shadow-md flex items-center gap-1.5 disabled:opacity-50 cursor-pointer"
-                  >
-                    <Check size={14} />
-                    <span>{isGradingUts ? 'Menyimpan...' : 'Simpan Nilai UTS'}</span>
-                  </button>
-                </div>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => setReviewUtsStudentId(null)}
+                  disabled={isGradingUts}
+                  className="px-4 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-200/80 rounded-xl transition-colors cursor-pointer"
+                >
+                  Batal
+                </button>
+                <button
+                  type="button"
+                  onClick={handleSaveUtsFromReview}
+                  disabled={isGradingUts}
+                  className="px-5 py-2.5 bg-indigo-700 hover:bg-indigo-800 text-white rounded-xl text-xs font-bold transition-colors shadow-md flex items-center gap-1.5 disabled:opacity-50 cursor-pointer"
+                >
+                  <Check size={14} />
+                  <span>{isGradingUts ? 'Menyimpan...' : 'Simpan Nilai UTS'}</span>
+                </button>
               </div>
             </div>
           </div>
-        );
-      })()}
+        </div>
+      );
+    })()}
 
       {/* 3. MODAL REVIEW & PENILAIAN UAS (VIDEO KELOMPOK AI) */}
       {reviewGroupId && (() => {
@@ -5918,10 +6077,10 @@ export const DosenPortal: React.FC<DosenPortalProps> = ({
         const ytEmbed = getYouTubeEmbedUrl(sub?.videoUrl);
 
         return (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-900/60 backdrop-blur-xs animate-in fade-in overflow-y-auto">
-            <div className="bg-white rounded-2xl max-w-3xl w-full p-5 sm:p-6 shadow-2xl border border-slate-200 my-8 space-y-5">
-              {/* Header */}
-              <div className="flex items-start justify-between border-b border-slate-100 pb-3">
+          <div className="fixed inset-0 z-50 overflow-y-auto bg-slate-900/60 backdrop-blur-xs p-2 sm:p-4 md:p-6 flex justify-center items-center">
+            <div className="bg-white rounded-2xl max-w-4xl w-full max-h-[92vh] flex flex-col shadow-2xl border border-slate-200 overflow-hidden my-auto animate-in fade-in zoom-in-95">
+              {/* Header (Fixed at top) */}
+              <div className="flex items-start justify-between border-b border-slate-200 px-5 py-4 bg-white shrink-0">
                 <div className="flex items-center gap-3">
                   <div className="h-10 w-10 rounded-xl bg-indigo-100 text-indigo-700 flex items-center justify-center font-bold">
                     <Video size={20} />
@@ -5945,20 +6104,24 @@ export const DosenPortal: React.FC<DosenPortalProps> = ({
                   <button
                     type="button"
                     onClick={() => handleAutoGradeGroup(reviewGroupId)}
-                    className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-white rounded-xl text-xs font-black transition-all shadow-xs"
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-white rounded-xl text-xs font-black transition-all shadow-xs cursor-pointer"
                     title="Hitung skor & feedback otomatis berdasarkan kelengkapan berkas video dan AI tools"
                   >
                     <Zap size={13} className="fill-white" />
                     <span>Nilai Otomatis (Rekomendasi AI)</span>
                   </button>
                   <button
+                    type="button"
                     onClick={() => setReviewGroupId(null)}
-                    className="p-1 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-100"
+                    className="p-1 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-100 cursor-pointer"
                   >
                     <X size={18} />
                   </button>
                 </div>
               </div>
+
+              {/* Body (Scrollable from top to bottom) */}
+              <div className="p-5 sm:p-6 overflow-y-auto flex-1 space-y-5">
 
               {/* Anggota Kelompok */}
               <div className="p-3 bg-slate-50 rounded-xl border border-slate-200 text-xs">
@@ -6095,53 +6258,54 @@ export const DosenPortal: React.FC<DosenPortalProps> = ({
                   />
                 </div>
               </div>
+            </div>
 
-              {/* Actions */}
-              <div className="pt-2 border-t border-slate-100 flex items-center justify-between gap-2">
-                {sub ? (
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setReviewGroupId(null);
-                      setDeleteExamModalData({
-                        type: 'group-uas',
-                        groupId: grp?.id,
-                        groupName: grp?.name,
-                        studentName: grp?.name,
-                      });
-                    }}
-                    className="px-3.5 py-2 bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 rounded-xl text-xs font-bold transition-colors flex items-center gap-1.5 cursor-pointer"
-                    title="Reset tugas video UAS kelompok ini untuk membuka kembali akses revisi"
-                  >
-                    <Trash2 size={13} />
-                    <span>Reset Video UAS (Buka Revisi)</span>
-                  </button>
-                ) : <div />}
+            {/* Modal Footer (Fixed at bottom) */}
+            <div className="px-5 py-3.5 bg-slate-50 border-t border-slate-200 flex items-center justify-between gap-2 shrink-0">
+              {sub ? (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setReviewGroupId(null);
+                    setDeleteExamModalData({
+                      type: 'group-uas',
+                      groupId: grp?.id,
+                      groupName: grp?.name,
+                      studentName: grp?.name,
+                    });
+                  }}
+                  className="px-3.5 py-2 bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 rounded-xl text-xs font-bold transition-colors flex items-center gap-1.5 cursor-pointer"
+                  title="Reset tugas video UAS kelompok ini untuk membuka kembali akses revisi"
+                >
+                  <Trash2 size={13} />
+                  <span>Reset Video UAS (Buka Revisi)</span>
+                </button>
+              ) : <div />}
 
-                <div className="flex items-center gap-2">
-                  <button
-                    type="button"
-                    onClick={() => setReviewGroupId(null)}
-                    disabled={isGradingGroup}
-                    className="px-4 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-100 rounded-xl transition-colors"
-                  >
-                    Batal
-                  </button>
-                  <button
-                    type="button"
-                    onClick={handleSaveGroupFromReview}
-                    disabled={isGradingGroup}
-                    className="px-5 py-2.5 bg-indigo-700 hover:bg-indigo-800 text-white rounded-xl text-xs font-bold transition-colors shadow-md flex items-center gap-1.5 disabled:opacity-50"
-                  >
-                    <Check size={14} />
-                    <span>{isGradingGroup ? 'Menyimpan...' : 'Simpan Nilai Video UAS'}</span>
-                  </button>
-                </div>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => setReviewGroupId(null)}
+                  disabled={isGradingGroup}
+                  className="px-4 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-200/80 rounded-xl transition-colors cursor-pointer"
+                >
+                  Batal
+                </button>
+                <button
+                  type="button"
+                  onClick={handleSaveGroupFromReview}
+                  disabled={isGradingGroup}
+                  className="px-5 py-2.5 bg-indigo-700 hover:bg-indigo-800 text-white rounded-xl text-xs font-bold transition-colors shadow-md flex items-center gap-1.5 disabled:opacity-50 cursor-pointer"
+                >
+                  <Check size={14} />
+                  <span>{isGradingGroup ? 'Menyimpan...' : 'Simpan Nilai Video UAS'}</span>
+                </button>
               </div>
             </div>
           </div>
-        );
-      })()}
+        </div>
+      );
+    })()}
 
       {/* MODAL EDIT DATA MAHASISWA */}
       {editingStudent && (
@@ -6348,9 +6512,10 @@ export const DosenPortal: React.FC<DosenPortalProps> = ({
 
       {/* MODAL KONFIRMASI PENERIMAAN MAKALAH CETAK FISIK (HARDCOPY PRINT OUT - BEBAS UPLOAD FILE) */}
       {hardcopyModalData && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-900/60 backdrop-blur-xs animate-in fade-in overflow-y-auto">
-          <div className="bg-white rounded-2xl max-w-lg w-full p-5 sm:p-6 shadow-2xl border border-slate-200 my-8 space-y-4">
-            <div className="flex items-start justify-between border-b border-slate-100 pb-3">
+        <div className="fixed inset-0 z-50 overflow-y-auto bg-slate-900/60 backdrop-blur-xs p-2 sm:p-4 md:p-6 flex justify-center items-center">
+          <div className="bg-white rounded-2xl max-w-lg w-full max-h-[92vh] flex flex-col shadow-2xl border border-slate-200 overflow-hidden my-auto animate-in fade-in zoom-in-95">
+            {/* Header (Fixed at top) */}
+            <div className="flex items-start justify-between border-b border-slate-200 px-5 py-4 bg-white shrink-0">
               <div className="flex items-center gap-2.5">
                 <div className="h-10 w-10 rounded-xl bg-purple-100 text-purple-700 flex items-center justify-center font-bold">
                   <Printer size={20} />
@@ -6372,6 +6537,9 @@ export const DosenPortal: React.FC<DosenPortalProps> = ({
                 <X size={18} />
               </button>
             </div>
+
+            {/* Body (Scrollable from top to bottom) */}
+            <div className="p-5 overflow-y-auto flex-1 space-y-4">
 
             <div className="p-3 bg-purple-50/80 rounded-xl border border-purple-200 text-xs text-purple-900 space-y-1">
               <div className="font-bold flex items-center gap-1.5 text-purple-950">
@@ -6398,7 +6566,7 @@ export const DosenPortal: React.FC<DosenPortalProps> = ({
                         sub: existingSub,
                         meetingNumber: existingSub?.meetingNumber || std.meetingNumber || 2,
                       });
-                      setHardcopyScoreInput(existingSub?.grade !== undefined ? existingSub.grade : '');
+                      setHardcopyScoreInput(existingSub?.grade !== undefined ? existingSub.grade : 85);
                     }
                   }}
                   className="w-full px-3 py-2 text-xs rounded-xl border border-slate-300 bg-white font-medium focus:ring-2 focus:ring-purple-500 focus:outline-none"
@@ -6416,15 +6584,7 @@ export const DosenPortal: React.FC<DosenPortalProps> = ({
                   <label className="block font-bold text-slate-700 mb-1">Pertemuan Sesi:</label>
                   <select
                     value={hardcopyModalData.meetingNumber}
-                    onChange={(e) => {
-                      const meetingNumber = Number(e.target.value);
-                      const existingSub = (submissions || []).find(s =>
-                        s.studentId === hardcopyModalData.student.id && (Number(s.meetingNumber) || 2) === meetingNumber
-                      );
-                      setHardcopyModalData(prev => prev ? { ...prev, meetingNumber, sub: existingSub } : null);
-                      setHardcopyScoreInput(existingSub?.grade !== undefined ? existingSub.grade : '');
-                      setHardcopyNotesInput(existingSub?.notes || 'Makalah telah dikumpulkan dalam bentuk berkas cetak fisik (print out) langsung ke Dosen Pengampu.');
-                    }}
+                    onChange={(e) => setHardcopyModalData(prev => prev ? { ...prev, meetingNumber: Number(e.target.value) } : null)}
                     className="w-full px-3 py-2 text-xs rounded-xl border border-slate-300 bg-white font-medium focus:ring-2 focus:ring-purple-500 focus:outline-none"
                   >
                     {[1, 2, 3, 4, 5, 6, 7, 9, 10, 11, 12, 13, 14, 15].map(num => (
@@ -6435,7 +6595,7 @@ export const DosenPortal: React.FC<DosenPortalProps> = ({
                   </select>
                 </div>
                 <div>
-                  <label className="block font-bold text-slate-700 mb-1">Nilai Makalah (opsional, 0-100):</label>
+                  <label className="block font-bold text-slate-700 mb-1">Nilai Makalah (0-100):</label>
                   <input
                     type="number"
                     min={0}
@@ -6459,26 +6619,38 @@ export const DosenPortal: React.FC<DosenPortalProps> = ({
                 />
               </div>
 
-              {(hardcopyModalData.sub?.isHardcopyPrint || hardcopyModalData.sub?.makalahType === 'hardcopy_print') && (
+              {hardcopyModalData.sub?.isHardcopyPrint && (
                 <div className="p-2.5 bg-emerald-50 border border-emerald-200 rounded-xl flex items-center justify-between">
                   <div className="flex items-center gap-1.5 text-emerald-900 font-bold text-[11px]">
                     <CheckCircle2 size={13} className="text-emerald-600" />
                     <span>Sudah Berstatus Makalah Cetak Fisik</span>
                   </div>
-                  <button
-                    type="button"
-                    onClick={() => handlePrintHardcopyReceipt(hardcopyModalData.sub!, hardcopyModalData.student)}
-                    className="text-xs font-bold text-purple-700 hover:text-purple-900 underline flex items-center gap-1 cursor-pointer"
-                  >
-                    <Printer size={12} />
-                    <span>Cetak Tanda Terima</span>
-                  </button>
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={() => handleDownloadHardcopyReceipt(hardcopyModalData.sub!, hardcopyModalData.student)}
+                      className="text-xs font-bold text-emerald-700 hover:text-emerald-900 underline flex items-center gap-1 cursor-pointer"
+                    >
+                      <Download size={12} />
+                      <span>Unduh PDF</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handlePrintHardcopyReceipt(hardcopyModalData.sub!, hardcopyModalData.student)}
+                      className="text-xs font-bold text-purple-700 hover:text-purple-900 underline flex items-center gap-1 cursor-pointer"
+                    >
+                      <Printer size={12} />
+                      <span>Cetak Tanda Terima</span>
+                    </button>
+                  </div>
                 </div>
               )}
             </div>
+            </div>
 
-            <div className="flex items-center justify-between gap-2 pt-2 border-t border-slate-100">
-              {hardcopyModalData.sub?.isHardcopyPrint || hardcopyModalData.sub?.makalahType === 'hardcopy_print' ? (
+            {/* Modal Footer (Fixed at bottom) */}
+            <div className="px-5 py-3.5 bg-slate-50 border-t border-slate-200 flex items-center justify-between gap-2 shrink-0">
+              {hardcopyModalData.sub?.isHardcopyPrint ? (
                 <button
                   type="button"
                   disabled={isSavingHardcopy}
@@ -6491,7 +6663,7 @@ export const DosenPortal: React.FC<DosenPortalProps> = ({
                 <button
                   type="button"
                   onClick={() => setHardcopyModalData(null)}
-                  className="px-3 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-100 rounded-xl transition-colors cursor-pointer"
+                  className="px-3 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-200/80 rounded-xl transition-colors cursor-pointer"
                 >
                   Tutup
                 </button>
@@ -6501,7 +6673,7 @@ export const DosenPortal: React.FC<DosenPortalProps> = ({
                 <button
                   type="button"
                   onClick={() => setHardcopyModalData(null)}
-                  className="px-3 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-100 rounded-xl transition-colors cursor-pointer"
+                  className="px-3 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-200/80 rounded-xl transition-colors cursor-pointer"
                 >
                   Batal
                 </button>

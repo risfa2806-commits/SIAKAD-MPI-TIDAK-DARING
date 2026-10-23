@@ -6,6 +6,7 @@ import {
   StudentGrade,
   UtsSubmission,
   UtsQuestion,
+  UtsDraft,
   QuizQuestion,
   QuizSubmission,
   QuizSettings,
@@ -714,7 +715,7 @@ export async function submitUtsSubmissionApi(payload: {
   docLink?: string;
   fileName?: string;
   fileData?: string;
-}): Promise<{ success: boolean; submission?: UtsSubmission; offlineStored: boolean }> {
+}): Promise<{ success: boolean; submission?: UtsSubmission; offlineStored: boolean; error?: string }> {
   try {
     const res = await fetch('/api/uts-submissions', {
       method: 'POST',
@@ -744,6 +745,11 @@ export async function submitUtsSubmissionApi(payload: {
         }
       }
       return { success: true, submission: savedUts, offlineStored: false };
+    } else {
+      const errJson = await safeJson(res, {});
+      if (res.status === 403 || res.status === 400 || res.status === 401) {
+        return { success: false, error: errJson?.error || 'Gagal mengirimkan UTS.', offlineStored: false };
+      }
     }
   } catch (err) {
     console.warn('Submit UTS offline fallback:', err);
@@ -800,6 +806,78 @@ export async function gradeUtsSubmissionApi(payload: {
   } catch {
     return false;
   }
+}
+
+// Save UTS Draft (Autosave berkala draf essay UTS mahasiswa ke server & IndexedDB offline)
+export async function saveUtsDraftApi(payload: {
+  studentId: string;
+  answers: Record<number, string>;
+  docLink?: string;
+  studentName?: string;
+}): Promise<{ success: boolean; savedAt?: string; error?: string }> {
+  const nowIso = new Date().toISOString();
+
+  // 1. Optimistic save to local cache & IndexedDB immediately
+  try {
+    const local = getLocalCache();
+    if (!local.utsDrafts) local.utsDrafts = {};
+    const std = (local.students || []).find(s => s.id === payload.studentId || s.nim === payload.studentId);
+    const draft: UtsDraft = {
+      studentId: payload.studentId,
+      studentName: payload.studentName || std?.name || 'Mahasiswa',
+      answers: payload.answers || {},
+      docLink: payload.docLink || '',
+      savedAt: nowIso,
+    };
+    local.utsDrafts[payload.studentId] = draft;
+    if (local.allCoursesData && local.activeCourseId && local.allCoursesData[local.activeCourseId]) {
+      if (!local.allCoursesData[local.activeCourseId].utsDrafts) {
+        local.allCoursesData[local.activeCourseId].utsDrafts = {};
+      }
+      local.allCoursesData[local.activeCourseId].utsDrafts![payload.studentId] = draft;
+    }
+    saveLocalCache(local);
+
+    try {
+      localStorage.setItem(`uts_draft_${payload.studentId}`, JSON.stringify(payload.answers));
+    } catch {}
+  } catch (err) {
+    console.warn('Local draft cache warning:', err);
+  }
+
+  // 2. Persist to server backend API
+  try {
+    const res = await fetch('/api/uts/draft', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    });
+    const json = await safeJson(res, null);
+    if (res.ok && json?.success) {
+      return { success: true, savedAt: json.savedAt || nowIso };
+    }
+    return { success: true, savedAt: nowIso };
+  } catch (err) {
+    console.warn('saveUtsDraftApi network error, saved locally:', err);
+    return { success: true, savedAt: nowIso };
+  }
+}
+
+// Get UTS Draft
+export async function getUtsDraftApi(studentId: string): Promise<{ success: boolean; draft?: UtsDraft; error?: string }> {
+  try {
+    const res = await fetch(`/api/uts/draft/${encodeURIComponent(studentId)}`);
+    const json = await safeJson(res, null);
+    if (res.ok && json?.success && json.draft) {
+      return { success: true, draft: json.draft };
+    }
+  } catch (err) {
+    console.warn('getUtsDraftApi network fallback:', err);
+  }
+
+  const local = getLocalCache();
+  const draft = local.utsDrafts?.[studentId];
+  return { success: true, draft };
 }
 
 // Client-side question generation helpers (fallback if server is offline / serverless)
@@ -1132,7 +1210,7 @@ export async function submitUasSubmissionApi(payload: {
   docLink?: string;
   fileName?: string;
   fileData?: string;
-}): Promise<{ success: boolean; submission?: UtsSubmission; offlineStored: boolean }> {
+}): Promise<{ success: boolean; submission?: UtsSubmission; offlineStored: boolean; error?: string }> {
   try {
     const res = await fetch('/api/uas-submissions', {
       method: 'POST',
@@ -1142,6 +1220,11 @@ export async function submitUasSubmissionApi(payload: {
     if (res.ok) {
       const data = await safeJson(res, { submission: payload });
       return { success: true, submission: data?.submission || (payload as any), offlineStored: false };
+    } else {
+      const errJson = await safeJson(res, {});
+      if (res.status === 403 || res.status === 400 || res.status === 401) {
+        return { success: false, error: errJson?.error || 'Gagal mengirimkan UAS.', offlineStored: false };
+      }
     }
   } catch (err) {
     console.warn('Submit UAS offline fallback:', err);

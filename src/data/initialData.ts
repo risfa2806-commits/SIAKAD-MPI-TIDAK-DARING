@@ -26,7 +26,7 @@ export const INITIAL_QUIZ_QUESTIONS: QuizQuestion[] = [
     options: [
       'Menilai apakah suatu ilmu membawa dampak finansial jangka pendek',
       'Mengkaji hakikat realitas atau wujud objektif dari apa yang diteliti',
-      'MMahasiswa Demo 014ncang kuesioner penelitian kuantitatif dengan skala Likert',
+      'Merancang kuesioner penelitian kuantitatif dengan skala Likert',
       'Menentukan sanksi etik bagi mahasiswa yang terlambat mengumpulkan tugas',
     ],
     correctIndex: 1,
@@ -35,16 +35,16 @@ export const INITIAL_QUIZ_QUESTIONS: QuizQuestion[] = [
     badgeTopic: 'Dimensi Ontologi',
     animationTheme: 'atom',
     ttsKeyword: 'ONTOLOGI',
-    ttsClue: 'Cabang filsafat yang mengkaji hakikat realitas atau kebMahasiswa Demo 014daan wujud',
+    ttsClue: 'Cabang filsafat yang mengkaji hakikat realitas atau keberadaan wujud',
   },
   {
     id: 3,
     number: 3,
     question: 'Pertemuan 3 (Landasan Epistemologi): Pertanyaan mendasar yang dijawab oleh dimensi Epistemologi keilmuan adalah...',
     options: [
-      'BMahasiswa Demo 014pa anggaran biaya riset yang dialokasikan kampus per semester',
+      'Berapa anggaran biaya riset yang dialokasikan kampus per semester',
       'Bagaimana cara, proses, metodologi, dan validitas untuk memperoleh pengetahuan yang benar',
-      'Siapa nama tokoh yang pertama kali mencetak buku referensi di duMahasiswa Demo 033',
+      'Siapa nama tokoh yang pertama kali mencetak buku referensi di dunia',
       'Mengapa ijazah formal diperlukan dalam melamar pekerjaan manajerial',
     ],
     correctIndex: 1,
@@ -58,7 +58,7 @@ export const INITIAL_QUIZ_QUESTIONS: QuizQuestion[] = [
   {
     id: 4,
     number: 4,
-    question: 'Pertemuan 4 (Landasan Aksiologi): Dalam kMahasiswa Demo 014ngka Manajemen Pendidikan Islam, aksiologi menegaskan bahwa...',
+    question: 'Pertemuan 4 (Landasan Aksiologi): Dalam kerangka Manajemen Pendidikan Islam, aksiologi menegaskan bahwa...',
     options: [
       'Pemanfaatan ilmu wajib berorientasi pada nilai kemaslahatan umat, etika, dan keluhuran moral',
       'Ilmuwan bebas sepenuhnya menciptakan teori tanpa terikat norma etika apapun',
@@ -76,7 +76,7 @@ export const INITIAL_QUIZ_QUESTIONS: QuizQuestion[] = [
   {
     id: 5,
     number: 5,
-    question: 'Pertemuan 5 (Metode Ilmiah Deduksi & Induksi): Metode berpikir ilmiah yang bergMahasiswa Demo 014k dari teori umum untuk diuji pada fakta lapangan empiris disebut...',
+    question: 'Pertemuan 5 (Metode Ilmiah Deduksi & Induksi): Metode berpikir ilmiah yang bergerak dari teori umum untuk diuji pada fakta lapangan empiris disebut...',
     options: [
       'Penalaran Deduktif (Logiko-Hipotetiko)',
       'Penalaran Induktif Empiris Murni',
@@ -97,7 +97,7 @@ export const INITIAL_QUIZ_QUESTIONS: QuizQuestion[] = [
     question: 'Pertemuan 6 (Teori Kebenaran Korespondensi): Suatu proposisi atau pernyataan ilmiah dinyatakan benar menurut teori korespondensi jika...',
     options: [
       'Disetujui oleh suara mayoritas mutlak anggota rapat komite',
-      'Pernyataan tersebut bersesuaian dengan fakta objektif kenyataan empiris di duMahasiswa Demo 033 nyata',
+      'Pernyataan tersebut bersesuaian dengan fakta objektif kenyataan empiris di dunia nyata',
       'Pernyataan tersebut telah tertulis dalam novel fiksi klasik',
       'Memberikan keuntungan materi langsung kepada penyampai pernyataan',
     ],
@@ -114,7 +114,7 @@ export const INITIAL_QUIZ_QUESTIONS: QuizQuestion[] = [
     number: 7,
     question: 'Pertemuan 7 (Teori Kebenaran Pragmatis): Menurut filsafat Pragmatisme (C.S. Peirce & William James), kebenaran suatu gagasan diukur dari...',
     options: [
-      'SebMahasiswa Demo 014pa rumit istilah peristilahan asing yang dipergunakan',
+      'Seberapa rumit istilah peristilahan asing yang dipergunakan',
       'Kemanfaatan praktis, efektivitas fungsi, dan hasil nyata dalam memecahkan masalah',
       'Tingkat kesesuaian dengan tradisi leluhur tanpa perlu evaluasi',
       'Panjangnya jumlah halaman dokumen karya ilmiah yang dicetak',
@@ -130,12 +130,12 @@ export const INITIAL_QUIZ_QUESTIONS: QuizQuestion[] = [
   {
     id: 8,
     number: 8,
-    question: 'Pertemuan 9 (Integrasi Sains & Wahyu): Bagaimana relasi iMahasiswa Demo 016l antara wahyu ilahi (ayat qauliyah) dan sains empiris (ayat kauniyah)?',
+    question: 'Pertemuan 9 (Integrasi Sains & Wahyu): Bagaimana relasi ideal antara wahyu ilahi (ayat qauliyah) dan sains empiris (ayat kauniyah)?',
     options: [
       'Saling melengkapi, terintegrasi, dan harmonis dalam mengungkap kebenaran sunnatullah',
       'Bermusuhan secara mutlak sehingga sains modern wajib ditinggalkan',
       'Akal ilmiah tidak boleh digunakan sama sekali dalam memahami ajaran agama',
-      'Wahyu dan sains tidak memiliki titik temu sedikit pun dalam pMahasiswa Demo 014daban',
+      'Wahyu dan sains tidak memiliki titik temu sedikit pun dalam peradaban',
     ],
     correctIndex: 0,
     explanation: 'Filsafat keilmuan Islam meletakkan ayat qauliyah (wahyu) dan ayat kauniyah (alam semesta) dalam kesatuan tauhid yang saling menguatkan.',
@@ -148,7 +148,7 @@ export const INITIAL_QUIZ_QUESTIONS: QuizQuestion[] = [
   {
     id: 9,
     number: 9,
-    question: 'Pertemuan 10 (Etika Akademik di Mahasiswa Demo 014 Artificial Intelligence): TMahasiswa Demo 031g jawab moral ilmuwan dan mahasiswa dalam menggunakan AI adalah...',
+    question: 'Pertemuan 10 (Etika Akademik di Era Artificial Intelligence): Tanggung jawab moral ilmuwan dan mahasiswa dalam menggunakan AI adalah...',
     options: [
       'Memanfaatkan AI secara kritis, transparan dalam atribusi, menjunjung integritas, dan menolak plagiasi',
       'Menyalin mentah-mentah karya orang lain menggunakan AI tanpa diverifikasi kebenarannya',
@@ -166,20 +166,20 @@ export const INITIAL_QUIZ_QUESTIONS: QuizQuestion[] = [
   {
     id: 10,
     number: 10,
-    question: 'Pertemuan 13 (PergesMahasiswa Demo 014n Paradigma / Paradigm Shift): Tokoh filsafat ilmu yang merumuskan konsep revolusi ilmiah dan pergesMahasiswa Demo 014n paradigma adalah...',
+    question: 'Pertemuan 13 (Pergeseran Paradigma / Paradigm Shift): Tokoh filsafat ilmu yang merumuskan konsep revolusi ilmiah dan pergeseran paradigma adalah...',
     options: [
       'Thomas S. Kuhn',
       'Karl Popper (Falsifikasi)',
-      'Paul FeyMahasiswa Demo 014bend (Anarkisme Metodologis)',
+      'Paul Feyerabend (Anarkisme Metodologis)',
       'Auguste Comte (Positivisme Klasik)',
     ],
     correctIndex: 0,
-    explanation: 'Thomas S. Kuhn dalam karyanya "The Structure of Scientific Revolutions" (1962) menguraikan bagaimana sains bMahasiswa Demo 014njak dari normal science ke krisis anomali dan revolusi paradigma baru.',
+    explanation: 'Thomas S. Kuhn dalam karyanya "The Structure of Scientific Revolutions" (1962) menguraikan bagaimana sains beranjak dari normal science ke krisis anomali dan revolusi paradigma baru.',
     points: 10,
     badgeTopic: 'Paradigma Sains Modern',
     animationTheme: 'brain',
     ttsKeyword: 'PARADIGMA',
-    ttsClue: 'KMahasiswa Demo 014ngka berpikir ilmiah yang dirumuskan Thomas Kuhn dalam revolusi sains',
+    ttsClue: 'Kerangka berpikir ilmiah yang dirumuskan Thomas Kuhn dalam revolusi sains',
   },
 ];
 
@@ -199,7 +199,7 @@ export const INITIAL_UTS_QUESTIONS: UtsQuestion[] = [
     title: 'Pilar Epistemologi: Rasionalisme, Empirisme, & Metode Ilmiah',
     topic: 'Epistemologi, Sumber Pengetahuan, & Validitas Ilmiah (Pertemuan 3 & 5)',
     question: 'Epistemologi mempersoalkan bagaimana ilmu pengetahuan diperoleh, disusun, dan diuji keabsahannya. Uraikan sintesis antara aliran Rasionalisme dan Empirisme yang melahirkan metode ilmiah modern (scientific method)! Jelaskan pula bagaimana pola penalaran deduktif dan induktif bekerja secara terpadu dalam proses perumusan hipotesis dan verifikasi data penelitian di bidang Manajemen Pendidikan Islam!',
-    rubric: 'Uraian pemikiran rasionalisme & empirisme (6 poin), sintesis metode ilmiah (6 poin), penMahasiswa Demo 014pan dialektika deduktif-induktif dalam metodologi riset MPI (8 poin).',
+    rubric: 'Uraian pemikiran rasionalisme & empirisme (6 poin), sintesis metode ilmiah (6 poin), penerapan dialektika deduktif-induktif dalam metodologi riset MPI (8 poin).',
     maxScore: 20,
   },
   {
@@ -214,10 +214,10 @@ export const INITIAL_UTS_QUESTIONS: UtsQuestion[] = [
   {
     id: 4,
     number: 4,
-    title: 'Pilar Aksiologi, TMahasiswa Demo 031g Jawab Moral Ilmuwan, & Mahasiswa Demo 014 Artificial Intelligence (AI)',
-    topic: 'Aksiologi, Etika Keilmuan, & Disrupsi GenMahasiswa Demo 014tive AI (Pertemuan 7 & 15)',
-    question: 'Dalam ranah Aksiologi, terdapat dialektika klasik mengenai apakah ilmu pengetahuan itu bebas nilai (value-free) ataukah terikat nilai (value-bound). Jelaskan posisi ilmuwan muslim dan akademisi MPI mengenai dialektika ini! Bagaimana landasan aksiologi membimbing etika akademik mahasiswa (integritas riset, larangan plagiarisme, nilai amanah) di tengah masifnya penggunaan teknologi kecerdasan buatan (GenMahasiswa Demo 014tive AI seperti ChatGPT, Canva AI, Deep Learning)?',
-    rubric: 'Analisis filosofis bebas nilai vs terikat nilai dari perspektif Islam (8 poin), ketajaman pembumian etika akademik, amanah ilmiah, dan regulasi adopsi GenMahasiswa Demo 014tive AI dalam perkuliahan (12 poin).',
+    title: 'Pilar Aksiologi, Tanggung Jawab Moral Ilmuwan, & Era Artificial Intelligence (AI)',
+    topic: 'Aksiologi, Etika Keilmuan, & Disrupsi Generative AI (Pertemuan 7 & 15)',
+    question: 'Dalam ranah Aksiologi, terdapat dialektika klasik mengenai apakah ilmu pengetahuan itu bebas nilai (value-free) ataukah terikat nilai (value-bound). Jelaskan posisi ilmuwan muslim dan akademisi MPI mengenai dialektika ini! Bagaimana landasan aksiologi membimbing etika akademik mahasiswa (integritas riset, larangan plagiarisme, nilai amanah) di tengah masifnya penggunaan teknologi kecerdasan buatan (Generative AI seperti ChatGPT, Canva AI, Deep Learning)?',
+    rubric: 'Analisis filosofis bebas nilai vs terikat nilai dari perspektif Islam (8 poin), ketajaman pembumian etika akademik, amanah ilmiah, dan regulasi adopsi Generative AI dalam perkuliahan (12 poin).',
     maxScore: 20,
   },
   {
@@ -225,8 +225,8 @@ export const INITIAL_UTS_QUESTIONS: UtsQuestion[] = [
     number: 5,
     title: 'Model Integrasi Ilmu, Wahyu, & Tata Kelola Lembaga Pendidikan Islam',
     topic: 'Integrasi Keilmuan, Harmonisasi Ayat Qauliyah & Kauniyah (Pertemuan 1, 4, 15)',
-    question: 'Salah satu tantangan epistemologis terbesar pendidikan Islam adalah adanya dikoMahasiswa Demo 028 keilmuan antara ilmu agama (revelation/ayat qauliyah) dan ilmu umum/sains modern (ayat kauniyah). Berdasarkan perspektif filsafat ilmu, rumuskan gagasan atau model integrasi keilmuan yang aplikatif untuk ditMahasiswa Demo 014pkan dalam tata kelola kurikulum, kultur riset, dan kepemimpinan strategis lembaga pendidikan Islam modern!',
-    rubric: 'Kritik filosofis atas dikoMahasiswa Demo 028 keilmuan (6 poin), rumusan konseptual integrasi ayat qauliyah dan kauniyah (7 poin), strategi implementasi konkret pada kurikulum atau tata kelola sekolah/madrasah/pesantren (7 poin).',
+    question: 'Salah satu tantangan epistemologis terbesar pendidikan Islam adalah adanya dikotomi keilmuan antara ilmu agama (revelation/ayat qauliyah) dan ilmu umum/sains modern (ayat kauniyah). Berdasarkan perspektif filsafat ilmu, rumuskan gagasan atau model integrasi keilmuan yang aplikatif untuk diterapkan dalam tata kelola kurikulum, kultur riset, dan kepemimpinan strategis lembaga pendidikan Islam modern!',
+    rubric: 'Kritik filosofis atas dikotomi keilmuan (6 poin), rumusan konseptual integrasi ayat qauliyah dan kauniyah (7 poin), strategi implementasi konkret pada kurikulum atau tata kelola sekolah/madrasah/pesantren (7 poin).',
     maxScore: 20,
   },
 ];
@@ -237,7 +237,7 @@ export const INITIAL_UAS_QUESTIONS: UtsQuestion[] = [
     number: 1,
     title: 'Sintesis Komprehensif Ontologi, Epistemologi, & Aksiologi dalam Manajemen Pendidikan Islam',
     topic: 'Rekonstruksi Paradigma Filsafat Ilmu MPI (Pertemuan 2, 4, 7, 15)',
-    question: 'Berdasarkan telaah 16 pertemuan perkuliahan Filsafat Ilmu, sintesiskan bagaimana pilar Ontologi (hakikat lembaga & ilmu), Epistemologi (metodologi perolehan ilmu & riset), dan Aksiologi (tujuan & etika manajerial) berpadu membentuk landasan kokoh bagi kepemimpinan manajer pendidikan Islam Mahasiswa Demo 014 modern. Berikan contoh implementasi konkret pada satu lembaga pendidikan!',
+    question: 'Berdasarkan telaah 16 pertemuan perkuliahan Filsafat Ilmu, sintesiskan bagaimana pilar Ontologi (hakikat lembaga & ilmu), Epistemologi (metodologi perolehan ilmu & riset), dan Aksiologi (tujuan & etika manajerial) berpadu membentuk landasan kokoh bagi kepemimpinan manajer pendidikan Islam era modern. Berikan contoh implementasi konkret pada satu lembaga pendidikan!',
     rubric: 'Kedalaman integrasi ketiga pilar filosofis (8 poin), ketepatan analogi manajerial MPI (6 poin), orisinalitas analisis implementasi lapangan (6 poin).',
     maxScore: 20,
   },
@@ -246,25 +246,25 @@ export const INITIAL_UAS_QUESTIONS: UtsQuestion[] = [
     number: 2,
     title: 'Kritik Epistemologis terhadap Positivisme dan Urgensi Epistemologi Bayani, Burhani, & Irfani',
     topic: 'Kritik Metodologi Sains Modern & Epistemologi Islam (Pertemuan 4 & 5)',
-    question: 'Positivisme logis kMahasiswa Demo 014p mereduksi kebenaran ilmiah hanya sebatas data empiris terukur. Lakukan telaah kritis terhadap keterbatasan positivisme tersebut, dan jelaskan bagaimana integrasi pendekatan Bayani (teks wahyu), Burhani (rasio & demonstratif), serta Irfani (intuisi spiritual) memperkaya metodologi pengembangan sains dan perumusan kebijakan pendidikan Islam!',
+    question: 'Positivisme logis kerap mereduksi kebenaran ilmiah hanya sebatas data empiris terukur. Lakukan telaah kritis terhadap keterbatasan positivisme tersebut, dan jelaskan bagaimana integrasi pendekatan Bayani (teks wahyu), Burhani (rasio & demonstratif), serta Irfani (intuisi spiritual) memperkaya metodologi pengembangan sains dan perumusan kebijakan pendidikan Islam!',
     rubric: 'Ketajaman kritik atas positivisme (6 poin), penjelasan komprehensif trilogi Bayani-Burhani-Irfani (8 poin), relevansi aplikatif dalam riset kelembagaan MPI (6 poin).',
     maxScore: 20,
   },
   {
     id: 103,
     number: 3,
-    title: 'Dinamika PergesMahasiswa Demo 014n Paradigma (Thomas Kuhn) dan Inovasi Lembaga Pendidikan Islam',
+    title: 'Dinamika Pergeseran Paradigma (Thomas Kuhn) dan Inovasi Lembaga Pendidikan Islam',
     topic: 'Perkembangan Ilmu Pengetahuan & Teori Revolusi Ilmiah (Pertemuan 10 & 11)',
-    question: 'Thomas Kuhn memperkenalkan konsep "Paradigm Shift" melalui tahapan normal science, anomali, krisis, hingga revolusi ilmiah. Analisislah fenomena disrupsi digital dan Mahasiswa Demo 014 kecerdasan buatan (AI) sebagai anomali terhadap tata kelola konvensional sekolah/madrasah. Bagaimana kepemimpinan visioner MPI merespons pergesMahasiswa Demo 014n paradigma ini secara ilmiah dan filosofis?',
-    rubric: 'Pemahaman teori Thomas Kuhn (6 poin), analisis tajam fenomena disrupsi di duMahasiswa Demo 033 pendidikan (7 poin), tawaran solusi strategis kepemimpinan transformasional (7 poin).',
+    question: 'Thomas Kuhn memperkenalkan konsep "Paradigm Shift" melalui tahapan normal science, anomali, krisis, hingga revolusi ilmiah. Analisislah fenomena disrupsi digital dan era kecerdasan buatan (AI) sebagai anomali terhadap tata kelola konvensional sekolah/madrasah. Bagaimana kepemimpinan visioner MPI merespons pergeseran paradigma ini secara ilmiah dan filosofis?',
+    rubric: 'Pemahaman teori Thomas Kuhn (6 poin), analisis tajam fenomena disrupsi di dunia pendidikan (7 poin), tawaran solusi strategis kepemimpinan transformasional (7 poin).',
     maxScore: 20,
   },
   {
     id: 104,
     number: 4,
-    title: 'Etika Akademik, TMahasiswa Demo 031g Jawab Sosial Ilmuwan, & Regulasi Pemanfaatan AI GenMahasiswa Demo 014tif',
-    topic: 'Aksiologi & Kode Etik Ilmuwan Muslim di Mahasiswa Demo 014 AI (Pertemuan 7, 12, 15)',
-    question: 'Di Mahasiswa Demo 014 kemunculan GenMahasiswa Demo 014tive AI, batasan orisinalitas pemikiran, integritas karya, dan etika riset menjadi tantangan moral yang nyata. Rumuskan pedoman etika keilmuan (scientific code of ethics) berbasis aksiologi Islam untuk sivitas akademika dalam mengadopsi teknologi AI secara bertMahasiswa Demo 031g jawab tanpa mengorbankan kejujuran intelektual!',
+    title: 'Etika Akademik, Tanggung Jawab Sosial Ilmuwan, & Regulasi Pemanfaatan AI Generatif',
+    topic: 'Aksiologi & Kode Etik Ilmuwan Muslim di Era AI (Pertemuan 7, 12, 15)',
+    question: 'Di Era kemunculan Generative AI, batasan orisinalitas pemikiran, integritas karya, dan etika riset menjadi tantangan moral yang nyata. Rumuskan pedoman etika keilmuan (scientific code of ethics) berbasis aksiologi Islam untuk sivitas akademika dalam mengadopsi teknologi AI secara bertanggung jawab tanpa mengorbankan kejujuran intelektual!',
     rubric: 'Fondasi aksiologis etika keilmuan (6 poin), perumusan pedoman aplikatif etika riset dan pemanfaatan AI (8 poin), argumentasi moral religius yang argumentatif (6 poin).',
     maxScore: 20,
   },
@@ -272,8 +272,8 @@ export const INITIAL_UAS_QUESTIONS: UtsQuestion[] = [
     id: 105,
     number: 5,
     title: 'Desain Blue-Print Tata Kelola Lembaga Pendidikan Islam Berbasis Filsafat Ilmu Terpadu',
-    topic: 'PenMahasiswa Demo 014pan Praktis Filsafat Ilmu dalam Tata Kelola Pendidikan Islam (Pertemuan 15 & 16)',
-    question: 'Sebagai calon manajer pendidikan Islam yang telah menguasai Filsafat Ilmu, rancanglah sebuah kMahasiswa Demo 014ngka strategis (blue-print) pengelolaan lembaga (sekolah, madrasah, pesantren, atau perguruan tinggi) yang memadukan mutu akademik saintifik, integritas nilai keislaman, dan kemandirian institusi di tengah persaingan global!',
+    topic: 'Penerapan Praktis Filsafat Ilmu dalam Tata Kelola Pendidikan Islam (Pertemuan 15 & 16)',
+    question: 'Sebagai calon manajer pendidikan Islam yang telah menguasai Filsafat Ilmu, rancanglah sebuah kerangka strategis (blue-print) pengelolaan lembaga (sekolah, madrasah, pesantren, atau perguruan tinggi) yang memadukan mutu akademik saintifik, integritas nilai keislaman, dan kemandirian institusi di tengah persaingan global!',
     rubric: 'Kelengkapan komponen blue-print manajerial (7 poin), keselarasan filosofis dengan visi pendidikan Islam (7 poin), visibilitas dan kelayakan implementasi (6 poin).',
     maxScore: 20,
   },
@@ -410,7 +410,7 @@ export const INITIAL_STUDENTS: Student[] = [
     gender: "Tidak disebutkan",
     phone: "",
     rpsPart: 'Pertemuan 6',
-    topic: 'Pilar Aksiologi Ilmu: Nilai, Etika Keilmuan, TMahasiswa Demo 031g Jawab Moral, dan Kemanfaatan Sains',
+    topic: 'Pilar Aksiologi Ilmu: Nilai, Etika Keilmuan, Tanggung Jawab Moral, dan Kemanfaatan Sains',
     meetingNumber: 6,
     groupId: 4,
     createdAt: '2026-08-10T00:00:00Z',
@@ -425,7 +425,7 @@ export const INITIAL_STUDENTS: Student[] = [
     gender: "Tidak disebutkan",
     phone: "",
     rpsPart: 'Pertemuan 6',
-    topic: 'Pilar Aksiologi Ilmu: Nilai, Etika Keilmuan, TMahasiswa Demo 031g Jawab Moral, dan Kemanfaatan Sains',
+    topic: 'Pilar Aksiologi Ilmu: Nilai, Etika Keilmuan, Tanggung Jawab Moral, dan Kemanfaatan Sains',
     meetingNumber: 6,
     groupId: 4,
     createdAt: '2026-08-10T00:00:00Z',
@@ -440,7 +440,7 @@ export const INITIAL_STUDENTS: Student[] = [
     gender: "Tidak disebutkan",
     phone: "",
     rpsPart: 'Pertemuan 7',
-    topic: 'Sejarah Perkembangan Filsafat dan Ilmu (Mahasiswa Demo 014 Yunani Klasik & Abad Pertengahan)',
+    topic: 'Sejarah Perkembangan Filsafat dan Ilmu (Era Yunani Klasik & Abad Pertengahan)',
     meetingNumber: 7,
     groupId: 5,
     createdAt: '2026-08-10T00:00:00Z',
@@ -455,7 +455,7 @@ export const INITIAL_STUDENTS: Student[] = [
     gender: "Tidak disebutkan",
     phone: "",
     rpsPart: 'Pertemuan 7',
-    topic: 'Sejarah Perkembangan Filsafat dan Ilmu (Mahasiswa Demo 014 Yunani Klasik & Abad Pertengahan)',
+    topic: 'Sejarah Perkembangan Filsafat dan Ilmu (Era Yunani Klasik & Abad Pertengahan)',
     meetingNumber: 7,
     groupId: 5,
     createdAt: '2026-08-10T00:00:00Z',
@@ -470,7 +470,7 @@ export const INITIAL_STUDENTS: Student[] = [
     gender: "Tidak disebutkan",
     phone: "",
     rpsPart: 'Pertemuan 7',
-    topic: 'Sejarah Perkembangan Filsafat dan Ilmu (Mahasiswa Demo 014 Yunani Klasik & Abad Pertengahan)',
+    topic: 'Sejarah Perkembangan Filsafat dan Ilmu (Era Yunani Klasik & Abad Pertengahan)',
     meetingNumber: 7,
     groupId: 5,
     createdAt: '2026-08-10T00:00:00Z',
@@ -505,7 +505,7 @@ const INITIAL_STUDENT_ACTIVITY: Record<string, { points: number; logs: any[] }> 
   'mhs-4': {
     points: 40,
     logs: [
-      { id: 'act-4-1', points: 15, reason: 'Sangat menguasai aliran-aliran ontologi (iMahasiswa Demo 016lisme vs realisme)', category: 'presentasi', meetingNumber: 4, timestamp: '2026-09-15T09:40:00Z', dosenName: 'Risfa Tri Ulfa, S.Pd., M.Pd.' },
+      { id: 'act-4-1', points: 15, reason: 'Sangat menguasai aliran-aliran ontologi (idealisme vs realisme)', category: 'presentasi', meetingNumber: 4, timestamp: '2026-09-15T09:40:00Z', dosenName: 'Risfa Tri Ulfa, S.Pd., M.Pd.' },
       { id: 'act-4-2', points: 15, reason: 'Pertanyaan tajam mengenai batas wilayah kajian metafisika', category: 'pertanyaan', meetingNumber: 4, timestamp: '2026-09-15T10:20:00Z', dosenName: 'Risfa Tri Ulfa, S.Pd., M.Pd.' },
       { id: 'act-4-3', points: 10, reason: 'Kontribusi aktif dalam sintesis diskusi pleno', category: 'argumen', meetingNumber: 4, timestamp: '2026-09-15T10:55:00Z', dosenName: 'Risfa Tri Ulfa, S.Pd., M.Pd.' },
     ],
@@ -543,7 +543,7 @@ const INITIAL_STUDENT_ACTIVITY: Record<string, { points: number; logs: any[] }> 
     points: 35,
     logs: [
       { id: 'act-9-1', points: 15, reason: 'Pemaparan landasan aksiologi dan etika keilmuan sangat mendalam', category: 'presentasi', meetingNumber: 6, timestamp: '2026-09-29T09:35:00Z', dosenName: 'Risfa Tri Ulfa, S.Pd., M.Pd.' },
-      { id: 'act-9-2', points: 10, reason: 'Pertanyaan kritis tentang tMahasiswa Demo 031g jawab moral ilmuwan', category: 'pertanyaan', meetingNumber: 6, timestamp: '2026-09-29T10:10:00Z', dosenName: 'Risfa Tri Ulfa, S.Pd., M.Pd.' },
+      { id: 'act-9-2', points: 10, reason: 'Pertanyaan kritis tentang tanggung jawab moral ilmuwan', category: 'pertanyaan', meetingNumber: 6, timestamp: '2026-09-29T10:10:00Z', dosenName: 'Risfa Tri Ulfa, S.Pd., M.Pd.' },
       { id: 'act-9-3', points: 10, reason: 'Mengaitkan aksiologi dengan integritas pemimpin pendidikan', category: 'argumen', meetingNumber: 6, timestamp: '2026-09-29T10:40:00Z', dosenName: 'Risfa Tri Ulfa, S.Pd., M.Pd.' },
     ],
   },
@@ -557,14 +557,14 @@ const INITIAL_STUDENT_ACTIVITY: Record<string, { points: number; logs: any[] }> 
   'mhs-11': {
     points: 30,
     logs: [
-      { id: 'act-11-1', points: 15, reason: 'Ulasan sejarah filsafat Mahasiswa Demo 014 Yunani Klasik sangat runtut', category: 'presentasi', meetingNumber: 7, timestamp: '2026-10-06T09:30:00Z', dosenName: 'Risfa Tri Ulfa, S.Pd., M.Pd.' },
+      { id: 'act-11-1', points: 15, reason: 'Ulasan sejarah filsafat Era Yunani Klasik sangat runtut', category: 'presentasi', meetingNumber: 7, timestamp: '2026-10-06T09:30:00Z', dosenName: 'Risfa Tri Ulfa, S.Pd., M.Pd.' },
       { id: 'act-11-2', points: 15, reason: 'Memberikan komparasi pemikiran Socrates, Plato, dan Aristoteles', category: 'argumen', meetingNumber: 7, timestamp: '2026-10-06T10:15:00Z', dosenName: 'Risfa Tri Ulfa, S.Pd., M.Pd.' },
     ],
   },
   'mhs-12': {
     points: 25,
     logs: [
-      { id: 'act-12-1', points: 15, reason: 'Penyampaian transisi Mahasiswa Demo 014 Skolastik ke Mahasiswa Demo 014 Modern', category: 'presentasi', meetingNumber: 7, timestamp: '2026-10-06T09:50:00Z', dosenName: 'Risfa Tri Ulfa, S.Pd., M.Pd.' },
+      { id: 'act-12-1', points: 15, reason: 'Penyampaian transisi Era Skolastik ke Era Modern', category: 'presentasi', meetingNumber: 7, timestamp: '2026-10-06T09:50:00Z', dosenName: 'Risfa Tri Ulfa, S.Pd., M.Pd.' },
       { id: 'act-12-2', points: 10, reason: 'Menjawab pertanyaan forum mengenai pengaruh filsafat Islam di Eropa', category: 'jawaban', meetingNumber: 7, timestamp: '2026-10-06T10:30:00Z', dosenName: 'Risfa Tri Ulfa, S.Pd., M.Pd.' },
     ],
   },
@@ -613,15 +613,15 @@ export const INITIAL_GROUPS: GroupProject[] = [
     id: 4,
     name: 'KELOMPOK 4',
     members: ['Mahasiswa Demo 029', 'Mahasiswa Demo 030'],
-    title: 'Pilar Aksiologi Ilmu: Nilai, Etika Keilmuan, TMahasiswa Demo 031g Jawab Moral, dan Kemanfaatan Sains',
-    description: 'Menguraikan guna ilmu dan etika ilmuwan dalam konteks keorganisasian Islam serta tMahasiswa Demo 031g jawab moral akademisi. Dipresentasikan pada Pertemuan 6. Rujukan: OJS UIN Sunan Kalijaga (2014).',
+    title: 'Pilar Aksiologi Ilmu: Nilai, Etika Keilmuan, Tanggung Jawab Moral, dan Kemanfaatan Sains',
+    description: 'Menguraikan guna ilmu dan etika ilmuwan dalam konteks keorganisasian Islam serta tanggung jawab moral akademisi. Dipresentasikan pada Pertemuan 6. Rujukan: OJS UIN Sunan Kalijaga (2014).',
     toolsSuggested: 'Gemini (Analisis Kontekstual), Canva AI / CapCut (Dokumentasi Budaya & Voiceover)',
   },
   {
     id: 5,
     name: 'KELOMPOK 5',
     members: ['Mahasiswa Demo 031', 'Mahasiswa Demo 032', 'Mahasiswa Demo 033'],
-    title: 'Sejarah Perkembangan Filsafat dan Ilmu (Mahasiswa Demo 014 Yunani Klasik & Abad Pertengahan)',
+    title: 'Sejarah Perkembangan Filsafat dan Ilmu (Era Yunani Klasik & Abad Pertengahan)',
     description: 'Menjelaskan kontribusi pemikir klasik dan dinamika abad pertengahan terhadap dasar pemikiran ilmiah. Dipresentasikan pada Pertemuan 7. Rujukan: OJS JAP UPI (2019).',
     toolsSuggested: 'ChatGPT / Claude (Kajian Sejarah Filsafat), Canva / CapCut (Sinematik Edukasi), HeyGen',
   },
@@ -637,7 +637,7 @@ export const INITIAL_GROUPS: GroupProject[] = [
     id: 7,
     name: 'KELOMPOK 7',
     members: ['Mahasiswa Demo 024', 'Mahasiswa Demo 025'],
-    title: 'Perkembangan Filsafat Ilmu Mahasiswa Demo 014 Modern (Positivisme, Rasionalisme, Empirisme) dan Kontemporer',
+    title: 'Perkembangan Filsafat Ilmu Era Modern (Positivisme, Rasionalisme, Empirisme) dan Kontemporer',
     description: 'Membandingkan karakteristik paradigma keilmuan modern dan kontemporer dalam telaah kritis filsafat ilmu. Dipresentasikan pada Pertemuan 10. Rujukan: Buku Sastraatmadja (2023).',
     toolsSuggested: 'Claude / Gemini (Kajian Paradigma Sains), Canva AI / CapCut (Visualisasi Konsep)',
   },
@@ -662,7 +662,7 @@ export const INITIAL_GROUPS: GroupProject[] = [
     name: 'KELOMPOK 10',
     members: ['Mahasiswa Demo 031', 'Mahasiswa Demo 032', 'Mahasiswa Demo 033'],
     title: 'Etika Akademik, Bebas Plagiarisme, dan Akuntabilitas Digitalisasi Berbasis Nilai Amanah',
-    description: 'Prinsip etika akademik, penanggulangan plagiarisme digital, dan akuntabilitas sarana prasarana berbasis amanah di Mahasiswa Demo 014 AI. Dipresentasikan pada Pertemuan 14. Rujukan: OJS Jurnal Kariman (2025).',
+    description: 'Prinsip etika akademik, penanggulangan plagiarisme digital, dan akuntabilitas sarana prasarana berbasis amanah di Era AI. Dipresentasikan pada Pertemuan 14. Rujukan: OJS Jurnal Kariman (2025).',
     toolsSuggested: 'ChatGPT / Claude (Etika AI & Anti-Plagiasi), Canva / CapCut (Video Edukasi), HeyGen',
   },
 ];
@@ -732,20 +732,20 @@ export const INITIAL_MEETINGS: MeetingSchedule[] = [
     meetingNumber: 6,
     dateStr: 'Sabtu, 19 September 2026',
     isoDate: '2026-09-19',
-    title: 'Pilar Aksiologi Ilmu: Nilai, Etika Keilmuan, TMahasiswa Demo 031g Jawab Moral, dan Kemanfaatan Sains',
+    title: 'Pilar Aksiologi Ilmu: Nilai, Etika Keilmuan, Tanggung Jawab Moral, dan Kemanfaatan Sains',
     presenters: ['Mahasiswa Demo 029', 'Mahasiswa Demo 030'],
     partCodes: ['Pertemuan 6'],
     type: 'kuliah',
     presentationFormat: 'kelompok',
     groupName: 'Kelompok 4',
     groupId: 4,
-    description: 'Mampu menguraikan guna ilmu dan etika ilmuwan dalam konteks keorganisasian Islam serta tMahasiswa Demo 031g jawab moral (Jurnal UIN Sunan Kalijaga, 2014).',
+    description: 'Mampu menguraikan guna ilmu dan etika ilmuwan dalam konteks keorganisasian Islam serta tanggung jawab moral (Jurnal UIN Sunan Kalijaga, 2014).',
   },
   {
     meetingNumber: 7,
     dateStr: 'Sabtu, 26 September 2026',
     isoDate: '2026-09-26',
-    title: 'Sejarah Perkembangan Filsafat dan Ilmu (Mahasiswa Demo 014 Yunani Klasik & Abad Pertengahan)',
+    title: 'Sejarah Perkembangan Filsafat dan Ilmu (Era Yunani Klasik & Abad Pertengahan)',
     presenters: ['Mahasiswa Demo 031', 'Mahasiswa Demo 032', 'Mahasiswa Demo 033'],
     partCodes: ['Pertemuan 7'],
     type: 'kuliah',
@@ -781,7 +781,7 @@ export const INITIAL_MEETINGS: MeetingSchedule[] = [
     meetingNumber: 10,
     dateStr: 'Sabtu, 17 Oktober 2026',
     isoDate: '2026-10-17',
-    title: 'Perkembangan Filsafat Ilmu Mahasiswa Demo 014 Modern (Positivisme, Rasionalisme, Empirisme) dan Kontemporer',
+    title: 'Perkembangan Filsafat Ilmu Era Modern (Positivisme, Rasionalisme, Empirisme) dan Kontemporer',
     presenters: ['Mahasiswa Demo 024', 'Mahasiswa Demo 025'],
     partCodes: ['Pertemuan 10'],
     type: 'kuliah',
@@ -847,7 +847,7 @@ export const INITIAL_MEETINGS: MeetingSchedule[] = [
     presenters: ['Kelompok 1', 'Kelompok 2', 'Kelompok 3', 'Kelompok 4', 'Kelompok 5', 'Kelompok 6', 'Kelompok 7', 'Kelompok 8', 'Kelompok 9', 'Kelompok 10'],
     partCodes: ['Pertemuan 15'],
     type: 'kuliah',
-    description: 'Penyajian refleksi filsafati atas masalah keilmuan melalui media video intMahasiswa Demo 014ktif 5-10 menit serta evaluasi akhir (Qanun Journal, 2025).',
+    description: 'Penyajian refleksi filsafati atas masalah keilmuan melalui media video interaktif 5-10 menit serta evaluasi akhir (Qanun Journal, 2025).',
   },
   {
     meetingNumber: 16,
@@ -1067,7 +1067,7 @@ export const INITIAL_STUDENTS_SEM3: Student[] = [
     gender: "Tidak disebutkan",
     phone: "",
     rpsPart: 'Pertemuan 6 & 13',
-    topic: 'Kepemimpinan Profetik dalam PenggMahasiswa Demo 014kan Organisasi / Manajemen Sarana dan Prasarana MPI',
+    topic: 'Kepemimpinan Profetik dalam Penggerakan Organisasi / Manajemen Sarana dan Prasarana MPI',
     meetingNumber: 6,
     groupId: 5,
     createdAt: '2026-08-10T00:00:00Z',
@@ -1082,7 +1082,7 @@ export const INITIAL_STUDENTS_SEM3: Student[] = [
     gender: "Tidak disebutkan",
     phone: "",
     rpsPart: 'Pertemuan 6 & 13',
-    topic: 'Kepemimpinan Profetik dalam PenggMahasiswa Demo 014kan Organisasi / Manajemen Sarana dan Prasarana MPI',
+    topic: 'Kepemimpinan Profetik dalam Penggerakan Organisasi / Manajemen Sarana dan Prasarana MPI',
     meetingNumber: 6,
     groupId: 5,
     createdAt: '2026-08-10T00:00:00Z',
@@ -1097,7 +1097,7 @@ export const INITIAL_STUDENTS_SEM3: Student[] = [
     gender: "Tidak disebutkan",
     phone: "",
     rpsPart: 'Pertemuan 6 & 13',
-    topic: 'Kepemimpinan Profetik dalam PenggMahasiswa Demo 014kan Organisasi / Manajemen Sarana dan Prasarana MPI',
+    topic: 'Kepemimpinan Profetik dalam Penggerakan Organisasi / Manajemen Sarana dan Prasarana MPI',
     meetingNumber: 6,
     groupId: 5,
     createdAt: '2026-08-10T00:00:00Z',
@@ -1112,7 +1112,7 @@ export const INITIAL_STUDENTS_SEM3: Student[] = [
     gender: "Tidak disebutkan",
     phone: "",
     rpsPart: 'Pertemuan 6 & 13',
-    topic: 'Kepemimpinan Profetik dalam PenggMahasiswa Demo 014kan Organisasi / Manajemen Sarana dan Prasarana MPI',
+    topic: 'Kepemimpinan Profetik dalam Penggerakan Organisasi / Manajemen Sarana dan Prasarana MPI',
     meetingNumber: 6,
     groupId: 5,
     createdAt: '2026-08-10T00:00:00Z',
@@ -1506,8 +1506,8 @@ export const INITIAL_GROUPS_SEM3: GroupProject[] = [
     id: 5,
     name: 'KELOMPOK 5',
     members: ['Mahasiswa Demo 014', 'Mahasiswa Demo 015', 'Mahasiswa Demo 016', 'Mahasiswa Demo 017'],
-    title: 'Kepemimpinan Profetik dalam PenggMahasiswa Demo 014kan Organisasi',
-    description: 'PenMahasiswa Demo 014pan sifat kenabian (Siddiq, Amanah, Tabligh, Fathonah) dalam memimpin, memotivasi tenaga pendidik, dan menggMahasiswa Demo 014kkan iklim kerja Islami (Pertemuan 6).',
+    title: 'Kepemimpinan Profetik dalam Penggerakan Organisasi',
+    description: 'Penerapan sifat kenabian (Siddiq, Amanah, Tabligh, Fathonah) dalam memimpin, memotivasi tenaga pendidik, dan menggerakkan iklim kerja Islami (Pertemuan 6).',
     toolsSuggested: 'ChatGPT / Claude, Canva / CapCut (Video Edukasi)',
   },
   {
@@ -1531,7 +1531,7 @@ export const INITIAL_GROUPS_SEM3: GroupProject[] = [
     name: 'KELOMPOK 8',
     members: ['Mahasiswa Demo 003', 'Mahasiswa Demo 004', 'Mahasiswa Demo 005'],
     title: 'Manajemen Pendidik dan Tenaga Kependidikan Islam',
-    description: 'Sistem rekrutmen berbasis kompetensi, pelatihan berkelanjutan, pembinaan karir, sertifikasi guru madrasah, dan kesejahtMahasiswa Demo 014an tenaga kependidikan (Pertemuan 10).',
+    description: 'Sistem rekrutmen berbasis kompetensi, pelatihan berkelanjutan, pembinaan karir, sertifikasi guru madrasah, dan kesejahteraan tenaga kependidikan (Pertemuan 10).',
     toolsSuggested: 'Gemini / Claude, Canva / PowerPoint',
   },
   {
@@ -1583,7 +1583,7 @@ export const INITIAL_GROUPS_KEBIJAKAN_SEM3: GroupProject[] = [
     name: 'KELOMPOK 2',
     members: ['Mahasiswa Demo 003', 'Mahasiswa Demo 004', 'Mahasiswa Demo 005'],
     title: 'Analisis Agenda Setting dan Isu Strategis Pendidikan',
-    description: 'Proses penentuan agenda publik, identifikasi krisis mutu madrasah, disparitas sarana pendidikan daMahasiswa Demo 014h 3T, dan transformasi isu menjadi agenda resmi (Pertemuan 3).',
+    description: 'Proses penentuan agenda publik, identifikasi krisis mutu madrasah, disparitas sarana pendidikan daerah 3T, dan transformasi isu menjadi agenda resmi (Pertemuan 3).',
     toolsSuggested: 'Claude / Gemini (Kajian Agenda Setting), Canva AI',
   },
   {
@@ -1599,7 +1599,7 @@ export const INITIAL_GROUPS_KEBIJAKAN_SEM3: GroupProject[] = [
     name: 'KELOMPOK 4',
     members: ['Mahasiswa Demo 010', 'Mahasiswa Demo 011'],
     title: 'Model Implementasi Kebijakan di Madrasah dan Pesantren',
-    description: 'Model implementasi top-down dan bottom-up (Van Meter & Van Horn, MazmaMahasiswa Demo 033n-Sabatier), kendala birokrasi, dan kesiapan madrasah/pesantren dalam eksekusi regulasi (Pertemuan 5).',
+    description: 'Model implementasi top-down dan bottom-up (Van Meter & Van Horn, Mazmanian-Sabatier), kendala birokrasi, dan kesiapan madrasah/pesantren dalam eksekusi regulasi (Pertemuan 5).',
     toolsSuggested: 'Gemini, Canva',
   },
   {
@@ -1607,7 +1607,7 @@ export const INITIAL_GROUPS_KEBIJAKAN_SEM3: GroupProject[] = [
     name: 'KELOMPOK 5',
     members: ['Mahasiswa Demo 014', 'Mahasiswa Demo 015'],
     title: 'Evaluasi Kinerja dan Monitoring Kebijakan Pendidikan',
-    description: 'PenMahasiswa Demo 014pan kMahasiswa Demo 014ngka evaluasi formatif dan sumatif, model CIPP (Context, Input, Process, Product), dan indikator ketercapaian target Standar Nasional Pendidikan (Pertemuan 6).',
+    description: 'Penerapan kerangka evaluasi formatif dan sumatif, model CIPP (Context, Input, Process, Product), dan indikator ketercapaian target Standar Nasional Pendidikan (Pertemuan 6).',
     toolsSuggested: 'ChatGPT / Claude, Canva / CapCut',
   },
   {
@@ -1631,7 +1631,7 @@ export const INITIAL_GROUPS_KEBIJAKAN_SEM3: GroupProject[] = [
     name: 'KELOMPOK 8',
     members: ['Mahasiswa Demo 016', 'Mahasiswa Demo 017'],
     title: 'Kebijakan Kurikulum dan Tantangan Digitalisasi Pendidikan',
-    description: 'Kritik dan adaptasi Kurikulum Merdeka di madrasah, digitalisasi asesmen nasional (ANBK), kesiapan infrastruktur internet, dan litMahasiswa Demo 014si AI pendidik (Pertemuan 10).',
+    description: 'Kritik dan adaptasi Kurikulum Merdeka di madrasah, digitalisasi asesmen nasional (ANBK), kesiapan infrastruktur internet, dan literasi AI pendidik (Pertemuan 10).',
     toolsSuggested: 'Gemini, Canva / CapCut',
   },
   {
@@ -1639,7 +1639,7 @@ export const INITIAL_GROUPS_KEBIJAKAN_SEM3: GroupProject[] = [
     name: 'KELOMPOK 9',
     members: ['Mahasiswa Demo 018', 'Mahasiswa Demo 019'],
     title: 'Kebijakan Pendidikan Islam Berbasis Kearifan Lokal',
-    description: 'Penguatan kemandirian pesantren pasca-UU Pesantren No. 18/2019, afMahasiswa Demo 009si dana abadi pesantren, kurikulum muatan lokal, dan modMahasiswa Demo 014si bMahasiswa Demo 014gama (Pertemuan 11).',
+    description: 'Penguatan kemandirian pesantren pasca-UU Pesantren No. 18/2019, afirmasi dana abadi pesantren, kurikulum muatan lokal, dan moderasi beragama (Pertemuan 11).',
     toolsSuggested: 'ChatGPT / Claude, Canva / PowerPoint',
   },
   {
@@ -1647,7 +1647,7 @@ export const INITIAL_GROUPS_KEBIJAKAN_SEM3: GroupProject[] = [
     name: 'KELOMPOK 10',
     members: ['Mahasiswa Demo 009', 'Mahasiswa Demo 020'],
     title: 'Etika Publik dan Akuntabilitas Nilai Amanah Kebijakan',
-    description: 'Integritas pejabat dan pembuat kebijakan, akuntabilitas nilai amanah (moralitas publik), pembMahasiswa Demo 014ntasan nepotisme seleksi pendidik, dan policy brief rekomendasi (Pertemuan 12).',
+    description: 'Integritas pejabat dan pembuat kebijakan, akuntabilitas nilai amanah (moralitas publik), pemberantasan nepotisme seleksi pendidik, dan policy brief rekomendasi (Pertemuan 12).',
     toolsSuggested: 'Canva / CapCut, ChatGPT (Penyusunan Policy Brief)',
   },
 ];
@@ -1721,14 +1721,14 @@ export const INITIAL_MEETINGS_SEM3: MeetingSchedule[] = [
     meetingNumber: 6,
     dateStr: 'Senin, 6 Oktober 2026',
     isoDate: '2026-10-06',
-    title: 'Kepemimpinan Profetik dalam PenggMahasiswa Demo 014kan Organisasi',
+    title: 'Kepemimpinan Profetik dalam Penggerakan Organisasi',
     presenters: ['Mahasiswa Demo 014', 'Mahasiswa Demo 015', 'Mahasiswa Demo 016', 'Mahasiswa Demo 017'],
     partCodes: ['Pertemuan 6'],
     type: 'kuliah',
     presentationFormat: 'kelompok',
     groupName: 'KELOMPOK 5',
     groupId: 5,
-    description: 'PenMahasiswa Demo 014pan sifat kenabian (Siddiq, Amanah, Tabligh, Fathonah) dalam menggMahasiswa Demo 014kkan SDM dan iklim kerja madrasah.',
+    description: 'Penerapan sifat kenabian (Siddiq, Amanah, Tabligh, Fathonah) dalam menggerakkan SDM dan iklim kerja madrasah.',
   },
   {
     meetingNumber: 7,
@@ -1929,7 +1929,7 @@ export const INITIAL_MEETINGS_KEBIJAKAN_SEM3: MeetingSchedule[] = [
     presentationFormat: 'kelompok',
     groupName: 'KELOMPOK 5',
     groupId: 5,
-    description: 'PenMahasiswa Demo 014pan kMahasiswa Demo 014ngka evaluasi formatif-sumatif, model CIPP (Context, Input, Process, Product), dan indikator capaian SNP.',
+    description: 'Penerapan kerangka evaluasi formatif-sumatif, model CIPP (Context, Input, Process, Product), dan indikator capaian SNP.',
   },
   {
     meetingNumber: 7,
@@ -1942,7 +1942,7 @@ export const INITIAL_MEETINGS_KEBIJAKAN_SEM3: MeetingSchedule[] = [
     presentationFormat: 'kelompok',
     groupName: 'KELOMPOK 6',
     groupId: 6,
-    description: 'Relasi kekuasaan legislatif-eksekutif, pMahasiswa Demo 014n ormas Islam dalam RUU Sisdiknas, dan alokasi 20% APBN pendidikan.',
+    description: 'Relasi kekuasaan legislatif-eksekutif, peran ormas Islam dalam RUU Sisdiknas, dan alokasi 20% APBN pendidikan.',
   },
   {
     meetingNumber: 8,
@@ -1965,7 +1965,7 @@ export const INITIAL_MEETINGS_KEBIJAKAN_SEM3: MeetingSchedule[] = [
     presentationFormat: 'kelompok',
     groupName: 'KELOMPOK 7',
     groupId: 7,
-    description: 'Analisis efektivitas distribusi dana BOSP madrasah, transparansi RKAM digital, dan alokasi kesejahtMahasiswa Demo 014an pendidik.',
+    description: 'Analisis efektivitas distribusi dana BOSP madrasah, transparansi RKAM digital, dan alokasi kesejahteraan pendidik.',
   },
   {
     meetingNumber: 10,
@@ -2063,9 +2063,9 @@ export const INITIAL_UTS_QUESTIONS_SEM3: UtsQuestion[] = [
     id: 302,
     number: 2,
     title: 'Komparasi Paradigma Tokoh Mutu (Deming vs Juran vs Crosby)',
-    topic: 'Pilar Pemikiran Tokoh Mutu DuMahasiswa Demo 033 (Pertemuan 3)',
-    question: 'Bandingkan 14 Prinsip Mutu Edwards Deming dengan Trilogi Juran (Quality Planning, Quality Control, Quality Improvement)! Manakah di antara kedua pendekatan tersebut yang paling tepat ditMahasiswa Demo 014pkan untuk membenahi madrasah swasta yang sedang mengalami penurunan animo pendaftar siswa baru? Berikan alasannya!',
-    guide: 'Uraikan 14 prinsip Deming, 3 pilar Juran, dan analisis kecocokan penMahasiswa Demo 014pannya pada madrasah swasta.',
+    topic: 'Pilar Pemikiran Tokoh Mutu Dunia (Pertemuan 3)',
+    question: 'Bandingkan 14 Prinsip Mutu Edwards Deming dengan Trilogi Juran (Quality Planning, Quality Control, Quality Improvement)! Manakah di antara kedua pendekatan tersebut yang paling tepat diterapkan untuk membenahi madrasah swasta yang sedang mengalami penurunan animo pendaftar siswa baru? Berikan alasannya!',
+    guide: 'Uraikan 14 prinsip Deming, 3 pilar Juran, dan analisis kecocokan penerapannya pada madrasah swasta.',
     rubric: 'Kedalaman perbandingan teori (8 poin), ketepatan pemilihan strategi (6 poin), kelayakan argumen (6 poin).',
     maxScore: 20,
   },
@@ -2074,7 +2074,7 @@ export const INITIAL_UTS_QUESTIONS_SEM3: UtsQuestion[] = [
     number: 3,
     title: 'Manajemen Kepuasan Pelanggan dan Penanganan Komplain',
     topic: 'Dimensi Mutu dan Kepuasan Stakeholder (Pertemuan 4)',
-    question: 'Lembaga pendidikan Islam memiliki pelanggan primer (siswa), sekunder (orang tua), dan tersier (masyarakat & duMahasiswa Demo 033 kerja). Bagaimana manajer madrasah mengelola ekspektasi yang berbeda dari ketiga pihak tersebut agar tercipta kepuasan stakeholder yang harmonis? Rancanglah alur sederhana penanganan komplain mutu!',
+    question: 'Lembaga pendidikan Islam memiliki pelanggan primer (siswa), sekunder (orang tua), dan tersier (masyarakat & dunia kerja). Bagaimana manajer madrasah mengelola ekspektasi yang berbeda dari ketiga pihak tersebut agar tercipta kepuasan stakeholder yang harmonis? Rancanglah alur sederhana penanganan komplain mutu!',
     guide: 'Klasifikasikan kebutuhan tiap segmen pelanggan dan buat bagan/tahapan standar penanganan keluhan (handling complaint).',
     rubric: 'Analisis segmentasi pelanggan (7 poin), rancangan alur penanganan komplain (7 poin), orisinalitas ide (6 poin).',
     maxScore: 20,
@@ -2092,9 +2092,9 @@ export const INITIAL_UTS_QUESTIONS_SEM3: UtsQuestion[] = [
   {
     id: 305,
     number: 5,
-    title: 'PMahasiswa Demo 014ncangan Sistem Penjaminan Mutu Internal (SPMI) Madrasah',
+    title: 'Perancangan Sistem Penjaminan Mutu Internal (SPMI) Madrasah',
     topic: 'Struktur SPMI dan Standar Nasional Pendidikan (Pertemuan 6 & 7)',
-    question: 'Sebagai calon kepala madrasah atau konsultan mutu, rancanglah sebuah draf kMahasiswa Demo 014ngka Sistem Penjaminan Mutu Internal (SPMI) yang memuat: Kebijakan Mutu, Manual Mutu (PPEPP: Penetapan, Pelaksanaan, Evaluasi, Pengendalian, Peningkatan), serta indikator mutu untuk Standar Pendidik dan Tenaga Kependidikan!',
+    question: 'Sebagai calon kepala madrasah atau konsultan mutu, rancanglah sebuah draf kerangka Sistem Penjaminan Mutu Internal (SPMI) yang memuat: Kebijakan Mutu, Manual Mutu (PPEPP: Penetapan, Pelaksanaan, Evaluasi, Pengendalian, Peningkatan), serta indikator mutu untuk Standar Pendidik dan Tenaga Kependidikan!',
     guide: 'Sertakan rumusan visi kebijakan mutu, langkah konkret siklus PPEPP, dan minimal 3 indikator terukur kompetensi pendidik.',
     rubric: 'Kelengkapan komponen dokumen SPMI (8 poin), keselarasan PPEPP dengan SNP (6 poin), keterukuran indikator (6 poin).',
     maxScore: 20,
@@ -2105,7 +2105,7 @@ export const INITIAL_COURSE_PROFILE: DosenProfile = {
   name: 'Risfa Tri Ulfa, S.Pd., M.Pd.',
   dosenName: 'Risfa Tri Ulfa',
   dosenTitle: 'S.Pd., M.Pd.',
-  campusName: 'STAI JaMahasiswa Demo 015bi',
+  campusName: 'STAI Jambi',
   nip: '198806282015032001',
   courseTitle: 'Filsafat Ilmu',
   courseCode: 'STI 105',
@@ -2124,7 +2124,7 @@ export const INITIAL_COURSE_PROFILE_SEM3: DosenProfile = {
   name: 'Risfa Tri Ulfa, S.Pd., M.Pd.',
   dosenName: 'Risfa Tri Ulfa',
   dosenTitle: 'S.Pd., M.Pd.',
-  campusName: 'STAI JaMahasiswa Demo 015bi',
+  campusName: 'STAI Jambi',
   nip: '198806282015032001',
   courseTitle: 'Konsep Dasar Manajemen Pendidikan Islam (MPI)',
   courseCode: 'MPI 301',
@@ -2143,14 +2143,14 @@ export const INITIAL_COURSE_PROFILE_KEBIJAKAN_SEM3: DosenProfile = {
   name: 'Risfa Tri Ulfa, S.Pd., M.Pd.',
   dosenName: 'Risfa Tri Ulfa',
   dosenTitle: 'S.Pd., M.Pd.',
-  campusName: 'STAI JaMahasiswa Demo 015bi',
+  campusName: 'STAI Jambi',
   nip: '198806282015032001',
   courseTitle: 'Analisis Kebijakan Pendidikan',
   courseCode: 'MPI 302',
   sks: 3,
   semester: 'Semester III (Ganjil 2026/2027)',
   semesterNumber: 3,
-  roomName: 'Kamar MPI 3B (Ruang Al-GMahasiswa Demo 027li)',
+  roomName: 'Kamar MPI 3B (Ruang Al-Ghazali)',
   studyProgram: 'Manajemen Pendidikan Islam (MPI)',
   classCode: 'MPI 3B',
   academicYear: '2026/2027',
@@ -2168,7 +2168,7 @@ export const INITIAL_DATABASE: SiakadDatabase = {
       semester: 'Semester I (Ganjil 2026/2027)',
       semesterNumber: 1,
       roomName: 'Kamar MPI 1 (Ruang Al-Farabi)',
-      campusName: 'STAI JaMahasiswa Demo 015bi',
+      campusName: 'STAI Jambi',
       dosenName: 'Risfa Tri Ulfa',
       dosenTitle: 'S.Pd., M.Pd.',
       studyProgram: 'Manajemen Pendidikan Islam (MPI)',
@@ -2183,7 +2183,7 @@ export const INITIAL_DATABASE: SiakadDatabase = {
       semester: 'Semester III (Ganjil 2026/2027)',
       semesterNumber: 3,
       roomName: 'Kamar MPI 3A (Ruang Ibnu Khaldun)',
-      campusName: 'STAI JaMahasiswa Demo 015bi',
+      campusName: 'STAI Jambi',
       dosenName: 'Risfa Tri Ulfa',
       dosenTitle: 'S.Pd., M.Pd.',
       studyProgram: 'Manajemen Pendidikan Islam (MPI)',
@@ -2197,8 +2197,8 @@ export const INITIAL_DATABASE: SiakadDatabase = {
       sks: 3,
       semester: 'Semester III (Ganjil 2026/2027)',
       semesterNumber: 3,
-      roomName: 'Kamar MPI 3B (Ruang Al-GMahasiswa Demo 027li)',
-      campusName: 'STAI JaMahasiswa Demo 015bi',
+      roomName: 'Kamar MPI 3B (Ruang Al-Ghazali)',
+      campusName: 'STAI Jambi',
       dosenName: 'Risfa Tri Ulfa',
       dosenTitle: 'S.Pd., M.Pd.',
       studyProgram: 'Manajemen Pendidikan Islam (MPI)',
@@ -2221,9 +2221,9 @@ export const INITIAL_DATABASE: SiakadDatabase = {
   quizSettings: {
     isQuizActive: true,
     targetMeeting: 'Semua Pertemuan (Review RPS & Materi Komprehensif)',
-    quizTitle: 'Game Cerdas Cermat Kartun RPS MPI STAI JaMahasiswa Demo 015bi',
+    quizTitle: 'Game Cerdas Cermat Kartun RPS MPI STAI Jambi',
     timeLimitMinutes: 15,
-    description: 'Kuis animasi kartun intMahasiswa Demo 014ktif: Pilihan Ganda, Tembak Balon Jawaban, dan Lompat Kodok TMahasiswa Demo 014tai.',
+    description: 'Kuis animasi kartun interaktif: Pilihan Ganda, Tembak Balon Jawaban, dan Lompat Kodok Teratai.',
     gameMode: 'bebas_pilih',
     soundEffectsEnabled: true,
     musicEnabled: false,
@@ -2235,7 +2235,7 @@ export const INITIAL_DATABASE: SiakadDatabase = {
   uasFormat: 'proyek_video',
   utsExamSettings: {
     isOpen: true,
-    instructions: 'Ujian Tengah Semester (UTS) dibuka oleh Dosen Pengampu. Kerjakan 5 butir soal essay reflektif dengan cermat dan kumpulkan sebelum batas waktu bMahasiswa Demo 014khir.',
+    instructions: 'Ujian Tengah Semester (UTS) dibuka oleh Dosen Pengampu. Kerjakan 5 butir soal essay reflektif dengan cermat dan kumpulkan sebelum batas waktu berakhir.',
     openedAt: '2026-08-10T08:00:00.000Z',
     openedBy: 'Risfa Tri Ulfa, S.Pd., M.Pd.',
   },
@@ -2310,9 +2310,9 @@ export const INITIAL_ALL_COURSES_DATA: Record<string, any> = {
     quizSettings: {
       isQuizActive: true,
       targetMeeting: 'Semua Pertemuan (Review RPS Konsep Dasar MPI)',
-      quizTitle: 'Game Cerdas Cermat Konsep Dasar MPI 3 STAI JaMahasiswa Demo 015bi',
+      quizTitle: 'Game Cerdas Cermat Konsep Dasar MPI 3 STAI Jambi',
       timeLimitMinutes: 15,
-      description: 'Kuis intMahasiswa Demo 014ktif Konsep Dasar Manajemen Pendidikan Islam (Semester 3).',
+      description: 'Kuis interaktif Konsep Dasar Manajemen Pendidikan Islam (Semester 3).',
       gameMode: 'bebas_pilih',
       soundEffectsEnabled: true,
       musicEnabled: false,
@@ -2398,7 +2398,7 @@ export const INITIAL_ALL_COURSES_DATA: Record<string, any> = {
 INITIAL_DATABASE.allCoursesData = INITIAL_ALL_COURSES_DATA;
 
 /**
- * Helper to genMahasiswa Demo 014te official RPS text for any of the active courses
+ * Helper to generate official RPS text for any of the active courses
  */
 export function getDefaultRpsText(courseIdOrTitle: string): string {
   const lower = (courseIdOrTitle || '').toLowerCase();
@@ -2406,7 +2406,7 @@ export function getDefaultRpsText(courseIdOrTitle: string): string {
   // Analisis Kebijakan Pendidikan (Semester 3 / MPI 3)
   if (lower.includes('kebijakan') || lower.includes('analisis')) {
     return `KEMENTERIAN AGAMA REPUBLIK INDONESIA
-SEKOLAH TINGGI AGAMA ISLAM (STAI) JAMahasiswa Demo 015BI
+SEKOLAH TINGGI AGAMA ISLAM (STAI) JAMBI
 PROGRAM STUDI MANAJEMEN PENDIDIKAN ISLAM (MPI)
 RENCANA PEMBELAJARAN SEMESTER (RPS)
 Mata Kuliah: Analisis Kebijakan Pendidikan
@@ -2414,10 +2414,10 @@ Kode Mata Kuliah: MPI 302
 Bobot: 3 SKS
 Semester: Semester III (Ganjil 2026/2027)
 Dosen Pengampu: Risfa Tri Ulfa, S.Pd., M.Pd.
-Kelas / Kamar: MPI 3B (Ruang Al-GMahasiswa Demo 027li)
+Kelas / Kamar: MPI 3B (Ruang Al-Ghazali)
 
 DESKRIPSI MATA KULIAH:
-Mata kuliah Analisis Kebijakan Pendidikan membekali mahasiswa Program Studi MPI (Semester 3) dengan metodologi penelaahan siklus kebijakan publik dalam bidang pendidikan Islam, analisis agenda setting, formulasi regulasi madrasah dan pesantren, efektivitas pendanaan BOS, tantangan kurikulum di Mahasiswa Demo 014 digitalisasi, kearifan lokal, serta etika publik dan akuntabilitas nilai amanah.
+Mata kuliah Analisis Kebijakan Pendidikan membekali mahasiswa Program Studi MPI (Semester 3) dengan metodologi penelaahan siklus kebijakan publik dalam bidang pendidikan Islam, analisis agenda setting, formulasi regulasi madrasah dan pesantren, efektivitas pendanaan BOS, tantangan kurikulum di era digitalisasi, kearifan lokal, serta etika publik dan akuntabilitas nilai amanah.
 
 JADWAL PERTEMUAN DAN MATERI PERKULIAHAN (16 PERTEMUAN):
 Pertemuan 1: Orientasi Perkuliahan, Kontrak Belajar, dan Pengantar Analisis Kebijakan (Dosen Pengampu)
@@ -2441,7 +2441,7 @@ Pertemuan 16: Evaluasi Akhir Semester (UAS): Ujian Komprehensif & Tayang Proyek 
   // Konsep Dasar Manajemen Pendidikan Islam (Semester 3 / MPI 3)
   if (lower.includes('konsep') || lower.includes('dasar') || lower.includes('mpi3') || lower.includes('301')) {
     return `KEMENTERIAN AGAMA REPUBLIK INDONESIA
-SEKOLAH TINGGI AGAMA ISLAM (STAI) JAMahasiswa Demo 015BI
+SEKOLAH TINGGI AGAMA ISLAM (STAI) JAMBI
 PROGRAM STUDI MANAJEMEN PENDIDIKAN ISLAM (MPI)
 RENCANA PEMBELAJARAN SEMESTER (RPS)
 Mata Kuliah: Konsep Dasar Manajemen Pendidikan Islam (MPI)
@@ -2460,7 +2460,7 @@ Pertemuan 2: Hakikat dan Ruang Lingkup Manajemen Pendidikan Islam (Kelompok 1: M
 Pertemuan 3: Landasan Syar’i, Yuridis, dan Filosofis MPI (Kelompok 2: Mahasiswa Demo 003, Mahasiswa Demo 004, Mahasiswa Demo 005)
 Pertemuan 4: Perencanaan Strategis dalam Pendidikan Islam (Kelompok 3: Mahasiswa Demo 006, Mahasiswa Demo 007, Mahasiswa Demo 008, Mahasiswa Demo 009)
 Pertemuan 5: Pengorganisasian dan Struktur Lembaga Pendidikan Islam (Kelompok 4: Mahasiswa Demo 010, Mahasiswa Demo 011, Mahasiswa Demo 012, Mahasiswa Demo 013)
-Pertemuan 6: Kepemimpinan Profetik dalam PenggMahasiswa Demo 014kan Organisasi (Kelompok 5: Mahasiswa Demo 014, Mahasiswa Demo 015, Mahasiswa Demo 016, Mahasiswa Demo 017)
+Pertemuan 6: Kepemimpinan Profetik dalam Penggerakan Organisasi (Kelompok 5: Mahasiswa Demo 014, Mahasiswa Demo 015, Mahasiswa Demo 016, Mahasiswa Demo 017)
 Pertemuan 7: Sistem Pengawasan dan Supervisi Lembaga Pendidikan Islam (Kelompok 6: Mahasiswa Demo 018, Mahasiswa Demo 019, Mahasiswa Demo 009, Mahasiswa Demo 020)
 Pertemuan 8: Evaluasi Tengah Semester (UTS): Ujian Mandiri Konsep Dasar MPI
 Pertemuan 9: Manajemen Kurikulum Madrasah dan Pesantren (Kelompok 7: Mahasiswa Demo 001 & Mahasiswa Demo 002)
@@ -2475,7 +2475,7 @@ Pertemuan 16: Evaluasi Akhir Semester (UAS): Ujian Komprehensif & Tayang Proyek 
 
   // Filsafat Ilmu (Semester 1 / MPI 1)
   return `KEMENTERIAN AGAMA REPUBLIK INDONESIA
-SEKOLAH TINGGI AGAMA ISLAM (STAI) JAMahasiswa Demo 015BI
+SEKOLAH TINGGI AGAMA ISLAM (STAI) JAMBI
 PROGRAM STUDI MANAJEMEN PENDIDIKAN ISLAM (MPI)
 RENCANA PEMBELAJARAN SEMESTER (RPS)
 Mata Kuliah: Filsafat Ilmu
@@ -2494,11 +2494,11 @@ Pertemuan 2: Pengantar Filsafat Ilmu: Pengertian, Objek Kajian (Material & Forma
 Pertemuan 3: Hakikat Pengetahuan dan Ilmu: Perbedaan Pengetahuan Biasa, Ilmu, dan Filsafat (Kelompok 1: Mahasiswa Demo 021, Mahasiswa Demo 022, Mahasiswa Demo 023)
 Pertemuan 4: Pilar Ontologi Ilmu: Hakikat Ada (Being), Realitas Objek Kajian, dan Aliran-aliran Ontologi (Kelompok 2: Mahasiswa Demo 024, Mahasiswa Demo 025)
 Pertemuan 5: Pilar Epistemologi Ilmu: Sumber Pengetahuan, Metode Ilmiah, dan Sarana Berpikir Ilmiah (Kelompok 3: Mahasiswa Demo 026, Mahasiswa Demo 027, Mahasiswa Demo 028)
-Pertemuan 6: Pilar Aksiologi Ilmu: Nilai, Etika Keilmuan, TMahasiswa Demo 031g Jawab Moral, dan Kemanfaatan Sains (Kelompok 4: Mahasiswa Demo 029, Mahasiswa Demo 030)
-Pertemuan 7: Sejarah Perkembangan Filsafat dan Ilmu (Mahasiswa Demo 014 Yunani Klasik & Abad Pertengahan) (Kelompok 5: Mahasiswa Demo 031, Mahasiswa Demo 032, Mahasiswa Demo 033)
+Pertemuan 6: Pilar Aksiologi Ilmu: Nilai, Etika Keilmuan, Tanggung Jawab Moral, dan Kemanfaatan Sains (Kelompok 4: Mahasiswa Demo 029, Mahasiswa Demo 030)
+Pertemuan 7: Sejarah Perkembangan Filsafat dan Ilmu (Era Yunani Klasik & Abad Pertengahan) (Kelompok 5: Mahasiswa Demo 031, Mahasiswa Demo 032, Mahasiswa Demo 033)
 Pertemuan 8: Evaluasi Tengah Semester (UTS): Ujian Mandiri Tertulis Konseptual
 Pertemuan 9: Masa Kejayaan Keilmuan Islam dan Kontribusi Ilmuwan Muslim terhadap Sains Modern (Kelompok 6: Mahasiswa Demo 021, Mahasiswa Demo 022, Mahasiswa Demo 023)
-Pertemuan 10: Perkembangan Filsafat Ilmu Mahasiswa Demo 014 Modern (Positivisme, Rasionalisme, Empirisme) dan Kontemporer (Kelompok 7: Mahasiswa Demo 024, Mahasiswa Demo 025)
+Pertemuan 10: Perkembangan Filsafat Ilmu Era Modern (Positivisme, Rasionalisme, Empirisme) dan Kontemporer (Kelompok 7: Mahasiswa Demo 024, Mahasiswa Demo 025)
 Pertemuan 11: Teori-teori Kebenaran Ilmiah (Koherensi, Korespondensi, Pragmatis) & Presentasi Draf Projek Video (Dosen & Seluruh Kelompok)
 Pertemuan 12: Metodologi Penelitian dan Logika Penalaran Ilmiah (Induktif, Deduktif, Abduktif) (Kelompok 8: Mahasiswa Demo 026, Mahasiswa Demo 027, Mahasiswa Demo 028)
 Pertemuan 13: Integrasi Ilmu, Agama, dan Kearifan Lokal (Local Wisdom) dalam Pengelolaan Pendidikan Islam (Kelompok 9: Mahasiswa Demo 029, Mahasiswa Demo 030)

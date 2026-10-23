@@ -32,6 +32,7 @@ import {
   IndividualSubmission,
   UtsSubmission,
   UtsQuestion,
+  UtsDraft,
   StudentGrade,
   MeetingSchedule,
   GroupProject,
@@ -2732,6 +2733,48 @@ app.post('/api/uts-grade', (req, res) => {
 
   saveDatabase();
   res.json({ success: true, submission: sub, grade: db.grades[studentId] });
+});
+
+// 7c-2. Save UTS Draft (Autosave berkala draf lembar jawaban essay UTS mahasiswa)
+app.post('/api/uts/draft', (req, res) => {
+  const { studentId, answers, docLink, studentName } = req.body;
+  if (!studentId) {
+    return res.status(400).json({ error: 'studentId wajib disertakan' });
+  }
+
+  if (!db.utsDrafts) {
+    db.utsDrafts = {};
+  }
+
+  const student = (db.students || []).find(s => s.id === studentId || s.nim === studentId);
+  const nowIso = new Date().toISOString();
+
+  const draft: UtsDraft = {
+    studentId,
+    studentName: studentName || student?.name || 'Mahasiswa',
+    answers: answers || {},
+    docLink: docLink || '',
+    savedAt: nowIso,
+  };
+
+  db.utsDrafts[studentId] = draft;
+
+  if (db.allCoursesData && db.activeCourseId && db.allCoursesData[db.activeCourseId]) {
+    if (!db.allCoursesData[db.activeCourseId].utsDrafts) {
+      db.allCoursesData[db.activeCourseId].utsDrafts = {};
+    }
+    db.allCoursesData[db.activeCourseId].utsDrafts![studentId] = draft;
+  }
+
+  saveDatabase();
+  res.json({ success: true, savedAt: nowIso, draft });
+});
+
+// 7c-3. Get UTS Draft
+app.get('/api/uts/draft/:studentId', (req, res) => {
+  const { studentId } = req.params;
+  const draft = db.utsDrafts?.[studentId] || null;
+  res.json({ success: true, draft });
 });
 
 // 7d. Save UTS Questions (Dosen: Add, Edit, Remove questions)

@@ -67,6 +67,7 @@ const suppressHmrPlugin = (): PluginOption => ({
 
 export default defineConfig(() => {
   return {
+    base: '/SIAKAD-MPI-TIDAK-DARING/', // <-- Tambahkan baris ini
     plugins: [suppressHmrPlugin(), react(), tailwindcss()],
     resolve: {
       alias: {
@@ -91,7 +92,7 @@ export default defineConfig(() => {
     server: {
       hmr: false,
       ws: false as const,
-      watch: null,
     },
   };
+});
 });

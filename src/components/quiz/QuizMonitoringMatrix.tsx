@@ -30,6 +30,7 @@ interface QuizMonitoringMatrixProps {
   courseTitle?: string;
   campusName?: string;
   dosenName?: string;
+  courseId?: string;
   onRefresh?: () => void;
 }
 
@@ -39,11 +40,13 @@ export const QuizMonitoringMatrix: React.FC<QuizMonitoringMatrixProps> = ({
   courseTitle = 'Filsafat Ilmu',
   campusName = 'STAI Jarinabi',
   dosenName = 'Risfa Tri Ulfa, S.Pd., M.Pd., Gr.',
+  courseId,
   onRefresh,
 }) => {
   const [filterTab, setFilterTab] = useState<'all' | 'finished' | 'playing' | 'not_started'>('all');
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [autoRefresh, setAutoRefresh] = useState<boolean>(true);
+  const [sortCriterion, setSortCriterion] = useState<'rank' | 'time'>('rank');
 
   // Delete modal state
   const [deleteTarget, setDeleteTarget] = useState<{
@@ -60,11 +63,11 @@ export const QuizMonitoringMatrix: React.FC<QuizMonitoringMatrixProps> = ({
     setIsDeleting(true);
     setDeleteFeedback(null);
     try {
-      const res = await deleteQuizSubmissionApi(deleteTarget.id, deleteTarget.studentId);
+      const res = await deleteQuizSubmissionApi(deleteTarget.id, deleteTarget.studentId, courseId);
       if (res.success) {
         setDeleteFeedback({
           type: 'success',
-          text: `Nilai kuis ${deleteTarget.studentName} berhasil dihapus.`,
+          text: `Nilai kuis ${deleteTarget.studentName} berhasil dihapus. Akses kuis telah dibuka kembali.`,
         });
         setTimeout(() => {
           setDeleteTarget(null);
@@ -96,27 +99,38 @@ export const QuizMonitoringMatrix: React.FC<QuizMonitoringMatrixProps> = ({
     return () => clearInterval(interval);
   }, [autoRefresh, onRefresh]);
 
-  // Map submissions by studentId or studentName
+  // Map submissions by studentId, nim, or studentName
   const submissionMap = new Map<string, QuizSubmission>();
   submissions.forEach(sub => {
     if (sub.studentId) submissionMap.set(sub.studentId, sub);
     if (sub.studentName) submissionMap.set(sub.studentName.toLowerCase().trim(), sub);
   });
 
-  // Sort submissions chronologically to determine "Mana Yang Lebih Dulu Selesai"
-  const sortedSubmissions = [...submissions].sort(
+  // 1. Ranked by academic excellence (Score DESC -> timeTakenSeconds ASC -> submittedAt ASC)
+  const rankedSubmissions = [...submissions].sort((a, b) => {
+    if (b.score !== a.score) return b.score - a.score;
+    const aTime = a.timeTakenSeconds || 9999;
+    const bTime = b.timeTakenSeconds || 9999;
+    if (aTime !== bTime) return aTime - bTime;
+    return new Date(a.submittedAt).getTime() - new Date(b.submittedAt).getTime();
+  });
+
+  // 2. Ranked chronologically by finish time ("Mana Yang Lebih Dulu Selesai")
+  const timeSubmissions = [...submissions].sort(
     (a, b) => new Date(a.submittedAt).getTime() - new Date(b.submittedAt).getTime()
   );
 
-  // Map each student to their matrix record
+  const displayedSubmissions = sortCriterion === 'rank' ? rankedSubmissions : timeSubmissions;
+
+  // Map each student in the active room to their matrix record
   const studentMatrix = students.map(std => {
-    const sub = submissionMap.get(std.id) || submissionMap.get(std.name.toLowerCase().trim());
-    const finishIndex = sub ? sortedSubmissions.findIndex(s => s.id === sub.id) : -1;
-    
-    // Status logic:
-    // If has submission -> 'finished'
-    // If taking quiz live -> 'playing'
-    // Otherwise -> 'not_started'
+    const sub =
+      submissionMap.get(std.id) ||
+      (std.nim ? submissionMap.get(std.nim) : undefined) ||
+      submissionMap.get(std.name.toLowerCase().trim());
+    const academicRankIndex = sub ? rankedSubmissions.findIndex(s => s.id === sub.id) : -1;
+    const finishIndex = sub ? timeSubmissions.findIndex(s => s.id === sub.id) : -1;
+
     let status: 'finished' | 'playing' | 'not_started' = 'not_started';
     if (sub) {
       status = 'finished';
@@ -129,6 +143,7 @@ export const QuizMonitoringMatrix: React.FC<QuizMonitoringMatrixProps> = ({
     return {
       student: std,
       submission: sub,
+      academicRank: academicRankIndex >= 0 ? academicRankIndex + 1 : null,
       finishRank: finishIndex >= 0 ? finishIndex + 1 : null,
       status,
     };
@@ -194,7 +209,7 @@ export const QuizMonitoringMatrix: React.FC<QuizMonitoringMatrixProps> = ({
               Matriks Point & Pemantau Real-Time Kuis RPS
             </h3>
             <p className="text-xs sm:text-sm text-amber-100/90 max-w-2xl leading-relaxed">
-              Memantau secara langsung seluruh 36 mahasiswa Pascasarjana MPI 1 saat mengerjakan game kuis: 
+              Memantau secara langsung seluruh {students.length} mahasiswa {courseTitle} saat mengerjakan game kuis: 
               siapa yang <strong>lebih dulu selesai</strong>, perolehan skor poin, durasi pengerjaan, dan status verifikasi webcam.
             </p>
           </div>
@@ -240,7 +255,7 @@ export const QuizMonitoringMatrix: React.FC<QuizMonitoringMatrixProps> = ({
           <div className="bg-white/10 rounded-2xl p-3 backdrop-blur-xs">
             <div className="text-[11px] text-amber-200 font-semibold uppercase">Total Mahasiswa</div>
             <div className="text-2xl font-black text-white font-mono">{students.length} Orang</div>
-            <div className="text-[10px] text-amber-100">Kelas Pascasarjana MPI 1</div>
+            <div className="text-[10px] text-amber-100">Kelas {courseTitle}</div>
           </div>
 
           <div className="bg-white/10 rounded-2xl p-3 backdrop-blur-xs">
@@ -277,26 +292,61 @@ export const QuizMonitoringMatrix: React.FC<QuizMonitoringMatrixProps> = ({
       {/* SECTION 1: MANA YANG LEBIH DULU SELESAI (SPEED & ACCURACY RANKING)        */}
       {/* ========================================================================= */}
       <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-5 space-y-4">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-3 border-b border-slate-100">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-slate-100">
           <div className="flex items-center gap-2">
             <div className="h-8 w-8 rounded-xl bg-amber-100 text-amber-800 flex items-center justify-center font-bold">
-              ⚡
+              {sortCriterion === 'rank' ? '🏆' : '⚡'}
             </div>
             <div>
               <h4 className="font-bold text-sm sm:text-base text-slate-900">
-                Mana Yang Lebih Dulu Selesai (Urutan Kecepatan & Ketepatan Jawaban)
+                {sortCriterion === 'rank'
+                  ? 'Papan Peringkat Kuis (Skor Tertinggi & Kecepatan Waktu)'
+                  : 'Mana Yang Lebih Dulu Selesai (Urutan Detik Pengiriman Jawaban)'}
               </h4>
               <p className="text-xs text-slate-500">
-                Peringkat mahasiswa berdasarkan urutan detik pengiriman jawaban kuis ke server dosen.
+                {sortCriterion === 'rank'
+                  ? 'Peringkat akademik otomatis: skor poin tertinggi, efisiensi waktu pengerjaan, dan verifikasi kamera proctoring.'
+                  : 'Peringkat mahasiswa berdasarkan kronologi waktu pengiriman jawaban kuis ke server dosen.'}
               </p>
             </div>
           </div>
-          <span className="text-xs font-bold text-amber-900 bg-amber-50 px-2.5 py-1 rounded-lg border border-amber-200 self-start sm:self-auto">
-            {sortedSubmissions.length} Mahasiswa Telah Menyelesaikan Kuis
-          </span>
+
+          <div className="flex flex-wrap items-center gap-2 self-start sm:self-auto">
+            {/* Toggle Sort Button */}
+            <div className="flex items-center bg-slate-100 p-1 rounded-xl text-xs font-semibold">
+              <button
+                type="button"
+                onClick={() => setSortCriterion('rank')}
+                className={`px-3 py-1 rounded-lg transition-colors flex items-center gap-1.5 cursor-pointer ${
+                  sortCriterion === 'rank'
+                    ? 'bg-white text-amber-900 font-bold shadow-xs'
+                    : 'text-slate-600 hover:text-slate-900'
+                }`}
+              >
+                <Award size={13} className="text-amber-600" />
+                <span>Skor Tertinggi</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setSortCriterion('time')}
+                className={`px-3 py-1 rounded-lg transition-colors flex items-center gap-1.5 cursor-pointer ${
+                  sortCriterion === 'time'
+                    ? 'bg-white text-slate-900 font-bold shadow-xs'
+                    : 'text-slate-600 hover:text-slate-900'
+                }`}
+              >
+                <Clock size={13} className="text-slate-600" />
+                <span>Urutan Selesai</span>
+              </button>
+            </div>
+
+            <span className="text-xs font-bold text-amber-900 bg-amber-50 px-2.5 py-1 rounded-lg border border-amber-200">
+              {displayedSubmissions.length} Mahasiswa Telah Menyelesaikan Kuis
+            </span>
+          </div>
         </div>
 
-        {sortedSubmissions.length === 0 ? (
+        {displayedSubmissions.length === 0 ? (
           <div className="text-center py-8 text-slate-400">
             <Clock size={32} className="mx-auto mb-2 opacity-40 animate-spin" />
             <p className="text-xs sm:text-sm font-medium">
@@ -308,7 +358,9 @@ export const QuizMonitoringMatrix: React.FC<QuizMonitoringMatrixProps> = ({
             <table className="w-full text-left text-xs sm:text-sm">
               <thead>
                 <tr className="bg-amber-50/80 text-amber-950 font-bold border-b border-amber-200">
-                  <th className="py-2.5 px-3 text-center">Urutan Finish</th>
+                  <th className="py-2.5 px-3 text-center">
+                    {sortCriterion === 'rank' ? 'Peringkat Nilai' : 'Urutan Finish'}
+                  </th>
                   <th className="py-2.5 px-3">Nama Mahasiswa</th>
                   <th className="py-2.5 px-3 text-center">Skor Poin</th>
                   <th className="py-2.5 px-3 text-center">Benar / Total</th>
@@ -319,9 +371,17 @@ export const QuizMonitoringMatrix: React.FC<QuizMonitoringMatrixProps> = ({
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
-                {sortedSubmissions.map((sub, idx) => {
+                {displayedSubmissions.map((sub, idx) => {
                   const medal =
-                    idx === 0
+                    sortCriterion === 'rank'
+                      ? idx === 0
+                        ? '🥇 Juara 1'
+                        : idx === 1
+                        ? '🥈 Juara 2'
+                        : idx === 2
+                        ? '🥉 Juara 3'
+                        : `Peringkat #${idx + 1}`
+                      : idx === 0
                       ? '🥇 Juara 1 Selesai'
                       : idx === 1
                       ? '🥈 Juara 2 Selesai'
@@ -419,17 +479,17 @@ export const QuizMonitoringMatrix: React.FC<QuizMonitoringMatrixProps> = ({
       </div>
 
       {/* ========================================================================= */}
-      {/* SECTION 2: MATRIKS POINT KELAS (36 MAHASISWA BENTO GRID)                  */}
+      {/* SECTION 2: MATRIKS POINT KELAS (BENTO GRID MAHASISWA)                     */}
       {/* ========================================================================= */}
       <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-5 space-y-4">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-slate-100">
           <div>
             <h4 className="font-bold text-sm sm:text-base text-slate-900 flex items-center gap-2">
               <Users size={18} className="text-amber-600" />
-              Matriks Point Seluruh 36 Mahasiswa MPI 1
+              Matriks Point Seluruh {students.length} Mahasiswa ({courseTitle})
             </h4>
             <p className="text-xs text-slate-500">
-              Panel visual bento-grid memantau progres, perolehan skor, dan kecepatan masing-masing mahasiswa.
+              Panel visual bento-grid memantau capaian skor kuis, urutan peringkat, dan kecepatan pengerjaan masing-masing mahasiswa.
             </p>
           </div>
 
@@ -450,7 +510,7 @@ export const QuizMonitoringMatrix: React.FC<QuizMonitoringMatrixProps> = ({
               <button
                 type="button"
                 onClick={() => setFilterTab('all')}
-                className={`px-2.5 py-1 rounded-lg transition-colors ${
+                className={`px-2.5 py-1 rounded-lg transition-colors cursor-pointer ${
                   filterTab === 'all' ? 'bg-white text-slate-900 shadow-xs' : 'text-slate-600 hover:text-slate-900'
                 }`}
               >
@@ -459,7 +519,7 @@ export const QuizMonitoringMatrix: React.FC<QuizMonitoringMatrixProps> = ({
               <button
                 type="button"
                 onClick={() => setFilterTab('finished')}
-                className={`px-2.5 py-1 rounded-lg transition-colors ${
+                className={`px-2.5 py-1 rounded-lg transition-colors cursor-pointer ${
                   filterTab === 'finished' ? 'bg-white text-emerald-800 shadow-xs font-bold' : 'text-slate-600 hover:text-slate-900'
                 }`}
               >
@@ -468,7 +528,7 @@ export const QuizMonitoringMatrix: React.FC<QuizMonitoringMatrixProps> = ({
               <button
                 type="button"
                 onClick={() => setFilterTab('playing')}
-                className={`px-2.5 py-1 rounded-lg transition-colors ${
+                className={`px-2.5 py-1 rounded-lg transition-colors cursor-pointer ${
                   filterTab === 'playing' ? 'bg-white text-amber-900 shadow-xs font-bold' : 'text-slate-600 hover:text-slate-900'
                 }`}
               >
@@ -477,7 +537,7 @@ export const QuizMonitoringMatrix: React.FC<QuizMonitoringMatrixProps> = ({
               <button
                 type="button"
                 onClick={() => setFilterTab('not_started')}
-                className={`px-2.5 py-1 rounded-lg transition-colors ${
+                className={`px-2.5 py-1 rounded-lg transition-colors cursor-pointer ${
                   filterTab === 'not_started' ? 'bg-white text-slate-900 shadow-xs' : 'text-slate-600 hover:text-slate-900'
                 }`}
               >
@@ -487,12 +547,13 @@ export const QuizMonitoringMatrix: React.FC<QuizMonitoringMatrixProps> = ({
           </div>
         </div>
 
-        {/* Bento Grid 36 Cards */}
+        {/* Bento Grid Cards */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3.5">
           {filteredList.map((item, idx) => {
             const hasSub = !!item.submission;
             const score = item.submission?.score ?? 0;
-            const rank = item.finishRank;
+            const academicRank = item.academicRank;
+            const finishRank = item.finishRank;
 
             return (
               <div
@@ -504,7 +565,7 @@ export const QuizMonitoringMatrix: React.FC<QuizMonitoringMatrixProps> = ({
                 }`}
               >
                 <div className="space-y-2">
-                  {/* Card Header: Student Name & Finish Rank */}
+                  {/* Card Header: Student Name & Academic Rank Badge */}
                   <div className="flex items-start justify-between gap-2">
                     <div>
                       <div className="text-xs font-black text-slate-900 line-clamp-1">
@@ -515,11 +576,31 @@ export const QuizMonitoringMatrix: React.FC<QuizMonitoringMatrixProps> = ({
                       </div>
                     </div>
 
-                    {rank && (
-                      <span className="shrink-0 px-2 py-0.5 rounded-full text-[10px] font-black bg-amber-500 text-white shadow-xs">
-                        #{rank} Finish
+                    {academicRank ? (
+                      <span
+                        className={`shrink-0 px-2 py-0.5 rounded-full text-[10px] font-black shadow-xs ${
+                          academicRank === 1
+                            ? 'bg-amber-400 text-amber-950 font-black ring-1 ring-amber-300'
+                            : academicRank === 2
+                            ? 'bg-slate-300 text-slate-900 font-black'
+                            : academicRank === 3
+                            ? 'bg-amber-600 text-white font-black'
+                            : 'bg-amber-500 text-white'
+                        }`}
+                      >
+                        {academicRank === 1
+                          ? '🥇 Juara 1'
+                          : academicRank === 2
+                          ? '🥈 Juara 2'
+                          : academicRank === 3
+                          ? '🥉 Juara 3'
+                          : `#${academicRank}`}
                       </span>
-                    )}
+                    ) : finishRank ? (
+                      <span className="shrink-0 px-2 py-0.5 rounded-full text-[10px] font-black bg-slate-400 text-white shadow-xs">
+                        #{finishRank} Selesai
+                      </span>
+                    ) : null}
                   </div>
 
                   {/* Score & Points Bar */}

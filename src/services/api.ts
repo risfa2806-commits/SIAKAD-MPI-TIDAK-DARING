@@ -2884,7 +2884,7 @@ export async function gradePresentationGroupApi(
 }
 
 // 12. Quiz System API
-export async function fetchQuizApi(): Promise<{
+export async function fetchQuizApi(courseId?: string): Promise<{
   success: boolean;
   questions: QuizQuestion[];
   submissions: QuizSubmission[];
@@ -2892,9 +2892,20 @@ export async function fetchQuizApi(): Promise<{
   error?: string;
 }> {
   try {
-    const res = await fetch('/api/quiz');
+    const local = getLocalCache();
+    const activeCourseId = courseId || local.activeCourseId || (typeof window !== 'undefined' ? localStorage.getItem('siakad_active_course_id') : null);
+    const headers: Record<string, string> = { Accept: 'application/json' };
+    if (activeCourseId) headers['x-active-course-id'] = activeCourseId;
+    const url = activeCourseId ? `/api/quiz?courseId=${encodeURIComponent(activeCourseId)}` : '/api/quiz';
+
+    const res = await fetch(url, { headers });
     const json = await safeJson(res, null);
     if (res.ok && json.success) {
+      if (activeCourseId && local.allCoursesData && local.allCoursesData[activeCourseId]) {
+        local.allCoursesData[activeCourseId].quizQuestions = json.questions || [];
+        local.allCoursesData[activeCourseId].quizSubmissions = json.submissions || [];
+        saveLocalCache(local);
+      }
       return {
         success: true,
         questions: json.questions || [],
@@ -2906,28 +2917,38 @@ export async function fetchQuizApi(): Promise<{
   } catch (err) {
     console.warn('Fetch quiz error:', err);
     const local = getLocalCache();
+    const activeCourseId = courseId || local.activeCourseId || (typeof window !== 'undefined' ? localStorage.getItem('siakad_active_course_id') : null);
+    const room = (activeCourseId && local.allCoursesData?.[activeCourseId]) ? local.allCoursesData[activeCourseId] : local;
     return {
       success: true,
-      questions: local.quizQuestions || [],
-      submissions: local.quizSubmissions || [],
-      courseTitle: local.courseProfile?.courseTitle,
+      questions: room.quizQuestions || local.quizQuestions || [],
+      submissions: room.quizSubmissions || local.quizSubmissions || [],
+      courseTitle: (room as any).profile?.courseTitle || (room as any).courseProfile?.courseTitle || local.courseProfile?.courseTitle,
     };
   }
 }
 
 export async function updateQuizQuestionsApi(
-  questions: QuizQuestion[]
+  questions: QuizQuestion[],
+  courseId?: string
 ): Promise<{ success: boolean; questions?: QuizQuestion[]; error?: string }> {
   try {
+    const local = getLocalCache();
+    const activeCourseId = courseId || local.activeCourseId || (typeof window !== 'undefined' ? localStorage.getItem('siakad_active_course_id') : '') || '';
+    const headers = getDosenAuthHeaders();
+    if (activeCourseId) headers['x-active-course-id'] = activeCourseId;
+
     const res = await fetch('/api/quiz/questions', {
       method: 'POST',
-      headers: getDosenAuthHeaders(),
-      body: JSON.stringify({ questions }),
+      headers,
+      body: JSON.stringify({ questions, courseId: activeCourseId }),
     });
     const json = await safeJson(res, null);
     if (res.ok && json.success) {
-      const local = getLocalCache();
       local.quizQuestions = json.questions;
+      if (activeCourseId && local.allCoursesData && local.allCoursesData[activeCourseId]) {
+        local.allCoursesData[activeCourseId].quizQuestions = json.questions;
+      }
       saveLocalCache(local);
       return { success: true, questions: json.questions };
     }
@@ -3013,22 +3034,29 @@ export function generateClientQuizQuestions(meetings: MeetingSchedule[], courseT
   });
 }
 
-export async function autoGenerateQuizApi(): Promise<{
+export async function autoGenerateQuizApi(courseId?: string): Promise<{
   success: boolean;
   questions?: QuizQuestion[];
   message?: string;
   error?: string;
 }> {
   try {
+    const local = getLocalCache();
+    const activeCourseId = courseId || local.activeCourseId || (typeof window !== 'undefined' ? localStorage.getItem('siakad_active_course_id') : '') || '';
+    const headers = getDosenAuthHeaders();
+    if (activeCourseId) headers['x-active-course-id'] = activeCourseId;
+
     const res = await fetch('/api/quiz/auto-generate', {
       method: 'POST',
-      headers: getDosenAuthHeaders(),
-      body: JSON.stringify({ isDosen: true }),
+      headers,
+      body: JSON.stringify({ isDosen: true, courseId: activeCourseId }),
     });
     const json = await safeJson(res, null);
     if (res.ok && json.success && Array.isArray(json.questions) && json.questions.length > 0) {
-      const local = getLocalCache();
       local.quizQuestions = json.questions;
+      if (activeCourseId && local.allCoursesData && local.allCoursesData[activeCourseId]) {
+        local.allCoursesData[activeCourseId].quizQuestions = json.questions;
+      }
       saveLocalCache(local);
       return { success: true, questions: json.questions, message: json.message };
     }
@@ -3039,9 +3067,15 @@ export async function autoGenerateQuizApi(): Promise<{
   // Resilient fallback: generate client-side from meetings
   try {
     const local = getLocalCache();
-    const courseTitle = local.courseProfile?.name || local.courseProfile?.courseTitle || 'Filsafat Ilmu';
-    const generated = generateClientQuizQuestions(local.meetings || [], courseTitle);
+    const activeCourseId = courseId || local.activeCourseId || (typeof window !== 'undefined' ? localStorage.getItem('siakad_active_course_id') : '') || '';
+    const room = (activeCourseId && local.allCoursesData?.[activeCourseId]) ? local.allCoursesData[activeCourseId] : local;
+    const courseTitle = (room as any).profile?.courseTitle || (room as any).profile?.name || (room as any).courseProfile?.courseTitle || local.courseProfile?.courseTitle || 'Filsafat Ilmu';
+    const meetings = room.meetings || local.meetings || [];
+    const generated = generateClientQuizQuestions(meetings, courseTitle);
     local.quizQuestions = generated;
+    if (activeCourseId && local.allCoursesData && local.allCoursesData[activeCourseId]) {
+      local.allCoursesData[activeCourseId].quizQuestions = generated;
+    }
     saveLocalCache(local);
     return {
       success: true,
@@ -3059,28 +3093,62 @@ export async function submitQuizApi(payload: {
   answers: Record<number, number>;
   cameraVerified: boolean;
   timeTakenSeconds: number;
+  courseId?: string;
 }): Promise<{
   success: boolean;
   score?: number;
   correctCount?: number;
   totalQuestions?: number;
   submission?: QuizSubmission;
+  studentGrade?: StudentGrade;
   explanationMap?: Record<number, { correctIndex: number; isCorrect: boolean; explanation: string }>;
   error?: string;
 }> {
   try {
+    const local = getLocalCache();
+    const activeCourseId = payload.courseId || local.activeCourseId || (typeof window !== 'undefined' ? localStorage.getItem('siakad_active_course_id') : '') || '';
+    const headers: Record<string, string> = {
+      'Content-Type': 'application/json',
+    };
+    if (activeCourseId) {
+      headers['x-active-course-id'] = activeCourseId;
+    }
+
     const res = await fetch('/api/quiz/submit', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(payload),
+      headers,
+      body: JSON.stringify({
+        ...payload,
+        courseId: activeCourseId,
+      }),
     });
     const json = await safeJson(res, null);
     if (res.ok && json.success) {
-      const local = getLocalCache();
       if (!local.quizSubmissions) local.quizSubmissions = [];
       const idx = local.quizSubmissions.findIndex(s => s.studentId === payload.studentId);
       if (idx >= 0) local.quizSubmissions[idx] = json.submission;
       else local.quizSubmissions.push(json.submission);
+
+      if (local.allCoursesData && activeCourseId && local.allCoursesData[activeCourseId]) {
+        if (!local.allCoursesData[activeCourseId].quizSubmissions) {
+          local.allCoursesData[activeCourseId].quizSubmissions = [];
+        }
+        const cIdx = local.allCoursesData[activeCourseId].quizSubmissions.findIndex((s: any) => s.studentId === payload.studentId);
+        if (cIdx >= 0) local.allCoursesData[activeCourseId].quizSubmissions[cIdx] = json.submission;
+        else local.allCoursesData[activeCourseId].quizSubmissions.push(json.submission);
+      }
+
+      if (json.studentGrade) {
+        if (!local.grades) local.grades = {};
+        local.grades[payload.studentId] = json.studentGrade;
+        if (local.allCoursesData && activeCourseId && local.allCoursesData[activeCourseId]) {
+          if (!local.allCoursesData[activeCourseId].grades) {
+            local.allCoursesData[activeCourseId].grades = {};
+          }
+          local.allCoursesData[activeCourseId].grades[payload.studentId] = json.studentGrade;
+        }
+      }
+
       saveLocalCache(local);
       return {
         success: true,
@@ -3088,6 +3156,7 @@ export async function submitQuizApi(payload: {
         correctCount: json.correctCount,
         totalQuestions: json.totalQuestions,
         submission: json.submission,
+        studentGrade: json.studentGrade,
         explanationMap: json.explanationMap,
       };
     }
@@ -3101,25 +3170,45 @@ export async function submitQuizApi(payload: {
 // Delete / Reset Quiz Submission (Hanya Dosen - Menghapus nilai kuis mahasiswa jika salah)
 export async function deleteQuizSubmissionApi(
   submissionId: string,
-  studentId?: string
-): Promise<{ success: boolean; message?: string; error?: string }> {
+  studentId?: string,
+  courseId?: string
+): Promise<{ success: boolean; message?: string; studentGrade?: StudentGrade; error?: string }> {
   try {
-    const queryParams = studentId ? `?studentId=${encodeURIComponent(studentId)}` : '';
-    const res = await fetch(`/api/quiz/submissions/${encodeURIComponent(submissionId)}${queryParams}`, {
+    const local = getLocalCache();
+    const activeCourseId = courseId || local.activeCourseId || (typeof window !== 'undefined' ? localStorage.getItem('siakad_active_course_id') : '') || '';
+    const headers = getDosenAuthHeaders();
+    if (activeCourseId) headers['x-active-course-id'] = activeCourseId;
+
+    const queryParams = new URLSearchParams();
+    if (studentId) queryParams.set('studentId', studentId);
+    if (activeCourseId) queryParams.set('courseId', activeCourseId);
+    const queryString = queryParams.toString() ? `?${queryParams.toString()}` : '';
+
+    const res = await fetch(`/api/quiz/submissions/${encodeURIComponent(submissionId)}${queryString}`, {
       method: 'DELETE',
-      headers: getDosenAuthHeaders(),
+      headers,
     });
     const json = await safeJson(res, null);
     if (res.ok && json.success) {
       // Sync local cache
       try {
-        const local = getLocalCache();
         if (local.quizSubmissions) {
           local.quizSubmissions = local.quizSubmissions.filter(
             q => q.id !== submissionId && (!studentId || q.studentId !== studentId)
           );
         }
-        if (studentId && local.grades && local.grades[studentId]) {
+        if (activeCourseId && local.allCoursesData && local.allCoursesData[activeCourseId]?.quizSubmissions) {
+          local.allCoursesData[activeCourseId].quizSubmissions = local.allCoursesData[activeCourseId].quizSubmissions.filter(
+            (q: any) => q.id !== submissionId && (!studentId || q.studentId !== studentId)
+          );
+        }
+        if (json.studentGrade && studentId) {
+          if (!local.grades) local.grades = {};
+          local.grades[studentId] = json.studentGrade;
+          if (activeCourseId && local.allCoursesData?.[activeCourseId]?.grades) {
+            local.allCoursesData[activeCourseId].grades[studentId] = json.studentGrade;
+          }
+        } else if (studentId && local.grades && local.grades[studentId]) {
           if (local.grades[studentId].notes && local.grades[studentId].notes.includes('Kuis')) {
             local.grades[studentId].notes = '';
           }
@@ -3132,6 +3221,7 @@ export async function deleteQuizSubmissionApi(
       return {
         success: true,
         message: json.message || 'Nilai kuis berhasil dihapus oleh Dosen. Akses kuis telah dibuka kembali.',
+        studentGrade: json.studentGrade,
       };
     }
     return {
@@ -3143,19 +3233,20 @@ export async function deleteQuizSubmissionApi(
     // Offline local deletion fallback
     try {
       const local = getLocalCache();
+      const activeCourseId = courseId || local.activeCourseId || '';
       if (local.quizSubmissions) {
         local.quizSubmissions = local.quizSubmissions.filter(
           q => q.id !== submissionId && (!studentId || q.studentId !== studentId)
         );
-        saveLocalCache(local);
       }
-      return {
-        success: true,
-        message: 'Nilai kuis berhasil dihapus dari penyimpanan lokal.',
-      };
-    } catch {
-      return { success: false, error: 'Terjadi kendala saat menghapus nilai kuis' };
-    }
+      if (activeCourseId && local.allCoursesData && local.allCoursesData[activeCourseId]?.quizSubmissions) {
+        local.allCoursesData[activeCourseId].quizSubmissions = local.allCoursesData[activeCourseId].quizSubmissions.filter(
+          (q: any) => q.id !== submissionId && (!studentId || q.studentId !== studentId)
+        );
+      }
+      saveLocalCache(local);
+    } catch {}
+    return { success: true, message: 'Nilai kuis berhasil dihapus dari penyimpanan lokal.' };
   }
 }
 
@@ -3197,38 +3288,58 @@ export async function reorganizeGroupsApi(
 }
 
 // 14. Quiz Settings & Lecturer Activation APIs
-export async function fetchQuizSettingsApi(): Promise<{
+export async function fetchQuizSettingsApi(courseId?: string): Promise<{
   success: boolean;
   settings?: QuizSettings;
   error?: string;
 }> {
   try {
-    const res = await fetch('/api/quiz/settings');
+    const local = getLocalCache();
+    const activeCourseId = courseId || local.activeCourseId || (typeof window !== 'undefined' ? localStorage.getItem('siakad_active_course_id') : null);
+    const headers: Record<string, string> = { Accept: 'application/json' };
+    if (activeCourseId) headers['x-active-course-id'] = activeCourseId;
+    const url = activeCourseId ? `/api/quiz/settings?courseId=${encodeURIComponent(activeCourseId)}` : '/api/quiz/settings';
+
+    const res = await fetch(url, { headers });
     const json = await safeJson(res, null);
     if (res.ok && json.success) {
+      if (activeCourseId && local.allCoursesData && local.allCoursesData[activeCourseId]) {
+        local.allCoursesData[activeCourseId].quizSettings = json.settings;
+        saveLocalCache(local);
+      }
       return { success: true, settings: json.settings };
     }
     return { success: false, error: json.error || 'Gagal mengambil pengaturan kuis' };
   } catch (err) {
     console.warn('Fetch quiz settings error:', err);
     const local = getLocalCache();
-    return { success: true, settings: local.quizSettings };
+    const activeCourseId = courseId || local.activeCourseId || (typeof window !== 'undefined' ? localStorage.getItem('siakad_active_course_id') : null);
+    const room = (activeCourseId && local.allCoursesData?.[activeCourseId]) ? local.allCoursesData[activeCourseId] : local;
+    return { success: true, settings: room.quizSettings || local.quizSettings };
   }
 }
 
 export async function updateQuizSettingsApi(
-  settings: Partial<QuizSettings>
+  settings: Partial<QuizSettings>,
+  courseId?: string
 ): Promise<{ success: boolean; settings?: QuizSettings; error?: string }> {
   try {
+    const local = getLocalCache();
+    const activeCourseId = courseId || local.activeCourseId || (typeof window !== 'undefined' ? localStorage.getItem('siakad_active_course_id') : '') || '';
+    const headers = getDosenAuthHeaders();
+    if (activeCourseId) headers['x-active-course-id'] = activeCourseId;
+
     const res = await fetch('/api/quiz/settings', {
       method: 'POST',
-      headers: getDosenAuthHeaders(),
-      body: JSON.stringify(settings),
+      headers,
+      body: JSON.stringify({ ...settings, courseId: activeCourseId }),
     });
     const json = await safeJson(res, null);
     if (res.ok && json.success) {
-      const local = getLocalCache();
       local.quizSettings = json.settings;
+      if (activeCourseId && local.allCoursesData && local.allCoursesData[activeCourseId]) {
+        local.allCoursesData[activeCourseId].quizSettings = json.settings;
+      }
       saveLocalCache(local);
       return { success: true, settings: json.settings };
     }
@@ -3245,6 +3356,7 @@ export async function uploadQuizMaterialApi(payload: {
   targetMeeting?: string;
   fileData?: string;
   fileName?: string;
+  courseId?: string;
 }): Promise<{
   success: boolean;
   questions?: QuizQuestion[];
@@ -3253,16 +3365,25 @@ export async function uploadQuizMaterialApi(payload: {
   error?: string;
 }> {
   try {
+    const local = getLocalCache();
+    const activeCourseId = payload.courseId || local.activeCourseId || (typeof window !== 'undefined' ? localStorage.getItem('siakad_active_course_id') : '') || '';
+    const headers = getDosenAuthHeaders();
+    if (activeCourseId) headers['x-active-course-id'] = activeCourseId;
+
     const res = await fetch('/api/quiz/upload-material', {
       method: 'POST',
-      headers: getDosenAuthHeaders(),
-      body: JSON.stringify(payload),
+      headers,
+      body: JSON.stringify({ ...payload, courseId: activeCourseId }),
     });
     const json = await safeJson(res, null);
     if (res.ok && json.success) {
       const local = getLocalCache();
       local.quizQuestions = json.questions;
       if (json.settings) local.quizSettings = json.settings;
+      if (activeCourseId && local.allCoursesData && local.allCoursesData[activeCourseId]) {
+        local.allCoursesData[activeCourseId].quizQuestions = json.questions;
+        if (json.settings) local.allCoursesData[activeCourseId].quizSettings = json.settings;
+      }
       saveLocalCache(local);
       return {
         success: true,

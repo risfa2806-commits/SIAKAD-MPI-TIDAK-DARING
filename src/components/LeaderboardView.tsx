@@ -40,6 +40,7 @@ interface LeaderboardViewProps {
   currentStudentId: string | null;
   onSelectStudent: (student: Student) => void;
   isDosen: boolean;
+  courseTitle?: string;
 }
 
 export interface StudentScoreCard {
@@ -71,6 +72,7 @@ export const LeaderboardView: React.FC<LeaderboardViewProps> = ({
   currentStudentId,
   onSelectStudent,
   isDosen,
+  courseTitle = 'Mata Kuliah',
 }) => {
   const [activeCategory, setActiveCategory] = useState<
     'all' | 'activity' | 'presentation' | 'quiz' | 'exam' | 'attendance'
@@ -80,44 +82,60 @@ export const LeaderboardView: React.FC<LeaderboardViewProps> = ({
   // Calculate scores and ranks for all students
   const studentScores: StudentScoreCard[] = useMemo(() => {
     return (students || []).map(std => {
-      const studentGrade = grades[std.id];
-      const sub = submissions.find(s => s.studentId === std.id);
-      const studentQuizzes = quizSubmissions.filter(q => q.studentId === std.id);
+      // Robust student lookup by ID, NIM, or normalized Name
+      const studentGrade = grades[std.id] || (std.nim ? grades[std.nim] : undefined);
+      const sub = submissions.find(
+        s => s.studentId === std.id || s.studentId === std.nim || s.studentName?.toLowerCase().trim() === std.name.toLowerCase().trim()
+      );
+      const studentQuizzes = quizSubmissions.filter(
+        q => q.studentId === std.id || q.studentId === std.nim || q.studentName?.toLowerCase().trim() === std.name.toLowerCase().trim()
+      );
       const bestQuizScore = studentQuizzes.length > 0
         ? Math.max(...studentQuizzes.map(q => q.score || 0))
-        : 0;
+        : (studentGrade?.attitudeScore && studentGrade.attitudeScore > 0 ? studentGrade.attitudeScore : 0);
 
-      const uts = utsSubmissions.find(u => u.studentId === std.id);
-      const uas = uasSubmissions.find(u => u.studentId === std.id);
-      const utsScore = uts?.grade ?? (studentGrade?.utsScore ?? 85);
-      const uasScore = uas?.grade ?? (studentGrade?.uasScore ?? 85);
+      const uts = utsSubmissions.find(
+        u => u.studentId === std.id || u.studentId === std.nim || u.studentName?.toLowerCase().trim() === std.name.toLowerCase().trim()
+      );
+      const uas = uasSubmissions.find(
+        u => u.studentId === std.id || u.studentId === std.nim || u.studentName?.toLowerCase().trim() === std.name.toLowerCase().trim()
+      );
+      const utsScore = uts?.grade !== undefined ? Number(uts.grade) : (studentGrade?.utsScore && studentGrade.utsScore > 0 ? Number(studentGrade.utsScore) : 0);
+      const uasScore = uas?.grade !== undefined ? Number(uas.grade) : (studentGrade?.uasScore && studentGrade.uasScore > 0 ? Number(studentGrade.uasScore) : 0);
 
       // Attendance calculation: count meetings marked 'H'
       let attendedCount = 0;
       let totalRecorded = 0;
       Object.keys(attendance).forEach(mNum => {
         const meetingAtt = attendance[Number(mNum)];
-        if (meetingAtt && meetingAtt[std.id]) {
+        if (meetingAtt && (meetingAtt[std.id] || (std.nim && meetingAtt[std.nim]))) {
           totalRecorded++;
-          if (meetingAtt[std.id] === 'H') attendedCount++;
+          const val = meetingAtt[std.id] || (std.nim ? meetingAtt[std.nim] : '');
+          if (val === 'H') attendedCount++;
         }
       });
       const attendancePercent = totalRecorded > 0 ? (attendedCount / totalRecorded) * 100 : 100;
       const attendancePoints = Math.round(attendancePercent);
 
-      // Presentation score
+      // Presentation score: real grade, composite individual score, or 0
       let presentationPoints = 0;
-      if (sub) {
-        presentationPoints = sub.grade !== undefined ? sub.grade : 88;
+      if (sub && sub.grade !== undefined && sub.grade > 0) {
+        presentationPoints = Number(sub.grade);
+      } else if (studentGrade?.individualScore && studentGrade.individualScore > 0) {
+        presentationPoints = Number(studentGrade.individualScore);
+      } else if (sub) {
+        presentationPoints = 80; // Submitted pending review
       } else {
-        presentationPoints = studentGrade?.individualScore ?? 75;
+        presentationPoints = 0;
       }
 
-      // Quiz Points
-      const quizPoints = bestQuizScore > 0 ? bestQuizScore : (studentGrade ? 85 : 80);
+      // Quiz Points: only award earned points, never grant unearned 85 points
+      const quizPoints = bestQuizScore > 0 ? bestQuizScore : 0;
 
-      // Exam Points (average of UTS & UAS)
-      const examPoints = Math.round((utsScore + uasScore) / 2);
+      // Exam Points (calculated based on completed exams only)
+      const examPoints = (utsScore > 0 && uasScore > 0)
+        ? Math.round((utsScore + uasScore) / 2)
+        : (utsScore > 0 ? utsScore : (uasScore > 0 ? uasScore : 0));
 
       // Bonus Points (online active status & promptness)
       const isOnline = isStudentOnline(std.lastActive);
@@ -141,7 +159,7 @@ export const LeaderboardView: React.FC<LeaderboardViewProps> = ({
         badges.push({ name: 'Master Kuis RPS', icon: '🧠', color: 'bg-amber-100 text-amber-900' });
       }
       if (utsScore >= 90 || uasScore >= 90) {
-        badges.push({ name: 'Cendekiawan Filsafat', icon: '📜', color: 'bg-purple-100 text-purple-800' });
+        badges.push({ name: 'Cendekiawan Akademik', icon: '📜', color: 'bg-purple-100 text-purple-800' });
       }
       if (activityPoints >= 35) {
         badges.push({ name: 'Bintang Keaktifan', icon: '⚡', color: 'bg-amber-100 text-amber-900 border border-amber-300' });
@@ -166,13 +184,21 @@ export const LeaderboardView: React.FC<LeaderboardViewProps> = ({
       };
     }).sort((a, b) => {
       if (activeCategory === 'activity') {
-        return b.activityPoints - a.activityPoints;
+        return (b.activityPoints - a.activityPoints) || (b.totalPoints - a.totalPoints);
       }
-      if (activeCategory === 'presentation') return b.presentationPoints - a.presentationPoints;
-      if (activeCategory === 'quiz') return b.quizPoints - a.quizPoints;
-      if (activeCategory === 'exam') return b.examPoints - a.examPoints;
-      if (activeCategory === 'attendance') return b.attendancePoints - a.attendancePoints;
-      return b.totalPoints - a.totalPoints;
+      if (activeCategory === 'presentation') {
+        return (b.presentationPoints - a.presentationPoints) || (b.totalPoints - a.totalPoints);
+      }
+      if (activeCategory === 'quiz') {
+        return (b.quizPoints - a.quizPoints) || (b.totalPoints - a.totalPoints);
+      }
+      if (activeCategory === 'exam') {
+        return (b.examPoints - a.examPoints) || (b.totalPoints - a.totalPoints);
+      }
+      if (activeCategory === 'attendance') {
+        return (b.attendancePoints - a.attendancePoints) || (b.totalPoints - a.totalPoints);
+      }
+      return (b.totalPoints - a.totalPoints) || (b.quizPoints - a.quizPoints) || (b.examPoints - a.examPoints);
     }).map((item, index) => ({
       ...item,
       rank: index + 1,
@@ -216,7 +242,7 @@ export const LeaderboardView: React.FC<LeaderboardViewProps> = ({
             </div>
             <h2 className="text-2xl sm:text-3xl font-extrabold text-white tracking-tight flex items-center gap-3">
               <Trophy className="text-yellow-400 shrink-0" size={30} />
-              <span>Papan Peringkat Mahasiswa MPI 1</span>
+              <span>Papan Peringkat Mahasiswa • {courseTitle}</span>
             </h2>
             <p className="text-xs sm:text-sm text-amber-100 leading-relaxed">
               Pemeringkatan berbasis total akumulasi poin keaktifan, ketepatan pengumpulan tugas presentasi, performa kuis cerdas cermat RPS, dan capaian ujian (UTS & UAS).

@@ -617,6 +617,7 @@ export default function App() {
             onOpenDosenLogin={() => setIsDosenLoginOpen(true)}
             meetings={db.meetings}
             courseTitle={db.courseProfile?.courseTitle}
+            courseId={db.activeCourseId}
           />
         )}
 
@@ -650,6 +651,7 @@ export default function App() {
             currentStudentId={currentStudentId}
             onSelectStudent={handleSelectStudent}
             isDosen={isDosen}
+            courseTitle={db.courseProfile?.courseTitle}
           />
         )}
 

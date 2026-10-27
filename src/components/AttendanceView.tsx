@@ -16,12 +16,18 @@ import {
   ResponsiveContainer,
   BarChart,
   Bar,
+  ComposedChart,
+  Area,
+  Line,
+  PieChart,
+  Pie,
   XAxis,
   YAxis,
   CartesianGrid,
   Tooltip as RechartsTooltip,
   Legend as RechartsLegend,
   Cell,
+  ReferenceLine,
 } from 'recharts';
 import {
   Calendar,
@@ -46,8 +52,19 @@ import {
   UserPlus,
   BarChart3,
   TrendingUp,
+  TrendingDown,
   ChevronDown,
   ChevronUp,
+  Activity,
+  AlertTriangle,
+  Info,
+  PieChart as PieIcon,
+  Filter,
+  Check,
+  Users,
+  Sparkles,
+  ArrowRight,
+  ExternalLink,
 } from 'lucide-react';
 
 interface AttendanceViewProps {
@@ -107,9 +124,15 @@ export const AttendanceView: React.FC<AttendanceViewProps> = ({
     }
   }, [localAttendance, courseStorageKey]);
 
-  // Recharts Bar Chart Visualisation state
-  const [chartMode, setChartMode] = useState<'composition' | 'rate'>('composition');
+  // Recharts Attendance Visualisation states
+  type ChartViewMode = 'stacked' | 'grouped' | 'trend' | 'distribution';
+  type ChartPhaseFilter = 'all' | 'pra_uts' | 'pasca_uts' | 'exam';
+
+  const [chartMode, setChartMode] = useState<ChartViewMode>('stacked');
+  const [chartPhase, setChartPhase] = useState<ChartPhaseFilter>('all');
+  const [showThreshold, setShowThreshold] = useState<boolean>(true);
   const [isChartCollapsed, setIsChartCollapsed] = useState(false);
+  const [isAtRiskDrawerOpen, setIsAtRiskDrawerOpen] = useState(false);
   const [isHeaderCompact, setIsHeaderCompact] = useState(false);
 
   // Merge server attendance with immediate local attendance overrides
@@ -234,17 +257,34 @@ export const AttendanceView: React.FC<AttendanceViewProps> = ({
       let sakit = 0;
       let alfa = 0;
       let belum = 0;
+      const absentStudents: Array<{ id: string; name: string; nim: string; status: 'I' | 'S' | 'A' }> = [];
 
       students.forEach((s) => {
         const st = mAtt[s.id] || 'BELUM';
         if (st === 'H') hadir++;
-        else if (st === 'I') izin++;
-        else if (st === 'S') sakit++;
-        else if (st === 'A') alfa++;
-        else belum++;
+        else if (st === 'I') {
+          izin++;
+          absentStudents.push({ id: s.id, name: s.name, nim: s.nim, status: 'I' });
+        } else if (st === 'S') {
+          sakit++;
+          absentStudents.push({ id: s.id, name: s.name, nim: s.nim, status: 'S' });
+        } else if (st === 'A') {
+          alfa++;
+          absentStudents.push({ id: s.id, name: s.name, nim: s.nim, status: 'A' });
+        } else {
+          belum++;
+        }
       });
 
       const rate = totalEnrolled > 0 ? Math.round((hadir / totalEnrolled) * 100) : 0;
+      const phase: 'pra_uts' | 'uts' | 'pasca_uts' | 'uas' =
+        m.meetingNumber === 8 ? 'uts' :
+        m.meetingNumber === 16 ? 'uas' :
+        m.meetingNumber < 8 ? 'pra_uts' : 'pasca_uts';
+
+      const isExam = m.meetingNumber === 8 || m.meetingNumber === 16;
+      const statusColor = rate >= 80 ? '#059669' : rate >= 75 ? '#d97706' : '#e11d48';
+
       return {
         meetingNumber: m.meetingNumber,
         label: `P${m.meetingNumber}`,
@@ -257,9 +297,23 @@ export const AttendanceView: React.FC<AttendanceViewProps> = ({
         belum,
         rate,
         totalEnrolled,
+        phase,
+        isExam,
+        statusColor,
+        absentStudents,
       };
     });
   }, [meetings, effectiveAttendance, students]);
+
+  // Filtered chart data based on active phase
+  const filteredChartData = useMemo(() => {
+    return meetingChartData.filter(item => {
+      if (chartPhase === 'pra_uts') return item.meetingNumber >= 1 && item.meetingNumber <= 7;
+      if (chartPhase === 'pasca_uts') return item.meetingNumber >= 9 && item.meetingNumber <= 15;
+      if (chartPhase === 'exam') return item.meetingNumber === 8 || item.meetingNumber === 16;
+      return true; // 'all'
+    });
+  }, [meetingChartData, chartPhase]);
 
   // Overall attendance statistics across all 16 meetings
   const chartSummaryStats = useMemo(() => {
@@ -289,30 +343,223 @@ export const AttendanceView: React.FC<AttendanceViewProps> = ({
       highestAttendanceCount,
       totalEnrolled,
       meetingsCount: meetings.length,
+      meetingsWithAttendance,
     };
   }, [meetingChartData, students.length, meetings.length]);
 
+  // Semester Aggregate Distribution for Donut Chart
+  const semesterDistributionData = useMemo(() => {
+    let totalH = 0;
+    let totalI = 0;
+    let totalS = 0;
+    let totalA = 0;
+
+    meetings.forEach(m => {
+      const mAtt = effectiveAttendance[m.meetingNumber] || {};
+      students.forEach(s => {
+        const st = mAtt[s.id];
+        if (st === 'H') totalH++;
+        else if (st === 'I') totalI++;
+        else if (st === 'S') totalS++;
+        else if (st === 'A') totalA++;
+      });
+    });
+
+    const grandTotal = totalH + totalI + totalS + totalA;
+
+    return [
+      { name: 'Hadir (H)', value: totalH, color: '#059669', percent: grandTotal > 0 ? Math.round((totalH / grandTotal) * 100) : 0 },
+      { name: 'Izin (I)', value: totalI, color: '#0284c7', percent: grandTotal > 0 ? Math.round((totalI / grandTotal) * 100) : 0 },
+      { name: 'Sakit (S)', value: totalS, color: '#d97706', percent: grandTotal > 0 ? Math.round((totalS / grandTotal) * 100) : 0 },
+      { name: 'Alfa (A)', value: totalA, color: '#e11d48', percent: grandTotal > 0 ? Math.round((totalA / grandTotal) * 100) : 0 },
+    ];
+  }, [meetings, effectiveAttendance, students]);
+
+  // Lecturer Participation Pattern Detection & Student At-Risk Analysis
+  const studentParticipationPatterns = useMemo(() => {
+    const atRiskList: Array<{
+      student: Student;
+      hadirCount: number;
+      izinCount: number;
+      sakitCount: number;
+      alfaCount: number;
+      attendanceRate: number;
+      recordedMeetings: number;
+      riskReason: string;
+    }> = [];
+
+    students.forEach(s => {
+      let h = 0, i = 0, sk = 0, a = 0, recorded = 0;
+      meetings.forEach(m => {
+        const st = effectiveAttendance[m.meetingNumber]?.[s.id];
+        if (st && st !== 'BELUM') {
+          recorded++;
+          if (st === 'H') h++;
+          else if (st === 'I') i++;
+          else if (st === 'S') sk++;
+          else if (st === 'A') a++;
+        }
+      });
+
+      const rate = recorded > 0 ? Math.round((h / recorded) * 100) : 100;
+      const isAtRisk = recorded >= 2 && (rate < 75 || a >= 2);
+
+      if (isAtRisk) {
+        let riskReason = '';
+        if (a >= 2 && rate < 75) riskReason = `${a}x Alfa & Presensi ${rate}% (Di bawah batas 75%)`;
+        else if (a >= 2) riskReason = `${a}x Alfa (Perlu Peringatan)`;
+        else riskReason = `Presensi ${rate}% (Di bawah syarat minimal ujian 75%)`;
+
+        atRiskList.push({
+          student: s,
+          hadirCount: h,
+          izinCount: i,
+          sakitCount: sk,
+          alfaCount: a,
+          attendanceRate: rate,
+          recordedMeetings: recorded,
+          riskReason,
+        });
+      }
+    });
+
+    // Calculate participation trajectory
+    const activeMeetings = meetingChartData.filter(m => (m.hadir + m.izin + m.sakit + m.alfa) > 0);
+    let trendLabel = 'Stabil';
+    let trendDirection: 'up' | 'down' | 'stable' = 'stable';
+    let trendDiff = 0;
+
+    if (activeMeetings.length >= 2) {
+      const half = Math.floor(activeMeetings.length / 2);
+      const firstHalfAvg = activeMeetings.slice(0, half).reduce((sum, m) => sum + m.rate, 0) / (half || 1);
+      const secondHalfAvg = activeMeetings.slice(half).reduce((sum, m) => sum + m.rate, 0) / (activeMeetings.length - half || 1);
+      trendDiff = Math.round(secondHalfAvg - firstHalfAvg);
+
+      if (trendDiff >= 4) {
+        trendLabel = `Meningkat (+${trendDiff}%)`;
+        trendDirection = 'up';
+      } else if (trendDiff <= -4) {
+        trendLabel = `Menurun (${trendDiff}%)`;
+        trendDirection = 'down';
+      } else {
+        trendLabel = `Stabil (${trendDiff >= 0 ? '+' : ''}${trendDiff}%)`;
+        trendDirection = 'stable';
+      }
+    }
+
+    const sortedByRate = [...activeMeetings].sort((a, b) => a.rate - b.rate);
+    const lowestMeeting = sortedByRate[0] || null;
+    const criticalMeetings = activeMeetings.filter(m => m.rate < 75);
+
+    return {
+      atRiskStudents: atRiskList,
+      trendLabel,
+      trendDirection,
+      trendDiff,
+      lowestMeeting,
+      criticalMeetings,
+      activeMeetingsCount: activeMeetings.length,
+    };
+  }, [students, meetings, effectiveAttendance, meetingChartData]);
+
+  // Custom Chart Tooltip displaying deep meeting breakdown and absent student list
   const CustomChartTooltip = ({ active, payload }: any) => {
     if (active && payload && payload.length) {
       const data = payload[0].payload;
+      const phaseLabel =
+        data.meetingNumber === 8 ? 'Ujian Tengah Semester (UTS)' :
+        data.meetingNumber === 16 ? 'Ujian Akhir Semester (UAS)' :
+        data.meetingNumber < 8 ? 'Fase Pra-UTS' : 'Fase Pasca-UTS';
+
       return (
-        <div className="bg-slate-900 text-white p-3 rounded-xl shadow-xl border border-slate-700 text-xs max-w-xs z-50">
-          <div className="flex items-center justify-between gap-2 border-b border-slate-700 pb-1.5 mb-2">
-            <span className="font-black text-emerald-400">Pertemuan #{data.meetingNumber}</span>
-            <span className="text-[10px] text-slate-300 font-medium">{data.dateStr}</span>
+        <div className="bg-slate-900/95 backdrop-blur-md text-white p-3.5 rounded-xl shadow-2xl border border-slate-700/80 text-xs max-w-xs z-50">
+          <div className="flex items-center justify-between gap-2 border-b border-slate-700/80 pb-2 mb-2">
+            <div>
+              <span className="font-black text-emerald-400 text-sm">Pertemuan #{data.meetingNumber}</span>
+              <span className="text-[10px] text-slate-400 block">{data.dateStr}</span>
+            </div>
+            <span className="text-[10px] bg-slate-800 text-slate-300 font-semibold px-2 py-0.5 rounded-md border border-slate-700">
+              {phaseLabel}
+            </span>
           </div>
-          <p className="font-semibold text-slate-200 line-clamp-1 mb-2 text-[11px]">{data.fullTitle}</p>
-          <div className="grid grid-cols-2 gap-x-3 gap-y-1 text-[11px]">
-            <span className="text-emerald-300">● Hadir (H): <strong>{data.hadir}</strong></span>
-            <span className="text-blue-300">● Izin (I): <strong>{data.izin}</strong></span>
-            <span className="text-amber-300">● Sakit (S): <strong>{data.sakit}</strong></span>
-            <span className="text-rose-300">● Alfa (A): <strong>{data.alfa}</strong></span>
+
+          <p className="font-semibold text-slate-200 line-clamp-2 mb-2.5 text-[11px] leading-tight">
+            {data.fullTitle}
+          </p>
+
+          {/* Progress bar */}
+          <div className="mb-2.5">
+            <div className="flex justify-between items-center text-[10px] mb-1 font-semibold">
+              <span className="text-slate-400">Tingkat Kehadiran:</span>
+              <span className={data.rate >= 80 ? 'text-emerald-400 font-bold' : data.rate >= 75 ? 'text-amber-400 font-bold' : 'text-rose-400 font-bold'}>
+                {data.rate}% ({data.hadir}/{data.totalEnrolled} Mhs)
+              </span>
+            </div>
+            <div className="w-full bg-slate-800 h-1.5 rounded-full overflow-hidden">
+              <div
+                className={`h-full rounded-full transition-all duration-300 ${
+                  data.rate >= 80 ? 'bg-emerald-500' : data.rate >= 75 ? 'bg-amber-500' : 'bg-rose-500'
+                }`}
+                style={{ width: `${Math.min(100, data.rate)}%` }}
+              />
+            </div>
           </div>
-          <div className="mt-2 pt-1.5 border-t border-slate-700 flex items-center justify-between text-[11px]">
-            <span className="text-slate-400">Tingkat Hadir:</span>
-            <span className="font-black text-emerald-400">{data.rate}% ({data.hadir}/{data.totalEnrolled} Mhs)</span>
+
+          <div className="grid grid-cols-2 gap-x-2 gap-y-1 text-[11px] bg-slate-800/60 p-2 rounded-lg border border-slate-700/50 mb-2">
+            <div className="flex items-center justify-between">
+              <span className="text-emerald-300 font-medium">● Hadir (H):</span>
+              <strong className="text-white">{data.hadir}</strong>
+            </div>
+            <div className="flex items-center justify-between">
+              <span className="text-sky-300 font-medium">● Izin (I):</span>
+              <strong className="text-white">{data.izin}</strong>
+            </div>
+            <div className="flex items-center justify-between">
+              <span className="text-amber-300 font-medium">● Sakit (S):</span>
+              <strong className="text-white">{data.sakit}</strong>
+            </div>
+            <div className="flex items-center justify-between">
+              <span className="text-rose-300 font-medium">● Alfa (A):</span>
+              <strong className="text-white">{data.alfa}</strong>
+            </div>
           </div>
-          <p className="text-[9px] text-slate-400 italic mt-1 text-center">Klik batang untuk membuka presensi pertemuan ini</p>
+
+          {/* Absent students preview */}
+          {data.absentStudents && data.absentStudents.length > 0 ? (
+            <div className="mt-2 pt-2 border-t border-slate-700/80 text-[10px]">
+              <span className="text-slate-400 font-semibold block mb-1">
+                Mahasiswa Berhalangan ({data.absentStudents.length}):
+              </span>
+              <div className="space-y-0.5 max-h-24 overflow-y-auto">
+                {data.absentStudents.slice(0, 3).map((st: any, idx: number) => (
+                  <div key={idx} className="flex items-center justify-between text-slate-300">
+                    <span className="truncate max-w-[170px]">{st.name}</span>
+                    <span className={`text-[9px] font-bold px-1.5 py-0.2 rounded ${
+                      st.status === 'A' ? 'bg-rose-900/60 text-rose-300 border border-rose-700/40' :
+                      st.status === 'I' ? 'bg-sky-900/60 text-sky-300 border border-sky-700/40' :
+                      'bg-amber-900/60 text-amber-300 border border-amber-700/40'
+                    }`}>
+                      {st.status === 'A' ? 'Alfa' : st.status === 'I' ? 'Izin' : 'Sakit'}
+                    </span>
+                  </div>
+                ))}
+                {data.absentStudents.length > 3 && (
+                  <span className="text-[9px] text-slate-400 italic block pt-0.5 text-right">
+                    +{data.absentStudents.length - 3} mahasiswa lainnya
+                  </span>
+                )}
+              </div>
+            </div>
+          ) : (
+            <div className="text-[10px] text-emerald-400/90 flex items-center gap-1 mt-1 font-medium">
+              <CheckCircle size={11} />
+              <span>Semua mahasiswa hadir penuh</span>
+            </div>
+          )}
+
+          <p className="text-[9px] text-emerald-400/80 font-medium italic mt-2 text-center border-t border-slate-800 pt-1.5">
+            Klik batang untuk membuka presensi Pertemuan #{data.meetingNumber}
+          </p>
         </div>
       );
     }
@@ -640,9 +887,9 @@ export const AttendanceView: React.FC<AttendanceViewProps> = ({
           </div>
         )}
 
-        {/* VISUALISASI DATA RECHARTS: TREN KEHADIRAN 16 PERTEMUAN (GRAFIK BATANG) */}
+        {/* VISUALISASI DATA RECHARTS: TREN KEHADIRAN 16 PERTEMUAN & ANALISIS POLA PARTISIPASI */}
         <div className="mt-5 p-4 sm:p-5 bg-gradient-to-b from-slate-50 via-white to-slate-50/70 border border-slate-200 rounded-2xl shadow-xs space-y-4">
-          <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 pb-3 border-b border-slate-200/80">
+          <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3 pb-3 border-b border-slate-200/80">
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 rounded-xl bg-emerald-700 text-white flex items-center justify-center shadow-xs shrink-0">
                 <BarChart3 size={20} />
@@ -650,47 +897,96 @@ export const AttendanceView: React.FC<AttendanceViewProps> = ({
               <div>
                 <div className="flex items-center gap-2 flex-wrap">
                   <h3 className="text-sm sm:text-base font-black text-slate-900 tracking-tight">
-                    Visualisasi Tren Kehadiran 16 Pertemuan
+                    Visualisasi Tren Kehadiran & Pola Partisipasi (Recharts)
                   </h3>
                   <span className="text-[10px] bg-emerald-100 text-emerald-800 font-bold px-2 py-0.5 rounded-full border border-emerald-300/60 flex items-center gap-1">
                     <TrendingUp size={11} />
-                    <span>Recharts Bar Chart</span>
+                    <span>Analisis Dosen</span>
                   </span>
+                  {studentParticipationPatterns.criticalMeetings.length > 0 && (
+                    <span className="text-[10px] bg-rose-100 text-rose-800 font-bold px-2 py-0.5 rounded-full border border-rose-300/60 flex items-center gap-1">
+                      <AlertTriangle size={11} />
+                      <span>{studentParticipationPatterns.criticalMeetings.length} Temu Kritis (&lt;75%)</span>
+                    </span>
+                  )}
                 </div>
                 <p className="text-[11px] text-slate-500 mt-0.5">
-                  Grafik batang kehadiran perkuliahan tatap muka <strong>{courseProfile?.courseTitle || 'Mata Kuliah'}</strong> ({courseProfile?.semester || 'Semester'}). Klik salah satu batang untuk langsung memilih pertemuan.
+                  Visualisasi pola keikutsertaan mahasiswa per pertemuan tatap muka <strong>{courseProfile?.courseTitle || 'Mata Kuliah'}</strong>. Membantu dosen mendeteksi penurunan presensi dan mahasiswa berisiko secara dini.
                 </p>
               </div>
             </div>
 
-            {/* Chart Mode & Actions */}
-            <div className="flex items-center gap-2 flex-wrap">
-              <div className="bg-slate-200/80 p-0.5 rounded-xl flex items-center gap-1 text-xs">
+            {/* Chart Mode, Phase Filters, & Actions */}
+            <div className="flex flex-wrap items-center gap-2">
+              {/* Mode Visualisasi */}
+              <div className="bg-slate-200/80 p-0.5 rounded-xl flex items-center gap-0.5 text-xs">
                 <button
                   type="button"
-                  onClick={() => setChartMode('composition')}
+                  onClick={() => setChartMode('stacked')}
                   className={`px-2.5 py-1 rounded-lg font-bold text-xs transition-all cursor-pointer ${
-                    chartMode === 'composition'
-                      ? 'bg-white text-slate-900 shadow-2xs'
-                      : 'text-slate-600 hover:text-slate-900'
-                  }`}
-                  title="Tampilkan grafik batang komposisi jumlah status Hadir, Izin, Sakit, Alfa"
-                >
-                  Komposisi (H/I/S/A)
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setChartMode('rate')}
-                  className={`px-2.5 py-1 rounded-lg font-bold text-xs transition-all cursor-pointer ${
-                    chartMode === 'rate'
+                    chartMode === 'stacked'
                       ? 'bg-emerald-700 text-white shadow-2xs'
                       : 'text-slate-600 hover:text-slate-900'
                   }`}
-                  title="Tampilkan grafik batang persentase kehadiran 0 - 100%"
+                  title="Grafik batang bertumpuk komposisi seluruh mahasiswa (Hadir, Izin, Sakit, Alfa)"
                 >
-                  Persentase (%)
+                  Bertumpuk
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setChartMode('grouped')}
+                  className={`px-2.5 py-1 rounded-lg font-bold text-xs transition-all cursor-pointer ${
+                    chartMode === 'grouped'
+                      ? 'bg-emerald-700 text-white shadow-2xs'
+                      : 'text-slate-600 hover:text-slate-900'
+                  }`}
+                  title="Grafik batang berdampingan membandingkan jumlah Hadir, Izin, Sakit, Alfa"
+                >
+                  Komparasi
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setChartMode('trend')}
+                  className={`px-2.5 py-1 rounded-lg font-bold text-xs transition-all cursor-pointer ${
+                    chartMode === 'trend'
+                      ? 'bg-emerald-700 text-white shadow-2xs'
+                      : 'text-slate-600 hover:text-slate-900'
+                  }`}
+                  title="Kurva tren area persentase kehadiran dengan garis batas minimal 75%"
+                >
+                  Tren (%)
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setChartMode('distribution')}
+                  className={`px-2.5 py-1 rounded-lg font-bold text-xs transition-all cursor-pointer flex items-center gap-1 ${
+                    chartMode === 'distribution'
+                      ? 'bg-emerald-700 text-white shadow-2xs'
+                      : 'text-slate-600 hover:text-slate-900'
+                  }`}
+                  title="Donut chart agregat proporsi kehadiran seluruh semester"
+                >
+                  <PieIcon size={12} />
+                  <span>Donut</span>
                 </button>
               </div>
+
+              {/* Threshold Toggle (Khusus Mode Bar / Trend) */}
+              {chartMode !== 'distribution' && (
+                <button
+                  type="button"
+                  onClick={() => setShowThreshold(prev => !prev)}
+                  className={`flex items-center gap-1 px-2.5 py-1 rounded-xl text-xs font-semibold border transition-all cursor-pointer ${
+                    showThreshold
+                      ? 'bg-rose-50 text-rose-800 border-rose-300'
+                      : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50'
+                  }`}
+                  title="Aktifkan atau sembunyikan garis acuan batas minimal kehadiran 75%"
+                >
+                  <Activity size={12} className={showThreshold ? 'text-rose-600' : 'text-slate-400'} />
+                  <span>Garis 75%</span>
+                </button>
+              )}
 
               {/* Ekspor Laporan PDF Button */}
               <button
@@ -698,7 +994,7 @@ export const AttendanceView: React.FC<AttendanceViewProps> = ({
                 id="btn-chart-export-pdf"
                 onClick={handleDirectDownload16Pdf}
                 disabled={isDownloadingPdf}
-                className="flex items-center gap-1.5 px-3 py-1.5 bg-rose-700 hover:bg-rose-800 active:bg-rose-900 text-white rounded-xl text-xs font-bold transition-all shadow-xs cursor-pointer disabled:opacity-50"
+                className="flex items-center gap-1.5 px-3 py-1 bg-rose-700 hover:bg-rose-800 active:bg-rose-900 text-white rounded-xl text-xs font-bold transition-all shadow-xs cursor-pointer disabled:opacity-50"
                 title="Unduh laporan kehadiran 16 pertemuan lengkap dalam format PDF"
               >
                 {isDownloadingPdf ? <Loader2 size={13} className="animate-spin" /> : <Printer size={13} />}
@@ -709,19 +1005,83 @@ export const AttendanceView: React.FC<AttendanceViewProps> = ({
               <button
                 type="button"
                 onClick={() => setIsChartCollapsed(prev => !prev)}
-                className="flex items-center gap-1 px-2.5 py-1.5 bg-white hover:bg-slate-100 text-slate-700 border border-slate-200 rounded-xl text-xs font-semibold transition-all cursor-pointer shadow-2xs"
-                title={isChartCollapsed ? 'Perluas tampilan grafik batang' : 'Perkecil grafik batang'}
+                className="flex items-center gap-1 px-2.5 py-1 bg-white hover:bg-slate-100 text-slate-700 border border-slate-200 rounded-xl text-xs font-semibold transition-all cursor-pointer shadow-2xs"
+                title={isChartCollapsed ? 'Perluas tampilan visualisasi tren' : 'Perkecil tampilan visualisasi tren'}
               >
                 {isChartCollapsed ? <ChevronDown size={14} /> : <ChevronUp size={14} />}
-                <span className="hidden sm:inline">{isChartCollapsed ? 'Buka Grafik' : 'Perkecil Grafik'}</span>
+                <span className="hidden sm:inline">{isChartCollapsed ? 'Buka Tren' : 'Perkecil'}</span>
               </button>
             </div>
           </div>
 
           {!isChartCollapsed && (
             <>
-              {/* Summary KPIs Row */}
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
+              {/* Filter Fase Perkuliahan (Pra-UTS, Pasca-UTS, Ujian) */}
+              {chartMode !== 'distribution' && (
+                <div className="flex items-center justify-between gap-2 flex-wrap text-xs pt-1">
+                  <div className="flex items-center gap-1.5 flex-wrap">
+                    <span className="text-[11px] font-semibold text-slate-500 flex items-center gap-1">
+                      <Filter size={12} />
+                      <span>Filter Fase:</span>
+                    </span>
+                    <div className="inline-flex bg-slate-100 p-0.5 rounded-lg border border-slate-200">
+                      <button
+                        type="button"
+                        onClick={() => setChartPhase('all')}
+                        className={`px-2.5 py-0.5 rounded-md text-[11px] font-bold transition-all ${
+                          chartPhase === 'all'
+                            ? 'bg-white text-slate-900 shadow-2xs'
+                            : 'text-slate-600 hover:text-slate-900'
+                        }`}
+                      >
+                        Semua 16 Temu
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setChartPhase('pra_uts')}
+                        className={`px-2.5 py-0.5 rounded-md text-[11px] font-bold transition-all ${
+                          chartPhase === 'pra_uts'
+                            ? 'bg-white text-emerald-800 shadow-2xs'
+                            : 'text-slate-600 hover:text-slate-900'
+                        }`}
+                      >
+                        Pra-UTS (P1–P7)
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setChartPhase('pasca_uts')}
+                        className={`px-2.5 py-0.5 rounded-md text-[11px] font-bold transition-all ${
+                          chartPhase === 'pasca_uts'
+                            ? 'bg-white text-blue-800 shadow-2xs'
+                            : 'text-slate-600 hover:text-slate-900'
+                        }`}
+                      >
+                        Pasca-UTS (P9–P15)
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setChartPhase('exam')}
+                        className={`px-2.5 py-0.5 rounded-md text-[11px] font-bold transition-all ${
+                          chartPhase === 'exam'
+                            ? 'bg-white text-purple-800 shadow-2xs'
+                            : 'text-slate-600 hover:text-slate-900'
+                        }`}
+                      >
+                        Ujian (P8 &amp; P16)
+                      </button>
+                    </div>
+                  </div>
+
+                  <div className="text-[11px] text-slate-500 font-medium flex items-center gap-2">
+                    <span className="inline-block w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+                    <span>Menampilkan {filteredChartData.length} pertemuan aktif</span>
+                  </div>
+                </div>
+              )}
+
+              {/* Lecturer Pattern Insights KPIs Row */}
+              <div className="grid grid-cols-2 lg:grid-cols-4 gap-2.5">
+                {/* KPI 1: Rata-Rata Kehadiran */}
                 <div className="bg-emerald-50/80 border border-emerald-200/80 rounded-xl p-3">
                   <span className="text-[10px] font-bold text-emerald-800 uppercase tracking-wider block">
                     Rata-Rata Kehadiran Kelas
@@ -734,162 +1094,368 @@ export const AttendanceView: React.FC<AttendanceViewProps> = ({
                       {chartSummaryStats.avgAttendancePercent >= 80 ? '● Sangat Baik' : '● Perlu Perhatian'}
                     </span>
                   </div>
-                </div>
-
-                <div className="bg-blue-50/80 border border-blue-200/80 rounded-xl p-3">
-                  <span className="text-[10px] font-bold text-blue-800 uppercase tracking-wider block">
-                    Total Mahasiswa Terdaftar
+                  <span className="text-[10px] text-emerald-800/80 mt-1 block">
+                    Dari {chartSummaryStats.meetingsWithAttendance} pertemuan yang telah dicatat
                   </span>
-                  <div className="flex items-baseline gap-1.5 mt-1">
-                    <span className="text-xl sm:text-2xl font-black text-blue-950 font-serif-title">
-                      {students.length}
-                    </span>
-                    <span className="text-[10px] font-semibold text-blue-700">Mahasiswa</span>
-                  </div>
                 </div>
 
-                <div className="bg-purple-50/80 border border-purple-200/80 rounded-xl p-3">
-                  <span className="text-[10px] font-bold text-purple-800 uppercase tracking-wider block">
-                    Pertemuan Hadir Terbanyak
+                {/* KPI 2: Pola Tren Partisipasi */}
+                <div className={`border rounded-xl p-3 ${
+                  studentParticipationPatterns.trendDirection === 'up'
+                    ? 'bg-teal-50/80 border-teal-200/80 text-teal-900'
+                    : studentParticipationPatterns.trendDirection === 'down'
+                    ? 'bg-rose-50/80 border-rose-200/80 text-rose-900'
+                    : 'bg-slate-50 border-slate-200 text-slate-900'
+                }`}>
+                  <div className="flex items-center justify-between">
+                    <span className="text-[10px] font-bold uppercase tracking-wider block opacity-85">
+                      Pola Tren Keikutsertaan
+                    </span>
+                    {studentParticipationPatterns.trendDirection === 'up' ? (
+                      <TrendingUp size={14} className="text-teal-700" />
+                    ) : studentParticipationPatterns.trendDirection === 'down' ? (
+                      <TrendingDown size={14} className="text-rose-700" />
+                    ) : (
+                      <Activity size={14} className="text-slate-600" />
+                    )}
+                  </div>
+                  <div className="flex items-baseline gap-1.5 mt-1">
+                    <span className="text-lg sm:text-xl font-black font-serif-title">
+                      {studentParticipationPatterns.trendLabel}
+                    </span>
+                  </div>
+                  <span className="text-[10px] opacity-80 mt-1 block truncate">
+                    {studentParticipationPatterns.trendDirection === 'up'
+                      ? 'Partisipasi mahasiswa meningkat positif'
+                      : studentParticipationPatterns.trendDirection === 'down'
+                      ? 'Waspadai penurunan di sesi terkini'
+                      : 'Kehadiran relatif konsisten stabil'}
                   </span>
-                  <div className="flex items-baseline gap-1.5 mt-1">
-                    <span className="text-xl sm:text-2xl font-black text-purple-950 font-serif-title">
-                      Temu #{chartSummaryStats.highestAttendanceMeeting}
-                    </span>
-                    <span className="text-[10px] font-semibold text-purple-700">
-                      ({chartSummaryStats.highestAttendanceCount} Hadir)
-                    </span>
-                  </div>
                 </div>
 
+                {/* KPI 3: Titik Pertemuan Paling Kritis / Anomali */}
                 <div className="bg-amber-50/80 border border-amber-200/80 rounded-xl p-3">
                   <span className="text-[10px] font-bold text-amber-800 uppercase tracking-wider block">
-                    Pertemuan Terpilih Saat Ini
+                    Titik Presensi Terendah
                   </span>
                   <div className="flex items-baseline gap-1.5 mt-1">
                     <span className="text-xl sm:text-2xl font-black text-amber-950 font-serif-title">
-                      Temu #{selectedMeetingNumber}
+                      {studentParticipationPatterns.lowestMeeting
+                        ? `Temu #${studentParticipationPatterns.lowestMeeting.meetingNumber}`
+                        : 'Belum Ada'}
                     </span>
-                    <span className="text-[10px] font-semibold text-amber-800">
-                      ({hadirCount}/{students.length} Hadir)
+                    {studentParticipationPatterns.lowestMeeting && (
+                      <span className="text-[10px] font-bold text-amber-800">
+                        ({studentParticipationPatterns.lowestMeeting.rate}% Hadir)
+                      </span>
+                    )}
+                  </div>
+                  <span className="text-[10px] text-amber-800/80 mt-1 block truncate">
+                    {studentParticipationPatterns.lowestMeeting
+                      ? `${studentParticipationPatterns.lowestMeeting.alfa} Alfa • ${studentParticipationPatterns.lowestMeeting.izin + studentParticipationPatterns.lowestMeeting.sakit} Izin/Sakit`
+                      : 'Data presensi belum terisi'}
+                  </span>
+                </div>
+
+                {/* KPI 4: Deteksi Mahasiswa Berisiko Rendah Absensi */}
+                <div className={`border rounded-xl p-3 ${
+                  studentParticipationPatterns.atRiskStudents.length > 0
+                    ? 'bg-rose-50/90 border-rose-200 text-rose-950'
+                    : 'bg-blue-50/80 border-blue-200/80 text-blue-950'
+                }`}>
+                  <div className="flex items-center justify-between">
+                    <span className="text-[10px] font-bold uppercase tracking-wider block">
+                      Mahasiswa Perlu Perhatian
+                    </span>
+                    <AlertCircle size={14} className={studentParticipationPatterns.atRiskStudents.length > 0 ? 'text-rose-600' : 'text-blue-600'} />
+                  </div>
+                  <div className="flex items-baseline gap-1.5 mt-1">
+                    <span className="text-xl sm:text-2xl font-black font-serif-title">
+                      {studentParticipationPatterns.atRiskStudents.length}
+                    </span>
+                    <span className="text-[10px] font-semibold">
+                      {studentParticipationPatterns.atRiskStudents.length > 0 ? 'Mahasiswa Berisiko' : 'Mahasiswa Aman'}
                     </span>
                   </div>
+                  <button
+                    type="button"
+                    onClick={() => setIsAtRiskDrawerOpen(true)}
+                    className="text-[10px] font-bold text-rose-700 hover:text-rose-900 underline mt-1 flex items-center gap-1 cursor-pointer"
+                  >
+                    <span>{studentParticipationPatterns.atRiskStudents.length > 0 ? 'Tinjau Rincian Mahasiswa' : 'Lihat Rekap Partisipasi'}</span>
+                    <ArrowRight size={10} />
+                  </button>
                 </div>
               </div>
 
-              {/* Recharts Bar Chart Container */}
+              {/* Recharts Main Canvas Container */}
               <div className="w-full bg-white rounded-xl border border-slate-200/90 p-3 sm:p-4 pt-5">
-                <div className="h-[270px] sm:h-[310px] w-full">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <BarChart
-                      data={meetingChartData}
-                      margin={{ top: 10, right: 10, left: -20, bottom: 5 }}
-                      onClick={(state: any) => {
-                        if (state && state.activePayload && state.activePayload[0]) {
-                          const clickedMeeting = state.activePayload[0].payload.meetingNumber;
-                          setSelectedMeetingNumber(clickedMeeting);
-                          triggerActionFeedback(`Membuka presensi Pertemuan #${clickedMeeting}`);
-                        }
-                      }}
-                    >
-                      <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
-                      <XAxis
-                        dataKey="label"
-                        tick={{ fontSize: 11, fontWeight: 700, fill: '#475569' }}
-                        axisLine={{ stroke: '#cbd5e1' }}
-                        tickLine={false}
-                      />
-                      <YAxis
-                        tick={{ fontSize: 11, fill: '#64748b' }}
-                        axisLine={{ stroke: '#cbd5e1' }}
-                        tickLine={false}
-                        domain={chartMode === 'rate' ? [0, 100] : [0, 'auto']}
-                        unit={chartMode === 'rate' ? '%' : ''}
-                      />
-                      <RechartsTooltip content={<CustomChartTooltip />} cursor={{ fill: 'rgba(16, 185, 129, 0.08)' }} />
-                      <RechartsLegend wrapperStyle={{ fontSize: '11px', paddingTop: '10px' }} />
+                {chartMode === 'distribution' ? (
+                  /* Donut Chart: Semester Overall Status Breakdown */
+                  <div className="flex flex-col md:flex-row items-center justify-around gap-6 py-4">
+                    <div className="h-[260px] w-full md:w-1/2">
+                      <ResponsiveContainer width="100%" height="100%">
+                        <PieChart>
+                          <Pie
+                            data={semesterDistributionData}
+                            dataKey="value"
+                            nameKey="name"
+                            cx="50%"
+                            cy="50%"
+                            innerRadius={65}
+                            outerRadius={95}
+                            paddingAngle={3}
+                            label={({ name, percent }) => `${name} (${percent}%)`}
+                          >
+                            {semesterDistributionData.map((entry, index) => (
+                              <Cell key={`donut-${index}`} fill={entry.color} />
+                            ))}
+                          </Pie>
+                          <RechartsTooltip
+                            formatter={(value: any, name: any) => [`${value} Mahasiswa-Pertemuan`, name]}
+                            contentStyle={{ backgroundColor: '#0f172a', borderColor: '#334155', borderRadius: '0.75rem', color: '#fff', fontSize: '11px' }}
+                          />
+                        </PieChart>
+                      </ResponsiveContainer>
+                    </div>
 
-                      {chartMode === 'composition' ? (
-                        <>
-                          <Bar
-                            dataKey="hadir"
-                            name="Hadir (H)"
-                            fill="#059669"
-                            radius={[3, 3, 0, 0]}
-                            cursor="pointer"
-                          />
-                          <Bar
-                            dataKey="izin"
-                            name="Izin (I)"
-                            fill="#3b82f6"
-                            radius={[3, 3, 0, 0]}
-                            cursor="pointer"
-                          />
-                          <Bar
-                            dataKey="sakit"
-                            name="Sakit (S)"
-                            fill="#f59e0b"
-                            radius={[3, 3, 0, 0]}
-                            cursor="pointer"
-                          />
-                          <Bar
-                            dataKey="alfa"
-                            name="Alfa (A)"
-                            fill="#ef4444"
-                            radius={[3, 3, 0, 0]}
-                            cursor="pointer"
-                          />
-                        </>
-                      ) : (
-                        <Bar
-                          dataKey="rate"
-                          name="% Kehadiran Kelas"
-                          fill="#0d9488"
-                          radius={[4, 4, 0, 0]}
-                          cursor="pointer"
+                    <div className="w-full md:w-1/2 space-y-3">
+                      <div className="border-b border-slate-100 pb-2">
+                        <h4 className="text-xs font-black text-slate-800 uppercase tracking-wider">
+                          Distribusi Partisipasi Kumulatif Seluruh Semester
+                        </h4>
+                        <p className="text-[11px] text-slate-500 mt-0.5">
+                          Total akumulasi status kehadiran seluruh {students.length} mahasiswa pada 16 pertemuan tatap muka.
+                        </p>
+                      </div>
+
+                      <div className="grid grid-cols-2 gap-2.5">
+                        {semesterDistributionData.map((item) => (
+                          <div
+                            key={item.name}
+                            className="p-2.5 rounded-xl border border-slate-200/80 bg-slate-50/60 flex items-center justify-between"
+                          >
+                            <div className="flex items-center gap-2">
+                              <span className="w-3 h-3 rounded-full shrink-0" style={{ backgroundColor: item.color }} />
+                              <div>
+                                <span className="text-xs font-bold text-slate-800 block">{item.name}</span>
+                                <span className="text-[10px] text-slate-500">{item.percent}% dari total</span>
+                              </div>
+                            </div>
+                            <span className="text-base font-black text-slate-900 font-serif-title">{item.value}</span>
+                          </div>
+                        ))}
+                      </div>
+
+                      <div className="p-3 bg-emerald-50/70 border border-emerald-200/80 rounded-xl text-[11px] text-emerald-900 leading-relaxed flex items-start gap-2">
+                        <Sparkles size={15} className="text-emerald-700 shrink-0 mt-0.5" />
+                        <div>
+                          <strong>Wawasan Evaluasi Dosen:</strong> Proporsi kehadiran sebesar{' '}
+                          <strong>{semesterDistributionData[0]?.percent || 0}%</strong> menunjukkan keterlibatan yang kuat. Pastikan mahasiswa dengan status Alfa terverifikasi sebelum penutupan nilai akhir.
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                ) : (
+                  /* Bar / Composed Trend Charts */
+                  <div className="h-[280px] sm:h-[320px] w-full">
+                    <ResponsiveContainer width="100%" height="100%">
+                      {chartMode === 'trend' ? (
+                        <ComposedChart
+                          data={filteredChartData}
+                          margin={{ top: 10, right: 15, left: -20, bottom: 5 }}
+                          onClick={(state: any) => {
+                            if (state && state.activePayload && state.activePayload[0]) {
+                              const clickedMeeting = state.activePayload[0].payload.meetingNumber;
+                              setSelectedMeetingNumber(clickedMeeting);
+                              triggerActionFeedback(`Membuka presensi Pertemuan #${clickedMeeting}`);
+                            }
+                          }}
                         >
-                          {meetingChartData.map((entry) => (
-                            <Cell
-                              key={`cell-${entry.meetingNumber}`}
-                              fill={
-                                entry.meetingNumber === selectedMeetingNumber
-                                  ? '#047857'
-                                  : entry.rate >= 80
-                                  ? '#059669'
-                                  : entry.rate >= 60
-                                  ? '#f59e0b'
-                                  : '#ef4444'
-                              }
+                          <defs>
+                            <linearGradient id="rateGradient" x1="0" y1="0" x2="0" y2="1">
+                              <stop offset="5%" stopColor="#059669" stopOpacity={0.4} />
+                              <stop offset="95%" stopColor="#059669" stopOpacity={0.02} />
+                            </linearGradient>
+                          </defs>
+                          <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
+                          <XAxis
+                            dataKey="label"
+                            tick={{ fontSize: 11, fontWeight: 700, fill: '#475569' }}
+                            axisLine={{ stroke: '#cbd5e1' }}
+                            tickLine={false}
+                          />
+                          <YAxis
+                            tick={{ fontSize: 11, fill: '#64748b' }}
+                            axisLine={{ stroke: '#cbd5e1' }}
+                            tickLine={false}
+                            domain={[0, 100]}
+                            unit="%"
+                          />
+                          <RechartsTooltip content={<CustomChartTooltip />} cursor={{ stroke: '#059669', strokeWidth: 1, strokeDasharray: '4 4' }} />
+                          <RechartsLegend wrapperStyle={{ fontSize: '11px', paddingTop: '10px' }} />
+                          {showThreshold && (
+                            <ReferenceLine
+                              y={75}
+                              stroke="#e11d48"
+                              strokeDasharray="4 4"
+                              strokeWidth={1.5}
+                              label={{ value: 'Batas Minimal 75%', fill: '#e11d48', fontSize: 10, position: 'insideTopRight' }}
                             />
-                          ))}
-                        </Bar>
-                      )}
-                    </BarChart>
-                  </ResponsiveContainer>
-                </div>
+                          )}
+                          <Area
+                            type="monotone"
+                            dataKey="rate"
+                            name="Persentase Kehadiran (%)"
+                            fill="url(#rateGradient)"
+                            stroke="#059669"
+                            strokeWidth={2.5}
+                            cursor="pointer"
+                          />
+                          <Line
+                            type="monotone"
+                            dataKey="rate"
+                            name="Titik Temu"
+                            stroke="#047857"
+                            strokeWidth={3}
+                            dot={{ r: 4, fill: '#059669', strokeWidth: 2, stroke: '#ffffff' }}
+                            activeDot={{ r: 7 }}
+                            cursor="pointer"
+                          />
+                        </ComposedChart>
+                      ) : (
+                        <BarChart
+                          data={filteredChartData}
+                          margin={{ top: 10, right: 10, left: -20, bottom: 5 }}
+                          onClick={(state: any) => {
+                            if (state && state.activePayload && state.activePayload[0]) {
+                              const clickedMeeting = state.activePayload[0].payload.meetingNumber;
+                              setSelectedMeetingNumber(clickedMeeting);
+                              triggerActionFeedback(`Membuka presensi Pertemuan #${clickedMeeting}`);
+                            }
+                          }}
+                        >
+                          <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
+                          <XAxis
+                            dataKey="label"
+                            tick={{ fontSize: 11, fontWeight: 700, fill: '#475569' }}
+                            axisLine={{ stroke: '#cbd5e1' }}
+                            tickLine={false}
+                          />
+                          <YAxis
+                            tick={{ fontSize: 11, fill: '#64748b' }}
+                            axisLine={{ stroke: '#cbd5e1' }}
+                            tickLine={false}
+                            domain={[0, 'auto']}
+                          />
+                          <RechartsTooltip content={<CustomChartTooltip />} cursor={{ fill: 'rgba(16, 185, 129, 0.08)' }} />
+                          <RechartsLegend wrapperStyle={{ fontSize: '11px', paddingTop: '10px' }} />
 
+                          {showThreshold && (
+                            <ReferenceLine
+                              y={Math.round(students.length * 0.75)}
+                              stroke="#e11d48"
+                              strokeDasharray="3 3"
+                              strokeWidth={1.5}
+                              label={{ value: `Batas 75% (${Math.round(students.length * 0.75)} Mhs)`, fill: '#e11d48', fontSize: 10, position: 'insideTopRight' }}
+                            />
+                          )}
+
+                          {chartMode === 'stacked' ? (
+                            <>
+                              <Bar
+                                dataKey="hadir"
+                                stackId="cohort"
+                                name="Hadir (H)"
+                                fill="#059669"
+                                radius={[0, 0, 0, 0]}
+                                cursor="pointer"
+                              />
+                              <Bar
+                                dataKey="izin"
+                                stackId="cohort"
+                                name="Izin (I)"
+                                fill="#0284c7"
+                                radius={[0, 0, 0, 0]}
+                                cursor="pointer"
+                              />
+                              <Bar
+                                dataKey="sakit"
+                                stackId="cohort"
+                                name="Sakit (S)"
+                                fill="#d97706"
+                                radius={[0, 0, 0, 0]}
+                                cursor="pointer"
+                              />
+                              <Bar
+                                dataKey="alfa"
+                                stackId="cohort"
+                                name="Alfa (A)"
+                                fill="#e11d48"
+                                radius={[3, 3, 0, 0]}
+                                cursor="pointer"
+                              />
+                            </>
+                          ) : (
+                            <>
+                              <Bar
+                                dataKey="hadir"
+                                name="Hadir (H)"
+                                fill="#059669"
+                                radius={[3, 3, 0, 0]}
+                                cursor="pointer"
+                              />
+                              <Bar
+                                dataKey="izin"
+                                name="Izin (I)"
+                                fill="#0284c7"
+                                radius={[3, 3, 0, 0]}
+                                cursor="pointer"
+                              />
+                              <Bar
+                                dataKey="sakit"
+                                name="Sakit (S)"
+                                fill="#d97706"
+                                radius={[3, 3, 0, 0]}
+                                cursor="pointer"
+                              />
+                              <Bar
+                                dataKey="alfa"
+                                name="Alfa (A)"
+                                fill="#e11d48"
+                                radius={[3, 3, 0, 0]}
+                                cursor="pointer"
+                              />
+                            </>
+                          )}
+                        </BarChart>
+                      )}
+                    </ResponsiveContainer>
+                  </div>
+                )}
+
+                {/* Footer Navigation & Shortcuts */}
                 <div className="flex flex-col sm:flex-row items-center justify-between gap-2 mt-3 pt-3 border-t border-slate-100 text-[11px] text-slate-500">
                   <div className="flex items-center gap-2">
                     <span className="inline-block w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
-                    <span>Klik pada salah satu batang untuk langsung beralih ke daftar presensi pertemuan tersebut.</span>
+                    <span>Klik pada salah satu batang/titik pertemuan untuk membuka daftar presensi pertemuan tersebut di bawah.</span>
                   </div>
                   <div className="flex items-center gap-3 font-semibold text-slate-700">
+                    <button
+                      type="button"
+                      onClick={() => setSelectedMeetingNumber(chartSummaryStats.highestAttendanceMeeting)}
+                      className="text-emerald-700 hover:text-emerald-900 underline flex items-center gap-1 cursor-pointer"
+                    >
+                      <span>Lompat ke Temu Tertinggi (#{chartSummaryStats.highestAttendanceMeeting})</span>
+                    </button>
+                    <span>•</span>
                     <button
                       type="button"
                       onClick={handlePrint16Pdf}
                       className="text-rose-700 hover:text-rose-900 underline flex items-center gap-1 cursor-pointer"
                     >
                       <Printer size={12} />
-                      <span>Cetak Dialog PDF</span>
-                    </button>
-                    <span>•</span>
-                    <button
-                      type="button"
-                      onClick={handleDirectDownload16Pdf}
-                      className="text-emerald-700 hover:text-emerald-900 underline flex items-center gap-1 cursor-pointer"
-                    >
-                      <Download size={12} />
-                      <span>Unduh File .PDF</span>
+                      <span>Cetak Laporan PDF</span>
                     </button>
                   </div>
                 </div>
@@ -897,6 +1463,103 @@ export const AttendanceView: React.FC<AttendanceViewProps> = ({
             </>
           )}
         </div>
+
+        {/* MODAL / DRAWER ANALISIS MAHASISWA PERLU PERHATIAN (AT-RISK INTERVENTION) */}
+        {isAtRiskDrawerOpen && (
+          <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4 animate-fadeIn">
+            <div className="bg-white rounded-2xl max-w-2xl w-full border border-slate-200 shadow-2xl overflow-hidden max-h-[90vh] flex flex-col">
+              <div className="p-4 sm:p-5 bg-gradient-to-r from-rose-900 via-slate-900 to-slate-900 text-white flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-xl bg-rose-600/30 text-rose-300 border border-rose-500/40 flex items-center justify-center shrink-0">
+                    <AlertTriangle size={20} />
+                  </div>
+                  <div>
+                    <h3 className="text-base font-bold text-white tracking-tight">
+                      Deteksi Mahasiswa Perlu Perhatian (At-Risk)
+                    </h3>
+                    <p className="text-xs text-rose-200/80 mt-0.5">
+                      Mahasiswa dengan presensi &lt; 75% atau memiliki akumulasi Alfa &ge; 2 kali
+                    </p>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setIsAtRiskDrawerOpen(false)}
+                  className="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-white/10 transition-colors cursor-pointer"
+                >
+                  <X size={18} />
+                </button>
+              </div>
+
+              <div className="p-4 sm:p-5 overflow-y-auto space-y-4">
+                <div className="p-3 bg-amber-50 border border-amber-200 rounded-xl text-xs text-amber-900 flex items-start gap-2.5">
+                  <Info size={16} className="text-amber-700 shrink-0 mt-0.5" />
+                  <div>
+                    <strong>Rekomendasi Akademik Dosen:</strong> Mahasiswa yang tercatat pada daftar ini berisiko tidak memenuhi syarat minimal 75% kehadiran untuk mengikuti Ujian Akhir Semester (UAS). Dosen dapat memberikan tugas pengganti atau konfirmasi surat sakit/izin resmi.
+                  </div>
+                </div>
+
+                {studentParticipationPatterns.atRiskStudents.length === 0 ? (
+                  <div className="text-center py-8 bg-emerald-50/50 border border-emerald-200 rounded-2xl">
+                    <CheckCircle size={36} className="text-emerald-600 mx-auto mb-2" />
+                    <h4 className="text-sm font-bold text-emerald-950">Kondisi Kelas Sangat Baik!</h4>
+                    <p className="text-xs text-emerald-800 mt-1 max-w-sm mx-auto">
+                      Seluruh {students.length} mahasiswa saat ini memenuhi standar kehadiran minimal &ge; 75% tanpa akumulasi alfa yang mengkhawatirkan.
+                    </p>
+                  </div>
+                ) : (
+                  <div className="divide-y divide-slate-100 border border-slate-200 rounded-xl overflow-hidden">
+                    {studentParticipationPatterns.atRiskStudents.map((item) => (
+                      <div
+                        key={item.student.id}
+                        className="p-3.5 bg-white hover:bg-slate-50/80 transition-colors flex flex-col sm:flex-row sm:items-center justify-between gap-3"
+                      >
+                        <div className="flex items-start gap-3">
+                          <div className="w-8 h-8 rounded-lg bg-rose-100 text-rose-800 font-bold flex items-center justify-center text-xs shrink-0 mt-0.5">
+                            {item.attendanceRate}%
+                          </div>
+                          <div>
+                            <span className="font-bold text-slate-900 text-xs sm:text-sm block">
+                              {item.student.name}
+                            </span>
+                            <span className="text-[11px] text-slate-500 font-mono">
+                              NIM: {item.student.nim} • Kelompok #{item.student.groupId || '-'}
+                            </span>
+                            <span className="text-[11px] font-semibold text-rose-700 block mt-0.5">
+                              ⚠️ {item.riskReason}
+                            </span>
+                          </div>
+                        </div>
+
+                        <div className="flex items-center gap-2 self-end sm:self-center">
+                          <div className="flex items-center gap-1.5 text-[10px] font-bold">
+                            <span className="bg-emerald-100 text-emerald-800 px-2 py-0.5 rounded">H: {item.hadirCount}</span>
+                            <span className="bg-sky-100 text-sky-800 px-2 py-0.5 rounded">I: {item.izinCount}</span>
+                            <span className="bg-amber-100 text-amber-800 px-2 py-0.5 rounded">S: {item.sakitCount}</span>
+                            <span className="bg-rose-100 text-rose-800 px-2 py-0.5 rounded font-black">A: {item.alfaCount}</span>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              <div className="p-4 bg-slate-50 border-t border-slate-200 flex items-center justify-between">
+                <span className="text-xs text-slate-500 font-medium">
+                  Total {studentParticipationPatterns.atRiskStudents.length} dari {students.length} Mahasiswa
+                </span>
+                <button
+                  type="button"
+                  onClick={() => setIsAtRiskDrawerOpen(false)}
+                  className="px-4 py-2 bg-slate-900 hover:bg-slate-800 text-white rounded-xl text-xs font-bold transition-all cursor-pointer shadow-xs"
+                >
+                  Tutup Tinjauan
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
 
 
         {/* 16 Pertemuan Horizontal Selector Bar */}

@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { QuizQuestion, QuizSubmission, Student, MeetingSchedule, QuizSettings } from '../types';
 import {
   fetchQuizApi,
@@ -75,6 +75,7 @@ interface InteractiveQuizViewProps {
   onOpenDosenLogin?: () => void;
   meetings?: MeetingSchedule[];
   courseTitle?: string;
+  courseId?: string;
 }
 
 export const InteractiveQuizView: React.FC<InteractiveQuizViewProps> = ({
@@ -86,6 +87,7 @@ export const InteractiveQuizView: React.FC<InteractiveQuizViewProps> = ({
   onOpenDosenLogin,
   meetings = [],
   courseTitle = 'Filsafat Ilmu',
+  courseId,
 }) => {
   // --- Data State ---
   const [questions, setQuestions] = useState<QuizQuestion[]>([]);
@@ -191,7 +193,7 @@ export const InteractiveQuizView: React.FC<InteractiveQuizViewProps> = ({
     setIsDeletingQuiz(true);
     setDeleteQuizFeedback(null);
     try {
-      const res = await deleteQuizSubmissionApi(deleteModalQuiz.id, deleteModalQuiz.studentId);
+      const res = await deleteQuizSubmissionApi(deleteModalQuiz.id, deleteModalQuiz.studentId, courseId);
       if (res.success) {
         setSubmissions(prev => prev.filter(s => s.id !== deleteModalQuiz.id));
         setDeleteQuizFeedback({
@@ -222,13 +224,13 @@ export const InteractiveQuizView: React.FC<InteractiveQuizViewProps> = ({
   // Load quiz data
   const loadData = async () => {
     setIsLoading(true);
-    const res = await fetchQuizApi();
+    const res = await fetchQuizApi(courseId);
     if (res.success && res.questions && res.questions.length > 0) {
       setQuestions(res.questions);
       setEditingQuestions(JSON.parse(JSON.stringify(res.questions)));
       setSubmissions(res.submissions || []);
     }
-    const sRes = await fetchQuizSettingsApi();
+    const sRes = await fetchQuizSettingsApi(courseId);
     if (sRes.success && sRes.settings) {
       const sanitizedSettings = { ...sRes.settings };
       if ((sanitizedSettings.gameMode as string) === 'tts') {
@@ -254,12 +256,12 @@ export const InteractiveQuizView: React.FC<InteractiveQuizViewProps> = ({
 
   useEffect(() => {
     loadData();
-  }, []);
+  }, [courseId]);
 
   // Lecturer: Save quiz active/inactive settings
   const handleSaveQuizSettings = async () => {
     setIsSavingSettings(true);
-    const res = await updateQuizSettingsApi(quizSettings);
+    const res = await updateQuizSettingsApi(quizSettings, courseId);
     setIsSavingSettings(false);
     if (res.success && res.settings) {
       setQuizSettings(res.settings);
@@ -303,6 +305,7 @@ export const InteractiveQuizView: React.FC<InteractiveQuizViewProps> = ({
         fileData: materialBase64,
         materialText: materialRawText,
         targetMeeting: materialMeetingTarget,
+        courseId,
       });
       if (res.success && res.questions) {
         setQuestions(res.questions);
@@ -439,6 +442,7 @@ export const InteractiveQuizView: React.FC<InteractiveQuizViewProps> = ({
       answers: selectedAnswers,
       cameraVerified: cameraActive,
       timeTakenSeconds: timerSeconds,
+      courseId,
     });
 
     setSubmitting(false);
@@ -464,7 +468,7 @@ export const InteractiveQuizView: React.FC<InteractiveQuizViewProps> = ({
   // Auto-generate 10 questions from RPS
   const handleAutoGenerateRps = async () => {
     setIsLoading(true);
-    const res = await autoGenerateQuizApi();
+    const res = await autoGenerateQuizApi(courseId);
     setIsLoading(false);
     if (res.success && res.questions) {
       setQuestions(res.questions);
@@ -479,7 +483,7 @@ export const InteractiveQuizView: React.FC<InteractiveQuizViewProps> = ({
   // Save edited questions
   const handleSaveQuestions = async () => {
     setIsLoading(true);
-    const res = await updateQuizQuestionsApi(editingQuestions);
+    const res = await updateQuizQuestionsApi(editingQuestions, courseId);
     setIsLoading(false);
     if (res.success && res.questions) {
       setQuestions(res.questions);
@@ -491,10 +495,42 @@ export const InteractiveQuizView: React.FC<InteractiveQuizViewProps> = ({
     }
   };
 
-  // Find existing student submission
-  const mySubmission = currentStudent
-    ? submissions.find(s => s.studentId === currentStudent.id)
-    : null;
+  // Filter submissions strictly to students belonging to the active course room ("kamar mk")
+  const currentRoomStudentIds = useMemo(() => new Set((students || []).map(s => s.id)), [students]);
+  const currentRoomStudentNims = useMemo(() => new Set((students || []).map(s => s.nim)), [students]);
+  const currentRoomStudentNames = useMemo(() => new Set((students || []).map(s => s.name.toUpperCase().trim())), [students]);
+
+  const roomSubmissions = useMemo(() => {
+    return (submissions || []).filter(s =>
+      currentRoomStudentIds.has(s.studentId) ||
+      currentRoomStudentNims.has(s.studentId) ||
+      (s.studentName && currentRoomStudentNames.has(s.studentName.toUpperCase().trim()))
+    );
+  }, [submissions, currentRoomStudentIds, currentRoomStudentNims, currentRoomStudentNames]);
+
+  // Sort submissions by Academic Leaderboard rules:
+  // 1. Highest score first (score DESC)
+  // 2. Fastest completion time (timeTakenSeconds ASC)
+  // 3. Earliest submission timestamp (submittedAt ASC)
+  const rankedSubmissions = useMemo(() => {
+    return [...roomSubmissions].sort((a, b) => {
+      if (b.score !== a.score) return b.score - a.score;
+      const timeA = a.timeTakenSeconds || 9999;
+      const timeB = b.timeTakenSeconds || 9999;
+      if (timeA !== timeB) return timeA - timeB;
+      return new Date(a.submittedAt).getTime() - new Date(b.submittedAt).getTime();
+    });
+  }, [roomSubmissions]);
+
+  // Find existing student submission in active course room
+  const mySubmission = useMemo(() => {
+    if (!currentStudent) return null;
+    return (roomSubmissions || []).find(
+      s => s.studentId === currentStudent.id ||
+           s.studentId === currentStudent.nim ||
+           (s.studentName && s.studentName.toUpperCase().trim() === currentStudent.name.toUpperCase().trim())
+    ) || null;
+  }, [roomSubmissions, currentStudent]);
 
   // Format seconds to mm:ss
   const formatTime = (secs: number) => {
@@ -623,7 +659,7 @@ export const InteractiveQuizView: React.FC<InteractiveQuizViewProps> = ({
                 }`}
               >
                 <Award size={13} />
-                <span>Rekap Nilai ({submissions.length})</span>
+                <span>Rekap Nilai ({rankedSubmissions.length})</span>
               </button>
             </div>
           ) : (
@@ -1213,8 +1249,9 @@ export const InteractiveQuizView: React.FC<InteractiveQuizViewProps> = ({
       {isDosen && dosenViewMode === 'matrix' && (
         <QuizMonitoringMatrix
           students={students}
-          submissions={submissions}
+          submissions={roomSubmissions}
           courseTitle={courseTitle}
+          courseId={courseId}
           onRefresh={loadData}
         />
       )}
@@ -1228,17 +1265,17 @@ export const InteractiveQuizView: React.FC<InteractiveQuizViewProps> = ({
             <div>
               <h3 className="text-base sm:text-lg font-bold text-slate-900 flex items-center gap-2">
                 <Award className="text-amber-600" size={20} />
-                Rekap Nilai Kuis Cerdas Cermat RPS Mahasiswa
+                Peringkat &amp; Rekap Nilai Kuis Cerdas Cermat RPS ({rankedSubmissions.length} Mahasiswa)
               </h3>
               <p className="text-xs sm:text-sm text-slate-500">
-                Data pengerjaan, skor otomatis, dan status verifikasi kamera pengawas.
+                Peringkat akademik diurutkan otomatis berdasarkan skor tertinggi, kecepatan waktu pengerjaan, dan verifikasi kamera proctoring.
               </p>
             </div>
             <div className="flex flex-wrap items-center gap-2">
               <button
                 type="button"
                 onClick={() => setDosenViewMode('matrix')}
-                className="text-xs font-bold px-3 py-1.5 rounded-lg bg-amber-100 hover:bg-amber-200 text-amber-900 flex items-center gap-1.5 transition-colors"
+                className="text-xs font-bold px-3 py-1.5 rounded-lg bg-amber-100 hover:bg-amber-200 text-amber-900 flex items-center gap-1.5 transition-colors cursor-pointer"
               >
                 <Activity size={13} className="text-amber-700" />
                 <span>Buka Matriks Point Live</span>
@@ -1250,11 +1287,11 @@ export const InteractiveQuizView: React.FC<InteractiveQuizViewProps> = ({
                     campusName: 'STAI Jarinabi',
                     dosenFullName: 'Risfa Tri Ulfa, S.Pd., M.Pd., Gr.',
                     courseTitle,
-                    submissions,
+                    submissions: rankedSubmissions,
                     format: 'word',
                   })
                 }
-                className="text-xs font-bold px-3 py-1.5 rounded-lg bg-blue-700 hover:bg-blue-800 text-white flex items-center gap-1.5 transition-colors"
+                className="text-xs font-bold px-3 py-1.5 rounded-lg bg-blue-700 hover:bg-blue-800 text-white flex items-center gap-1.5 transition-colors cursor-pointer"
                 title="Unduh rekapan hasil kuis lengkap format Microsoft Word (.doc)"
               >
                 <FileText size={13} />
@@ -1267,11 +1304,11 @@ export const InteractiveQuizView: React.FC<InteractiveQuizViewProps> = ({
                     campusName: 'STAI Jarinabi',
                     dosenFullName: 'Risfa Tri Ulfa, S.Pd., M.Pd., Gr.',
                     courseTitle,
-                    submissions,
+                    submissions: rankedSubmissions,
                     format: 'excel',
                   })
                 }
-                className="text-xs font-bold px-3 py-1.5 rounded-lg bg-emerald-700 hover:bg-emerald-800 text-white flex items-center gap-1.5 transition-colors"
+                className="text-xs font-bold px-3 py-1.5 rounded-lg bg-emerald-700 hover:bg-emerald-800 text-white flex items-center gap-1.5 transition-colors cursor-pointer"
                 title="Unduh rekapan hasil kuis lengkap format Microsoft Excel (.xls)"
               >
                 <FileSpreadsheet size={13} />
@@ -1285,7 +1322,7 @@ export const InteractiveQuizView: React.FC<InteractiveQuizViewProps> = ({
                     campusName: 'STAI Jarinabi',
                     dosenFullName: 'Risfa Tri Ulfa, S.Pd., M.Pd., Gr.',
                     courseTitle,
-                    submissions,
+                    submissions: rankedSubmissions,
                   })
                 }
                 className="text-xs font-bold px-3 py-1.5 rounded-lg bg-rose-700 hover:bg-rose-800 text-white flex items-center gap-1.5 transition-colors cursor-pointer"
@@ -1296,7 +1333,7 @@ export const InteractiveQuizView: React.FC<InteractiveQuizViewProps> = ({
               </button>
               <button
                 onClick={loadData}
-                className="text-xs font-bold px-3 py-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 flex items-center gap-1 transition-colors"
+                className="text-xs font-bold px-3 py-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 flex items-center gap-1 transition-colors cursor-pointer"
               >
                 <RefreshCw size={12} />
                 <span>Segarkan</span>
@@ -1304,18 +1341,18 @@ export const InteractiveQuizView: React.FC<InteractiveQuizViewProps> = ({
             </div>
           </div>
 
-          {submissions.length === 0 ? (
+          {rankedSubmissions.length === 0 ? (
             <div className="text-center py-12 text-slate-400">
               <Gamepad2 size={40} className="mx-auto mb-2 opacity-50" />
-              <p className="text-sm font-medium">Belum ada mahasiswa yang mengirimkan jawaban kuis.</p>
+              <p className="text-sm font-medium">Belum ada mahasiswa kelas ini yang mengirimkan jawaban kuis.</p>
             </div>
           ) : (
             <div className="overflow-x-auto">
               <table className="w-full text-left text-xs sm:text-sm">
                 <thead>
                   <tr className="bg-slate-100 text-slate-700 font-bold border-b border-slate-200">
-                    <th className="py-2.5 px-3">No</th>
-                    <th className="py-2.5 px-3">Nama Mahasiswa</th>
+                    <th className="py-2.5 px-3 text-center">Peringkat</th>
+                    <th className="py-2.5 px-3">Nama Mahasiswa &amp; NIM</th>
                     <th className="py-2.5 px-3 text-center">Skor Kuis</th>
                     <th className="py-2.5 px-3 text-center">Jawaban Benar</th>
                     <th className="py-2.5 px-3 text-center">Pengawasan Kamera</th>
@@ -1325,67 +1362,92 @@ export const InteractiveQuizView: React.FC<InteractiveQuizViewProps> = ({
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100">
-                  {submissions.map((sub, idx) => (
-                    <tr key={sub.id} className="hover:bg-slate-50">
-                      <td className="py-2.5 px-3 font-semibold text-slate-500">{idx + 1}</td>
-                      <td className="py-2.5 px-3 font-bold text-slate-900">{sub.studentName}</td>
-                      <td className="py-2.5 px-3 text-center">
-                        <span className={`inline-block px-2.5 py-0.5 rounded-full font-black text-xs ${
-                          sub.score >= 80 ? 'bg-emerald-100 text-emerald-800' :
-                          sub.score >= 60 ? 'bg-amber-100 text-amber-800' :
-                          'bg-rose-100 text-rose-800'
-                        }`}>
-                          {sub.score} / 100
-                        </span>
-                      </td>
-                      <td className="py-2.5 px-3 text-center font-semibold text-slate-700">
-                        {sub.correctCount} / {sub.totalQuestions}
-                      </td>
-                      <td className="py-2.5 px-3 text-center">
-                        {sub.cameraVerified ? (
-                          <span className="inline-flex items-center gap-1 text-[11px] font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">
-                            <Camera size={12} /> Terverifikasi
-                          </span>
-                        ) : (
-                          <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-slate-500 bg-slate-100 px-2 py-0.5 rounded">
-                            <CameraOff size={12} /> Non-Kamera
-                          </span>
-                        )}
-                      </td>
-                      <td className="py-2.5 px-3 text-center text-slate-600 font-mono">
-                        {formatTime(sub.timeTakenSeconds || 0)}
-                      </td>
-                      <td className="py-2.5 px-3 text-slate-500 text-xs">
-                        {new Date(sub.submittedAt).toLocaleDateString('id-ID', {
-                          day: 'numeric',
-                          month: 'short',
-                          year: 'numeric',
-                          hour: '2-digit',
-                          minute: '2-digit',
-                        })}
-                      </td>
-                      {isDosen && (
+                  {rankedSubmissions.map((sub, idx) => {
+                    const matchedStudent = students.find(
+                      s => s.id === sub.studentId || s.nim === sub.studentId || (s.name && sub.studentName && s.name.toUpperCase().trim() === sub.studentName.toUpperCase().trim())
+                    );
+                    const displayName = matchedStudent ? matchedStudent.name : sub.studentName;
+                    const displayNim = matchedStudent ? matchedStudent.nim : '';
+                    const groupNum = matchedStudent?.groupId;
+
+                    return (
+                      <tr key={sub.id} className={`hover:bg-slate-50 ${idx < 3 ? 'bg-amber-50/20' : ''}`}>
                         <td className="py-2.5 px-3 text-center">
-                          <button
-                            type="button"
-                            onClick={() =>
-                              setDeleteModalQuiz({
-                                id: sub.id,
-                                studentId: sub.studentId,
-                                studentName: sub.studentName,
-                                score: sub.score,
-                              })
-                            }
-                            className="inline-flex items-center gap-1 px-2.5 py-1 bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 rounded-lg text-xs font-bold transition-colors cursor-pointer shadow-2xs"
-                            title="Hapus / Reset nilai kuis mahasiswa ini jika salah"
-                          >
-                            <Trash2 size={12} />
-                            <span>Hapus Nilai</span>
-                          </button>
+                          <span className={`inline-flex items-center justify-center px-2.5 py-0.5 rounded-full text-xs font-black ${
+                            idx === 0 ? 'bg-amber-400 text-amber-950 shadow-xs' :
+                            idx === 1 ? 'bg-slate-300 text-slate-900' :
+                            idx === 2 ? 'bg-amber-200 text-amber-950 border border-amber-300' :
+                            'bg-slate-100 text-slate-600'
+                          }`}>
+                            {idx === 0 ? '🥇 Juara 1' : idx === 1 ? '🥈 Juara 2' : idx === 2 ? '🥉 Juara 3' : `#${idx + 1}`}
+                          </span>
                         </td>
-                      )}
-                    </tr>
-                  ))}
+                        <td className="py-2.5 px-3">
+                          <div className="font-bold text-slate-900">{displayName}</div>
+                          {displayNim && (
+                            <div className="text-[11px] font-mono text-slate-500 font-normal">
+                              NIM {displayNim} {groupNum ? `• Kelompok ${groupNum}` : ''}
+                            </div>
+                          )}
+                        </td>
+                        <td className="py-2.5 px-3 text-center">
+                          <span className={`inline-block px-2.5 py-0.5 rounded-full font-black text-xs ${
+                            sub.score >= 80 ? 'bg-emerald-100 text-emerald-800' :
+                            sub.score >= 60 ? 'bg-amber-100 text-amber-800' :
+                            'bg-rose-100 text-rose-800'
+                          }`}>
+                            {sub.score} / 100
+                          </span>
+                        </td>
+                        <td className="py-2.5 px-3 text-center font-semibold text-slate-700">
+                          {sub.correctCount} / {sub.totalQuestions}
+                        </td>
+                        <td className="py-2.5 px-3 text-center">
+                          {sub.cameraVerified ? (
+                            <span className="inline-flex items-center gap-1 text-[11px] font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">
+                              <Camera size={12} /> Terverifikasi
+                            </span>
+                          ) : (
+                            <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-slate-500 bg-slate-100 px-2 py-0.5 rounded">
+                              <CameraOff size={12} /> Non-Kamera
+                            </span>
+                          )}
+                        </td>
+                        <td className="py-2.5 px-3 text-center text-slate-600 font-mono">
+                          {formatTime(sub.timeTakenSeconds || 0)}
+                        </td>
+                        <td className="py-2.5 px-3 text-slate-500 text-xs">
+                          {new Date(sub.submittedAt).toLocaleDateString('id-ID', {
+                            day: 'numeric',
+                            month: 'short',
+                            year: 'numeric',
+                            hour: '2-digit',
+                            minute: '2-digit',
+                          })}
+                        </td>
+                        {isDosen && (
+                          <td className="py-2.5 px-3 text-center">
+                            <button
+                              type="button"
+                              onClick={() =>
+                                setDeleteModalQuiz({
+                                  id: sub.id,
+                                  studentId: matchedStudent ? matchedStudent.id : sub.studentId,
+                                  studentName: displayName,
+                                  score: sub.score,
+                                })
+                              }
+                              className="inline-flex items-center gap-1 px-2.5 py-1 bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 rounded-lg text-xs font-bold transition-colors cursor-pointer shadow-2xs"
+                              title="Hapus / Reset nilai kuis mahasiswa ini jika salah"
+                            >
+                              <Trash2 size={12} />
+                              <span>Hapus Nilai</span>
+                            </button>
+                          </td>
+                        )}
+                      </tr>
+                    );
+                  })}
                 </tbody>
               </table>
             </div>

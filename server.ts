@@ -3525,6 +3525,7 @@ app.post('/api/exam-settings', (req, res) => {
 
 // 7i. Get Quiz Data (10 Questions, Submissions, and Settings)
 app.get('/api/quiz', (req, res) => {
+  syncActiveCourseFromReq(req);
   const questions = db.quizQuestions && db.quizQuestions.length > 0 ? db.quizQuestions : INITIAL_QUIZ_QUESTIONS;
   const submissions = db.quizSubmissions || [];
   const settings = db.quizSettings || INITIAL_DATABASE.quizSettings;
@@ -3533,12 +3534,14 @@ app.get('/api/quiz', (req, res) => {
     questions,
     submissions,
     settings,
+    activeCourseId: db.activeCourseId,
     courseTitle: db.courseProfile?.courseTitle || 'Filsafat Ilmu',
   });
 });
 
 // 7i-2. Get Quiz Settings
 app.get('/api/quiz/settings', (req, res) => {
+  syncActiveCourseFromReq(req);
   res.json({
     success: true,
     settings: db.quizSettings || INITIAL_DATABASE.quizSettings,
@@ -3550,6 +3553,7 @@ app.post('/api/quiz/settings', (req, res) => {
   if (!isDosenAuthorized(req)) {
     return res.status(403).json({ error: 'Akses Ditolak: Hanya Dosen yang berhak mengatur jadwal dan aktivasi kuis!' });
   }
+  syncActiveCourseFromReq(req);
   const {
     isQuizActive,
     targetMeeting,
@@ -3587,6 +3591,10 @@ app.post('/api/quiz/settings', (req, res) => {
   if (defaultMusicTrack) db.quizSettings.defaultMusicTrack = defaultMusicTrack;
   if (typeof allowStudentModeSelection === 'boolean') db.quizSettings.allowStudentModeSelection = allowStudentModeSelection;
 
+  if (db.allCoursesData && db.activeCourseId && db.allCoursesData[db.activeCourseId]) {
+    db.allCoursesData[db.activeCourseId].quizSettings = db.quizSettings;
+  }
+
   saveDatabase();
   res.json({ success: true, settings: db.quizSettings });
 });
@@ -3596,6 +3604,7 @@ app.post('/api/quiz/upload-material', async (req, res) => {
   if (!isDosenAuthorized(req)) {
     return res.status(403).json({ error: 'Akses Ditolak: Hanya Dosen yang berhak mengunggah materi kuis!' });
   }
+  syncActiveCourseFromReq(req);
 
   const { materialText, quizTitle, targetMeeting, fileData, fileName } = req.body;
   let rawText = materialText || '';
@@ -3648,6 +3657,11 @@ app.post('/api/quiz/upload-material', async (req, res) => {
     db.quizSettings.quizTitle = targetTitle;
   }
 
+  if (db.allCoursesData && db.activeCourseId && db.allCoursesData[db.activeCourseId]) {
+    db.allCoursesData[db.activeCourseId].quizQuestions = questions;
+    db.allCoursesData[db.activeCourseId].quizSettings = db.quizSettings;
+  }
+
   saveDatabase();
   res.json({
     success: true,
@@ -3662,6 +3676,7 @@ app.post('/api/quiz/questions', (req, res) => {
   if (!isDosenAuthorized(req)) {
     return res.status(403).json({ error: 'Akses Ditolak: Hanya Dosen yang berhak menyunting dan mengatur soal kuis!' });
   }
+  syncActiveCourseFromReq(req);
   const { questions } = req.body;
   if (!Array.isArray(questions) || questions.length === 0) {
     return res.status(400).json({ error: 'Daftar soal wajib disertakan (minimal 1 soal).' });
@@ -3680,6 +3695,7 @@ app.post('/api/quiz/auto-generate', (req, res) => {
   if (!isDosenAuthorized(req)) {
     return res.status(403).json({ error: 'Akses Ditolak: Hanya Dosen yang berhak men-generate soal kuis RPS!' });
   }
+  syncActiveCourseFromReq(req);
 
   const generated = generateQuizQuestionsFromMeetings(
     db.meetings || [],
@@ -3699,11 +3715,13 @@ app.post('/api/quiz/auto-generate', (req, res) => {
 
 // 7l. Submit Quiz Answers (Mahasiswa dengan Pengawasan Kamera & Poin Otomatis)
 app.post('/api/quiz/submit', (req, res) => {
+  syncActiveCourseFromReq(req);
   const { studentId, studentName, answers, cameraVerified, timeTakenSeconds } = req.body;
   if (!studentId) {
     return res.status(400).json({ error: 'studentId wajib disertakan.' });
   }
 
+  // Active room's quiz questions
   const questions = db.quizQuestions && db.quizQuestions.length > 0 ? db.quizQuestions : INITIAL_QUIZ_QUESTIONS;
   let correctCount = 0;
   const explanationMap: Record<number, { correctIndex: number; isCorrect: boolean; explanation: string }> = {};
@@ -3721,19 +3739,29 @@ app.post('/api/quiz/submit', (req, res) => {
 
   const score = Math.round((correctCount / questions.length) * 100);
 
+  // Match student in active course room roster
+  const targetStudent = (db.students || []).find(
+    s => s.id === studentId || s.nim === studentId || (s.name && studentName && s.name.toUpperCase().trim() === studentName.toUpperCase().trim())
+  );
+  const actualStudentId = targetStudent ? targetStudent.id : studentId;
+  const actualStudentName = targetStudent ? targetStudent.name : (studentName || 'Mahasiswa');
+
   if (!db.quizSubmissions) db.quizSubmissions = [];
-  const existingIdx = db.quizSubmissions.findIndex(s => s.studentId === studentId);
+  const existingIdx = db.quizSubmissions.findIndex(
+    s => s.studentId === actualStudentId || s.studentId === studentId || (s.studentName && s.studentName.toUpperCase().trim() === actualStudentName.toUpperCase().trim())
+  );
+
   const subRecord: QuizSubmission = {
-    id: existingIdx >= 0 ? db.quizSubmissions[existingIdx].id : `quiz-${Date.now()}`,
-    studentId,
-    studentName: studentName || 'Mahasiswa',
+    id: existingIdx >= 0 ? db.quizSubmissions[existingIdx].id : `quiz-${Date.now()}-${actualStudentId}`,
+    studentId: actualStudentId,
+    studentName: actualStudentName,
     score,
     correctCount,
     totalQuestions: questions.length,
     submittedAt: new Date().toISOString(),
     cameraVerified: Boolean(cameraVerified),
     answers: answers || {},
-    timeTakenSeconds: timeTakenSeconds || 0,
+    timeTakenSeconds: Number(timeTakenSeconds) || 0,
   };
 
   if (existingIdx >= 0) {
@@ -3742,33 +3770,83 @@ app.post('/api/quiz/submit', (req, res) => {
     db.quizSubmissions.push(subRecord);
   }
 
-  // Automatically integrate with student's attitude/quiz grade in SIAKAD
+  // Automatically integrate with student's academic record in SIAKAD (with absolute grade preservation)
   if (!db.grades) db.grades = {};
-  if (!db.grades[studentId]) {
-    db.grades[studentId] = {
-      attendanceScore: 100,
+
+  // Check existing grade in active course grades or allCoursesData cache
+  let studentGrade = db.grades[actualStudentId];
+  if (!studentGrade && db.allCoursesData?.[db.activeCourseId]?.grades?.[actualStudentId]) {
+    studentGrade = { ...db.allCoursesData[db.activeCourseId].grades[actualStudentId] };
+  }
+
+  // Look up real academic submissions for this student in this course room
+  const realUts = (db.utsSubmissions || []).find(u => u.studentId === actualStudentId);
+  const realUas = (db.uasSubmissions || []).find(u => u.studentId === actualStudentId);
+  const realPresSubs = (db.submissions || []).filter(s => s.studentId === actualStudentId && s.grade !== undefined);
+  const realPresGrade = realPresSubs.length > 0
+    ? Math.round(realPresSubs.reduce((acc, curr) => acc + Number(curr.grade || 0), 0) / realPresSubs.length)
+    : undefined;
+
+  // Attendance score calculation
+  let hadirCount = 0;
+  let totalAttRecorded = 0;
+  if (db.attendance) {
+    for (let m = 1; m <= 16; m++) {
+      const rec = db.attendance[m]?.[actualStudentId];
+      if (rec) {
+        totalAttRecorded++;
+        if (rec === 'H') hadirCount += 1;
+        else if (rec === 'I' || rec === 'S') hadirCount += 0.8;
+      }
+    }
+  }
+  const realAttScore = totalAttRecorded > 0 ? Math.round((hadirCount / totalAttRecorded) * 100) : 100;
+
+  if (!studentGrade) {
+    studentGrade = {
+      attendanceScore: realAttScore,
       attitudeScore: score,
-      individualScore: 85,
-      utsScore: 85,
-      uasScore: 85,
+      individualScore: realPresGrade !== undefined ? realPresGrade : 85,
+      utsScore: realUts && realUts.grade !== undefined ? Number(realUts.grade) : 85,
+      uasScore: realUas && realUas.grade !== undefined ? Number(realUas.grade) : 85,
       groupScore: 85,
       finalScore: 85,
       letterGrade: 'A',
-      notes: `Kuis RPS: ${score}/100`,
+      notes: `Kuis RPS: ${score}/100 Poin`,
     };
   } else {
-    // Boost or sync attitude/keaktifan score
-    const currentAttitude = db.grades[studentId].attitudeScore || 80;
-    db.grades[studentId].attitudeScore = Math.min(100, Math.max(currentAttitude, score));
-    db.grades[studentId].notes = `Poin Kuis Interaktif RPS: ${score}/100 (Pengawasan Kamera: ${cameraVerified ? 'Terverifikasi Aktif' : 'Non-Kamera'})`;
+    // PRESERVE real existing UTS, UAS, Individual, and Attendance grades!
+    if (realUts && realUts.grade !== undefined) {
+      studentGrade.utsScore = Number(realUts.grade);
+    }
+    if (realUas && realUas.grade !== undefined) {
+      studentGrade.uasScore = Number(realUas.grade);
+    }
+    if (realPresGrade !== undefined) {
+      studentGrade.individualScore = realPresGrade;
+    }
+    if (totalAttRecorded > 0) {
+      studentGrade.attendanceScore = realAttScore;
+    }
+
+    // Set or sync attitudeScore with quiz score (keep whichever is higher)
+    const prevAttitude = studentGrade.attitudeScore !== undefined ? studentGrade.attitudeScore : 80;
+    studentGrade.attitudeScore = Math.min(100, Math.max(prevAttitude, score));
+    studentGrade.notes = `Poin Kuis Interaktif RPS: ${score}/100 (Pengawasan Kamera: ${cameraVerified ? 'Terverifikasi Aktif' : 'Non-Kamera'})`;
   }
 
+  // Recalculate composite final score & letter grade using official formula
+  recalculateStudentGrade(studentGrade);
+  db.grades[actualStudentId] = studentGrade;
+
+  // Persist directly to allCoursesData for this specific course room
   if (db.allCoursesData && db.activeCourseId && db.allCoursesData[db.activeCourseId]) {
     db.allCoursesData[db.activeCourseId].quizSubmissions = db.quizSubmissions;
     db.allCoursesData[db.activeCourseId].grades = db.grades;
   }
 
   saveDatabase();
+
   res.json({
     success: true,
     submission: subRecord,
@@ -3776,6 +3854,9 @@ app.post('/api/quiz/submit', (req, res) => {
     correctCount,
     totalQuestions: questions.length,
     explanationMap,
+    studentGrade,
+    activeCourseId: db.activeCourseId,
+    courseTitle: db.courseProfile?.courseTitle,
   });
 });
 
@@ -3785,6 +3866,7 @@ app.delete('/api/quiz/submissions/:id', (req, res) => {
     return res.status(403).json({ error: 'Akses Ditolak: Hanya Dosen yang berhak menghapus nilai kuis mahasiswa!' });
   }
 
+  syncActiveCourseFromReq(req);
   const subId = req.params.id;
   const studentId = req.query.studentId as string;
 
@@ -3801,11 +3883,18 @@ app.delete('/api/quiz/submissions/:id', (req, res) => {
 
   const targetStudentId = targetSub ? targetSub.studentId : studentId;
 
-  // Clear notes or attitude override in student grade record if exists
+  // Clear notes or attitude override in student grade record if exists and recalculate
   if (targetStudentId && db.grades && db.grades[targetStudentId]) {
     if (db.grades[targetStudentId].notes && db.grades[targetStudentId].notes.includes('Kuis')) {
       db.grades[targetStudentId].notes = '';
     }
+    const remainingQuizzes = db.quizSubmissions.filter(q => q.studentId === targetStudentId);
+    if (remainingQuizzes.length > 0) {
+      db.grades[targetStudentId].attitudeScore = Math.max(...remainingQuizzes.map(q => q.score));
+    } else {
+      db.grades[targetStudentId].attitudeScore = 85;
+    }
+    recalculateStudentGrade(db.grades[targetStudentId]);
   }
 
   // Update in active course data
@@ -3819,6 +3908,7 @@ app.delete('/api/quiz/submissions/:id', (req, res) => {
     success: true,
     message: `Nilai kuis mahasiswa berhasil dihapus oleh Dosen. Akses pengerjaan kuis telah dibuka kembali untuk mahasiswa yang bersangkutan.`,
     remainingCount: db.quizSubmissions.length,
+    studentGrade: targetStudentId ? db.grades?.[targetStudentId] : undefined,
   });
 });
 
@@ -4868,6 +4958,41 @@ function switchActiveCourseInternal(courseId: string): boolean {
 
   saveDatabase();
   return true;
+}
+
+// Helper to automatically detect and align active course room from request headers, query, body, or student identity
+function syncActiveCourseFromReq(req: express.Request): string {
+  let targetCourseId = (req.headers['x-active-course-id'] as string) ||
+                       (req.query?.courseId as string) ||
+                       (req.body && (req.body.courseId as string));
+
+  const studentId = req.body?.studentId || (req.query?.studentId as string) || (req.params as any)?.studentId;
+  const studentName = (req.body?.studentName as string || '').toLowerCase().trim();
+
+  // If targetCourseId is not explicitly specified, determine which course room the student belongs to
+  if (!targetCourseId && (studentId || studentName) && db.allCoursesData) {
+    for (const [cId, cData] of Object.entries(db.allCoursesData)) {
+      if (cData && Array.isArray(cData.students)) {
+        const found = cData.students.some((s: any) =>
+          (studentId && (s.id === studentId || s.nim === studentId)) ||
+          (studentName && s.name && s.name.toLowerCase().trim() === studentName)
+        );
+        if (found) {
+          targetCourseId = cId;
+          break;
+        }
+      }
+    }
+  }
+
+  if (targetCourseId && targetCourseId !== db.activeCourseId) {
+    try {
+      switchActiveCourseInternal(targetCourseId);
+    } catch (e) {
+      console.warn('Auto-align active course error:', e);
+    }
+  }
+  return db.activeCourseId;
 }
 
 // Multi-Course API: Switch active course / kamar
